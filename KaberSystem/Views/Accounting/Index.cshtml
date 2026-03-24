@@ -1,0 +1,150 @@
+﻿@model IEnumerable<KaberSystem.Models.Invoice>
+@{
+    ViewData["Title"] = "الحسابات والفواتير";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header d-print-none">
+    <div>
+        <h1 class="sys-page-title">إدارة الحسابات والفواتير</h1>
+        <p class="sys-page-desc">متابعة الفواتير الصادرة، تحصيل المدفوعات، ومراقبة الإيرادات المالية</p>
+    </div>
+    <button class="sys-btn sys-btn-primary" onclick="window.print()">
+        <i class="fa-solid fa-print"></i> طباعة التقرير المالي
+    </button>
+</div>
+
+<!-- الإحصائيات المالية العلوية -->
+<div class="row mb-4 g-4 d-print-none">
+    <div class="col-md-6">
+        <div class="sys-card bg-success text-white d-flex align-items-center justify-content-between h-100 p-4 border-0 position-relative overflow-hidden">
+            <div class="position-relative z-1">
+                <h6 class="mb-2 fw-bold text-white-50"><i class="fa-solid fa-sack-dollar me-1"></i> إجمالي الإيرادات المحصلة (Paid)</h6>
+                <h2 class="m-0 fw-bold fs-1">@ViewData["TotalIncome"] <span class="fs-5">ر.س</span></h2>
+            </div>
+            <i class="fa-solid fa-vault position-absolute z-0" style="font-size: 110px; right: -15px; bottom: -20px; opacity: 0.15;"></i>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="sys-card bg-warning text-dark d-flex align-items-center justify-content-between h-100 p-4 border-0 position-relative overflow-hidden">
+            <div class="position-relative z-1">
+                <h6 class="mb-2 fw-bold opacity-75"><i class="fa-solid fa-clock-rotate-left me-1"></i> مدفوعات معلقة بانتظار التحصيل (Pending)</h6>
+                <h2 class="m-0 fw-bold fs-1">@ViewData["PendingPayments"] <span class="fs-5">ر.س</span></h2>
+            </div>
+            <i class="fa-solid fa-hand-holding-dollar position-absolute z-0" style="font-size: 110px; right: -15px; bottom: -20px; opacity: 0.15;"></i>
+        </div>
+    </div>
+</div>
+
+<div class="sys-card printable-card">
+    <h4 class="fw-bold mb-4 text-primary border-bottom pb-3"><i class="fa-solid fa-file-lines me-2"></i> السجل المالي للفواتير</h4>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle text-center sys-table w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>رقم الطلب</th>
+                    <th>اسم العميل</th>
+                    <th>نوع الفاتورة</th>
+                    <th>المبلغ</th>
+                    <th>تاريخ الإصدار</th>
+                    <th>الحالة</th>
+                    <th class="d-print-none">إجراءات التحصيل</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td><span class="fw-bold px-2 py-1 bg-light border rounded text-muted">INV-#@item.InvoiceId</span></td>
+                        <td><a href="/Orders/Details/@item.OrderId" class="fw-bold text-primary text-decoration-none">ORD-#@item.OrderId</a></td>
+                        <td class="fw-bold text-dark text-start">@item.Order.CustomerName</td>
+                        <td>
+                            @if (item.Type == KaberSystem.Models.InvoiceType.Advance)
+                            {
+                                <span class="badge bg-secondary text-white rounded-pill px-3">دفعة مقدمة</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-info text-dark rounded-pill px-3">فاتورة نهائية</span>
+                            }
+                        </td>
+                        <td class="fw-bold fs-5 text-success bg-light border-start border-end">@item.Amount <span class="small text-muted">ريال</span></td>
+                        <td dir="ltr" class="text-muted fw-bold">@item.IssuedAt.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            @switch (item.Status)
+                            {
+                                case KaberSystem.Models.InvoiceStatus.Paid:
+                                    <span class="badge bg-success rounded-pill px-3 py-2"><i class="fa-solid fa-check me-1"></i> مدفوعة</span>
+                                    break;
+                                case KaberSystem.Models.InvoiceStatus.Rejected:
+                                    <span class="badge bg-danger rounded-pill px-3 py-2"><i class="fa-solid fa-xmark me-1"></i> مرفوضة</span>
+                                    break;
+                                case KaberSystem.Models.InvoiceStatus.NotReceived:
+                                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fw-bold"><i class="fa-solid fa-clock me-1"></i> لم تُحصل</span>
+                                    break;
+                            }
+                        </td>
+                        <td class="d-print-none">
+                            @if (item.Status == KaberSystem.Models.InvoiceStatus.NotReceived)
+                            {
+                                <form asp-action="MarkAsPaid" method="post" class="d-inline">
+                                    <input type="hidden" name="id" value="@item.InvoiceId" />
+                                    <button type="submit" class="btn btn-sm btn-success fw-bold px-3 rounded-3 shadow-sm hover-elevate">
+                                        <i class="fa-solid fa-money-bill-wave"></i> تأكيد الدفع
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-muted small fw-bold"><i class="fa-solid fa-lock text-success me-1"></i> مغلقة</span>
+                            }
+                        </td>
+                    </tr>
+                }
+               
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <script>
+            Swal.fire({ icon: 'success', title: 'تم التحصيل', text: '@TempData["SuccessMessage"]', confirmButtonText: 'حسناً', confirmButtonColor: '#05cd99' });
+        </script>
+    }
+}
+
+<style>
+    .hover-elevate {
+        transition: transform 0.2s;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-2px);
+        }
+    @@media print {
+        body
+
+    {
+        background: white;
+    }
+
+    .sys-sidebar, .sys-header, .d-print-none {
+        display: none !important;
+    }
+
+    .sys-main {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .printable-card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+
+    }
+</style>

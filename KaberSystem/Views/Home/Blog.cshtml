@@ -1,0 +1,105 @@
+﻿@{
+    ViewData["Title"] = "المدونة";
+}
+
+<div class="header">
+    <div class="container pt-5 hero" data-aos="fade-in" data-aos-delay="100">
+        <h1 class="text-white fw-bold blog-title mt-5">مدونتنا – نصائح ومعلومات عن صيانة الأجهزة الكهربائية</h1>
+        <p class="text-white text-center">
+            تابع أحدث المقالات والنصائح المفيدة حول صيانة الأجهزة الكهربائية وكيفية الحفاظ عليها لتعمل بكفاءة وأمان لفترة أطول.
+        </p>
+        <div class="d-flex gap-3 flex-wrap justify-content-center mt-3 mb-5">
+            <a href="tel:0541683466" class="primary-btn">
+                <i class="fa-solid fa-phone"></i> احجز الآن 0541683466
+            </a>
+        </div>
+    </div>
+</div>
+
+<section class="blog-section section-padding" id="blogs">
+    <div class="container" data-aos="fade-up" data-aos-delay="100">
+        <div class="heading text-center mb-5">
+            <span class="sub-title">الأخبار والمدونة</span>
+            <h2>اطلع على أحدث الأخبار والمقالات من مدونتنا</h2>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-4 col-md-6">
+                <div class="blog-card">
+                    <div class="blog-img">
+                        <img src="~/images/counter-1.jpg" class="img-fluid w-100">
+                        <div class="blog-date">
+                            <h4>28</h4>
+                            <span>ديسمبر 2024</span>
+                        </div>
+                    </div>
+                    <div class="blog-content">
+                        <div class="blog-meta">
+                            <p><span><i class="fas fa-user"></i> بواسطة كمال</span></p>
+                            <p><span><i class="fas fa-comment"></i> تعليق واحد</span></p>
+                        </div>
+                        <h4 class="blog-heading">دليل تمديدات المنازل الذكية للكهربائيين</h4>
+                        <a href="/Home/BlogDetails" class="read-more">
+                            اقرأ المزيد <i class="fas fa-arrow-alt-circle-left"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- المقال الثاني -->
+            <div class="col-lg-4 col-md-6">
+                <div class="blog-card">
+                    <div class="blog-img">
+                        <img src="~/images/counter-2.jpg" class="img-fluid w-100">
+                        <div class="blog-date">
+                            <h4>28</h4>
+                            <span>اكتوبر 2025</span>
+                        </div>
+                    </div>
+                    <div class="blog-content">
+                        <div class="blog-meta">
+                            <p><span><i class="fas fa-user"></i> بواسطة كمال</span></p>
+                            <p><span><i class="fas fa-comment"></i> تعليق واحد</span></p>
+                        </div>
+                        <h4 class="blog-heading">أهمية الجهد الكهربائي في أنظمة الطاقة</h4>
+                        <a href="/Home/BlogDetails" class="read-more">
+                            اقرأ المزيد <i class="fas fa-arrow-alt-circle-left"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- المقال الثالث -->
+            <div class="col-lg-4 col-md-6">
+                <div class="blog-card">
+                    <div class="blog-img">
+                        <img src="~/images/counter-3.avif" class="img-fluid w-100">
+                        <div class="blog-date">
+                            <h4>28</h4>
+                            <span>يناير 2026</span>
+                        </div>
+                    </div>
+                    <div class="blog-content">
+                        <div class="blog-meta">
+                            <p><span><i class="fas fa-user"></i> بواسطة كمال</span></p>
+                            <p><span><i class="fas fa-comment"></i> تعليق واحد</span></p>
+                        </div>
+                        <h4 class="blog-heading">مشاكل الكهرباء الشائعة وكيفية إصلاحها</h4>
+                        <a href="/Home/BlogDetails" class="read-more">
+                            اقرأ المزيد <i class="fas fa-arrow-alt-circle-left"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <nav class="mt-5 d-flex justify-content-center" dir="rtl">
+            <ul class="pagination blog-pagination">
+                <li class="page-item"><a class="page-link" href="#">السابق</a></li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">التالي</a></li>
+            </ul>
+        </nav>
+    </div>
+</section>

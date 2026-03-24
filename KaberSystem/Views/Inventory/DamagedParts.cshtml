@@ -1,0 +1,66 @@
+﻿@model IEnumerable<KaberSystem.Models.DamagedPart>
+@{
+    ViewData["Title"] = "سجل التوالف";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title">سجل التوالف والخسائر</h1>
+        <p class="sys-page-desc">متابعة قطع الغيار التالفة التي تم خصمها من المخزون الرئيسي وأسباب الإتلاف</p>
+    </div>
+    <a href="/Inventory/RecordDamage" class="sys-btn sys-btn-danger">
+        <i class="fa-solid fa-trash-can"></i> تسجيل قطعة تالفة
+    </a>
+</div>
+
+<div class="sys-card">
+    <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+        <div class="bg-danger bg-opacity-10 text-danger rounded-circle d-flex justify-content-center align-items-center me-3" style="width: 50px; height: 50px;">
+            <i class="fa-solid fa-car-burst fs-4"></i>
+        </div>
+        <h4 class="fw-bold m-0 text-dark">القطع المتلفة المخصومة</h4>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle text-center sys-table w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>رقم القيد</th>
+                    <th>اسم القطعة التالفة</th>
+                    <th>الكمية المُتلفة</th>
+                    <th>الخسارة المقدرة (سعر الشراء)</th>
+                    <th>تاريخ التسجيل</th>
+                    <th>سبب التلف</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td><span class="fw-bold px-2 py-1 bg-light border rounded text-muted">#@item.Id</span></td>
+                        <td class="fw-bold text-dark text-start">@item.SparePart?.Name</td>
+                        <td>
+                            <span class="badge bg-danger rounded-pill px-3 py-2 fs-6">
+                                @item.Quantity
+                            </span>
+                        </td>
+                        <td class="fw-bold text-danger">@(item.Quantity * (item.SparePart?.PurchasePrice ?? 0)) ر.س</td>
+                        <td dir="ltr" class="text-muted fw-bold">@item.Date.ToString("yyyy-MM-dd hh:mm tt")</td>
+                        <td class="text-start"><span class="badge bg-secondary">@item.Reason</span></td>
+                    </tr>
+                }
+               
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <script>
+            Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: '@TempData["SuccessMessage"]', confirmButtonText: 'حسناً', confirmButtonColor: '#f1950b' });
+        </script>
+    }
+}

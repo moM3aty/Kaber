@@ -1,0 +1,94 @@
+﻿@model KaberSystem.Models.Order
+@{
+    ViewData["Title"] = "إنشاء طلب جديد";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title">إنشاء طلب صيانة جديد</h1>
+        <p class="sys-page-desc">إدخال بيانات العميل والمشكلة لبدء دورة الصيانة وإسنادها لاحقاً للفنيين</p>
+    </div>
+    <a href="/Orders/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
+        <i class="fa-solid fa-arrow-right"></i> عودة للقائمة
+    </a>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="sys-card border-top border-4 border-primary">
+            <form asp-action="Create" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3 fw-bold"></div>
+
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <label asp-for="CustomerName" class="form-label fw-bold text-dark"><i class="fa-regular fa-user text-primary me-1"></i> اسم العميل <span class="text-danger">*</span></label>
+                        <input asp-for="CustomerName" class="form-control sys-input" placeholder="أدخل اسم العميل ثلاثي" required />
+                        <span asp-validation-for="CustomerName" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="PhoneNumber" class="form-label fw-bold text-dark"><i class="fa-solid fa-phone text-primary me-1"></i> رقم الهاتف <span class="text-danger">*</span></label>
+                        <input asp-for="PhoneNumber" class="form-control sys-input" placeholder="مثال: 0541683466" required />
+                        <span asp-validation-for="PhoneNumber" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label asp-for="Address" class="form-label fw-bold text-dark"><i class="fa-solid fa-location-dot text-primary me-1"></i> العنوان بالتفصيل <span class="text-danger">*</span></label>
+                        <input asp-for="Address" class="form-control sys-input" placeholder="المدينة، الحي، الشارع، رقم المبنى (مثال: الدمام - حي الشاطئ)" required />
+                        <span asp-validation-for="Address" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label asp-for="LocationMapUrl" class="form-label fw-bold text-dark"><i class="fa-solid fa-map text-primary me-1"></i> رابط الموقع (Google Maps) <span class="text-muted small">- اختياري</span></label>
+                        <input asp-for="LocationMapUrl" class="form-control sys-input" placeholder="انسخ والصق رابط الموقع المرسل من العميل عبر الواتساب" dir="ltr" text-align="left" />
+                    </div>
+
+                    <div class="col-md-12">
+                        <label asp-for="ProblemDescription" class="form-label fw-bold text-dark"><i class="fa-solid fa-triangle-exclamation text-primary me-1"></i> وصف المشكلة (الشكوى) <span class="text-danger">*</span></label>
+                        <textarea asp-for="ProblemDescription" class="form-control sys-input" rows="4" placeholder="اكتب تفاصيل العطل بدقة لتسهيل المهمة على الفني (مثال: الغسالة لا تسحب الماء، الثلاجة لا تبرد من الأسفل)..." required></textarea>
+                        <span asp-validation-for="ProblemDescription" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <div class="col-12 mt-5 text-end border-top pt-4">
+                        <button type="submit" class="sys-btn sys-btn-primary px-5 fs-5">
+                            <i class="fa-solid fa-paper-plane"></i> حفظ وتسجيل الطلب
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- قسم التعليمات الجانبي للكول سنتر -->
+    <div class="col-lg-4">
+        <div class="sys-card bg-light border-0 h-100" style="border-right: 4px solid var(--sys-primary) !important;">
+            <h5 class="fw-bold mb-4 text-primary"><i class="fa-solid fa-circle-info"></i> تعليمات الكول سنتر</h5>
+            <ul class="list-unstyled lh-lg text-muted fw-bold">
+                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>تأكد من رقم الهاتف بإعادة قراءته للعميل لمنع أي خطأ.</span></li>
+                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>اطلب رابط الموقع الدقيق من العميل على الواتساب إن أمكن لسهولة وصول الفني.</span></li>
+                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>اسأل العميل عن نوع الجهاز وماركته لتقدير العطل وتوفير قطع الغيار مسبقاً.</span></li>
+                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>لا تنسَ إخبار العميل بتكلفة الفحص المبدئية والرسوم التقريبية.</span></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sys-input {
+        border: 2px solid var(--sys-border);
+        padding: 14px 18px;
+        border-radius: 12px;
+        font-weight: 600;
+        color: var(--sys-text-main);
+        transition: var(--sys-transition);
+        background-color: #fafbfc;
+    }
+
+        .sys-input:focus {
+            border-color: var(--sys-primary);
+            box-shadow: 0 0 0 0.25rem rgba(241, 149, 11, 0.15);
+            background-color: #fff;
+            outline: none;
+        }
+</style>

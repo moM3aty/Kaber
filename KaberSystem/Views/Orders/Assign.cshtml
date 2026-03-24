@@ -1,0 +1,50 @@
+﻿@model KaberSystem.Models.Order
+@{
+    ViewData["Title"] = "تعيين فني للطلب";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title">إسناد الطلب لفني الصيانة</h1>
+        <p class="sys-page-desc">اختيار المهندس أو الفني المناسب لمعالجة طلب العميل رقم #@Model.OrderId</p>
+    </div>
+    <a href="/Orders/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
+        <i class="fa-solid fa-arrow-right"></i> إلغاء والعودة
+    </a>
+</div>
+
+<div class="row justify-content-center mt-4">
+    <div class="col-lg-6">
+        <div class="sys-card border-top border-4 border-success shadow-lg">
+            <div class="text-center mb-4">
+                <div class="bg-success bg-opacity-10 text-success rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                    <i class="fa-solid fa-user-plus fs-1"></i>
+                </div>
+                <h3 class="fw-bold text-dark">تعيين الفني</h3>
+                <p class="text-muted fw-bold">العميل: <span class="text-primary">@Model.CustomerName</span> | المشكلة: @Model.ProblemDescription</p>
+            </div>
+
+            <form asp-action="Assign" method="post">
+                <input type="hidden" name="id" value="@Model.OrderId" />
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-dark fs-5">قائمة الفنيين المتاحين حالياً <span class="text-danger">*</span></label>
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-light border-secondary border-end-0"><i class="fa-solid fa-user-gear text-primary"></i></span>
+                        <select name="TechnicianId" class="form-select border-secondary border-start-0 fw-bold" asp-items="ViewBag.TechnicianId" required>
+                            <option value="">-- اضغط لاختيار الفني --</option>
+                        </select>
+                    </div>
+                    <div class="form-text mt-2 text-muted fw-bold"><i class="fa-solid fa-info-circle"></i> القائمة تعرض فقط الفنيين الذين حالتهم (متاح للعمل).</div>
+                </div>
+
+                <div class="d-grid mt-5">
+                    <button type="submit" class="sys-btn sys-btn-primary py-3 fs-5 rounded-pill shadow-sm">
+                        <i class="fa-solid fa-check-circle me-2"></i> تأكيد وإسناد الطلب
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,77 @@
+﻿@model KaberSystem.Models.SystemUser
+@{
+    ViewData["Title"] = "إضافة مستخدم";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title">إضافة موظف جديد</h1>
+        <p class="sys-page-desc">إنشاء حساب جديد وتحديد الصلاحية المناسبة حسب تخصص الموظف</p>
+    </div>
+    <a href="/Users/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
+        <i class="fa-solid fa-arrow-right"></i> عودة للقائمة
+    </a>
+</div>
+
+<div class="row justify-content-center mt-3">
+    <div class="col-lg-6">
+        <div class="sys-card border-top border-4 border-primary shadow-sm">
+            @if (ViewBag.Error != null)
+            {
+                <div class="alert alert-danger fw-bold">@ViewBag.Error</div>
+            }
+
+            <form asp-action="Create" method="post">
+                <div class="row g-4">
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">اسم المستخدم (Login Name) <span class="text-danger">*</span></label>
+                        <input asp-for="Username" class="form-control sys-input" placeholder="مثال: ahmed_2024" required />
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">كلمة المرور <span class="text-danger">*</span></label>
+                        <input asp-for="Password" type="text" class="form-control sys-input" placeholder="كلمة مرور الدخول" required />
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">صلاحية الوصول (Role) <span class="text-danger">*</span></label>
+                        <select asp-for="Role" class="form-select sys-input fw-bold" required>
+                            <option value="">-- اختر الصلاحية --</option>
+                            <option value="Admin">مدير النظام (Admin)</option>
+                            <option value="CallCenter">خدمة العملاء (Call Center)</option>
+                            <option value="Technician">فني صيانة (Technician)</option>
+                            <option value="Accounting">محاسب (Accounting)</option>
+                            <option value="Store">أمين مخزن (Store)</option>
+                            <option value="PurchasingManager">مدير مشتريات</option>
+                            <option value="PurchasingRep">مندوب مشتريات</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 mt-4 text-end border-top pt-4">
+                        <button type="submit" class="sys-btn sys-btn-primary w-100 justify-content-center py-3 fs-5 shadow-sm">
+                            <i class="fa-solid fa-save me-2"></i> إنشاء الحساب وتفعيل الصلاحية
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sys-input {
+        border: 2px solid var(--sys-border);
+        padding: 12px 18px;
+        border-radius: 10px;
+        font-weight: 600;
+        background-color: var(--sys-bg);
+    }
+
+        .sys-input:focus {
+            border-color: var(--sys-primary);
+            box-shadow: 0 0 0 4px var(--sys-primary-light);
+            background-color: #fff;
+            outline: none;
+        }
+</style>

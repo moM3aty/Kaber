@@ -1,0 +1,75 @@
+﻿@model KaberSystem.Models.PurchaseOrder
+@{
+    ViewData["Title"] = "تسجيل مشتريات";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title">تسجيل فاتورة مشتريات</h1>
+        <p class="sys-page-desc">إدخال البضائع التي تم شراؤها لانتظار اعتماد وإضافة أمين المخزن</p>
+    </div>
+    <a href="/Purchases/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
+        <i class="fa-solid fa-arrow-right"></i> عودة للسجل
+    </a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="sys-card border-top border-4 border-primary">
+            <form asp-action="Create" method="post">
+                <div class="row g-4">
+                    <div class="col-md-12">
+                        <label asp-for="ItemName" class="form-label fw-bold text-dark"><i class="fa-solid fa-tag text-primary me-1"></i> اسم الصنف المشتراة <span class="text-danger">*</span></label>
+                        <input asp-for="ItemName" class="form-control sys-input" placeholder="اكتب اسم الصنف (سيتم مطابقته مع المخزن أو إضافته كصنف جديد)" required />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Quantity" class="form-label fw-bold text-dark"><i class="fa-solid fa-cubes text-primary me-1"></i> الكمية <span class="text-danger">*</span></label>
+                        <input asp-for="Quantity" type="number" class="form-control sys-input" placeholder="الكمية بالعدد" required />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="PurchasePrice" class="form-label fw-bold text-dark"><i class="fa-solid fa-money-bill-wave text-primary me-1"></i> سعر الشراء (للوحدة) <span class="text-danger">*</span></label>
+                        <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control sys-input" placeholder="0.00" required />
+                    </div>
+
+                    <div class="col-12 mt-5 text-end border-top pt-4">
+                        <button type="submit" class="sys-btn sys-btn-primary px-5 fs-5">
+                            <i class="fa-solid fa-paper-plane"></i> تسجيل الفاتورة
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="sys-card bg-light border-0 h-100" style="border-right: 4px solid var(--sys-primary) !important;">
+            <h5 class="fw-bold mb-3 text-primary"><i class="fa-solid fa-circle-info"></i> ملاحظة لمندوب المشتريات</h5>
+            <p class="text-muted fw-bold lh-lg">
+                بمجرد تسجيل الفاتورة هنا، ستظهر لدى (أمين المخزن) كبضاعة <b>"في الطريق"</b>.<br><br>
+                <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> لن يتم إضافة الكميات للرصيد الفعلي أو تغيير الأسعار إلا بعد أن يقوم أمين المخزن بمراجعتها والضغط على زر <span class="text-primary">"تأكيد وإضافة للمخزن"</span> من حسابه.
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sys-input {
+        border: 2px solid var(--sys-border);
+        padding: 14px 18px;
+        border-radius: 12px;
+        font-weight: 600;
+        color: var(--sys-text-main);
+        transition: var(--sys-transition);
+        background-color: #fafbfc;
+    }
+
+        .sys-input:focus {
+            border-color: var(--sys-primary);
+            box-shadow: 0 0 0 0.25rem rgba(241, 149, 11, 0.15);
+            background-color: #fff;
+            outline: none;
+        }
+</style>

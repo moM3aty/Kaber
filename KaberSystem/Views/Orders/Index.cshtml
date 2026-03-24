@@ -1,0 +1,112 @@
+﻿@model IEnumerable<KaberSystem.Models.Order>
+@{
+    ViewData["Title"] = "إدارة الطلبات";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title">الطلبات الواردة</h1>
+        <p class="sys-page-desc">إدارة جميع طلبات الصيانة وتتبع حالتها (الكول سنتر والإدارة)</p>
+    </div>
+    <a href="/Orders/Create" class="sys-btn sys-btn-primary">
+        <i class="fa-solid fa-plus"></i> إنشاء طلب جديد
+    </a>
+</div>
+
+<div class="sys-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle sys-table text-center w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>رقم الطلب</th>
+                    <th>اسم العميل</th>
+                    <th>رقم الهاتف</th>
+                    <th>تاريخ الطلب</th>
+                    <th>الفني المختص</th>
+                    <th>حالة الطلب</th>
+                    <th>إجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td><span class="fw-bold px-2 py-1 bg-light border rounded text-primary">#@item.OrderId</span></td>
+                        <td class="fw-bold text-dark">@item.CustomerName</td>
+                        <td dir="ltr" class="fw-bold">@item.PhoneNumber</td>
+                        <td class="text-muted fw-bold">@item.CreatedAt.ToString("yyyy-MM-dd hh:mm tt")</td>
+                        <td>
+                            @if (item.Technician != null)
+                            {
+                                <span class="badge bg-light text-dark border border-secondary rounded-pill px-3 py-2">
+                                    <i class="fa-solid fa-user-gear text-primary me-1"></i> @item.Technician.Name
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-light text-muted border rounded-pill px-3 py-2"><i class="fa-solid fa-clock text-warning"></i> بانتظار التعيين</span>
+                            }
+                        </td>
+                        <td>
+                            @switch (item.Status)
+                            {
+                                case KaberSystem.Models.OrderStatus.New:
+                                    <span class="badge bg-secondary rounded-pill px-3 py-2">جديد</span>
+                                    break;
+                                case KaberSystem.Models.OrderStatus.Assigned:
+                                    <span class="badge bg-primary rounded-pill px-3 py-2">تم التعيين</span>
+                                    break;
+                                case KaberSystem.Models.OrderStatus.Confirmed:
+                                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2">مؤكد</span>
+                                    break;
+                                case KaberSystem.Models.OrderStatus.InProgress:
+                                    <span class="badge bg-info rounded-pill px-3 py-2">قيد التنفيذ</span>
+                                    break;
+                                case KaberSystem.Models.OrderStatus.Completed:
+                                    <span class="badge bg-success rounded-pill px-3 py-2">مكتمل</span>
+                                    break;
+                                case KaberSystem.Models.OrderStatus.Cancelled:
+                                    <span class="badge bg-danger rounded-pill px-3 py-2">ملغي</span>
+                                    break;
+                            }
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2 justify-content-center">
+                                <a href="/Orders/Details/@item.OrderId" class="btn btn-sm btn-outline-primary fw-bold px-2 rounded-3" title="عرض التفاصيل">
+                                    <i class="fa-solid fa-eye"></i>
+                                </a>
+                                @if (item.Status == KaberSystem.Models.OrderStatus.New)
+                                {
+                                    <a href="/Orders/Assign/@item.OrderId" class="btn btn-sm btn-success fw-bold px-2 text-white rounded-3" title="تعيين فني">
+                                        <i class="fa-solid fa-user-plus"></i>
+                                    </a>
+                                }
+
+                                <!-- أزرار الأدمن (التعديل والحذف) -->
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <a href="/Orders/Edit/@item.OrderId" class="btn btn-sm btn-outline-warning fw-bold text-dark px-2 rounded-3" title="تعديل الطلب">
+                                        <i class="fa-solid fa-pen"></i>
+                                    </a>
+                                    <button type="button" onclick="confirmAdminDelete('/Orders/Delete/@item.OrderId', 'الطلب رقم #@item.OrderId')" class="btn btn-sm btn-outline-danger fw-bold px-2 rounded-3" title="حذف الطلب">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <script>
+            Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonText: 'حسناً', confirmButtonColor: '#f1950b' });
+        </script>
+    }
+}

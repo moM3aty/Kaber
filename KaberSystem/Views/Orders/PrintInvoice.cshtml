@@ -1,0 +1,186 @@
+﻿@model KaberSystem.Models.Order
+@{
+    Layout = null;
+    decimal partsTotal = Model.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
+    decimal totalAmount = Model.EstimatedPrice + partsTotal;
+}
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>فاتورة صيانة - كابر</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/bootstrap.min.css">
+    <link href="~/images/logo.png" type="image/x-icon" rel="icon" />
+    <style>
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: #f4f7fe;
+            padding: 40px 20px;
+        }
+
+        .invoice-box {
+            max-width: 800px;
+            margin: auto;
+            background: #fff;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            border-top: 8px solid #f1950b;
+        }
+
+        .brand-title {
+            color: #010217;
+            font-weight: 800;
+        }
+
+        .invoice-title {
+            color: #f1950b;
+            font-weight: 800;
+            font-size: 32px;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #eee;
+        }
+
+        .table th {
+            background-color: #010217 !important;
+            color: white !important;
+        }
+
+        .totals-box {
+            border: 2px solid #e9edf7;
+            padding: 20px;
+            border-radius: 10px;
+            background: #fafbfc;
+        }
+
+        .btn-print {
+            background: #f1950b;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 30px;
+            font-weight: bold;
+            border: none;
+        }
+
+        @@media print {
+            body {
+                background: #fff;
+                padding: 0;
+            }
+
+            .invoice-box {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+            }
+
+            .d-print-none {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="text-center mb-4 d-print-none">
+        <button onclick="window.print()" class="btn-print">🖨️ طباعة الفاتورة للعميل</button>
+    </div>
+
+    <div class="invoice-box">
+        <div class="row border-bottom pb-4 mb-4 align-items-center">
+            <div class="col-6">
+                <img src="~/images/logo.png" width="150px" style="border-radius:25px;"/>
+                <p class="text-muted mb-0">المملكة العربية السعودية - الدمام</p>
+                <p class="text-muted mb-0">هاتف: 0541683466</p>
+            </div>
+            <div class="col-6 text-end">
+                <h1 class="invoice-title">فاتورة ضريبية</h1>
+                <h5 class="fw-bold text-secondary">INV-#@Model.OrderId</h5>
+                <p class="text-muted mb-0">تاريخ الإصدار: @DateTime.Now.ToString("yyyy-MM-dd")</p>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="info-box">
+                    <h6 class="fw-bold text-primary mb-3">بيانات العميل:</h6>
+                    <p class="mb-1 fw-bold">الاسم: @Model.CustomerName</p>
+                    <p class="mb-1 fw-bold">الجوال: <span dir="ltr">@Model.PhoneNumber</span></p>
+                    <p class="mb-0 fw-bold">العنوان: @Model.Address</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="info-box h-100">
+                    <h6 class="fw-bold text-primary mb-3">تفاصيل الصيانة:</h6>
+                    <p class="mb-1 fw-bold">حالة الطلب: @(Model.Status == KaberSystem.Models.OrderStatus.Completed ? "مكتمل" : "قيد التنفيذ")</p>
+                    <p class="mb-0 fw-bold">المهندس/الفني: @(Model.Technician?.Name ?? "غير محدد")</p>
+                </div>
+            </div>
+        </div>
+
+        <table class="table table-bordered text-center align-middle mb-4">
+            <thead>
+                <tr>
+                    <th>البيان / الخدمة / القطعة</th>
+                    <th>الكمية</th>
+                    <th>سعر الوحدة</th>
+                    <th>الإجمالي</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="fw-bold text-start">أجور اليد / تكلفة الفحص والصيانة</td>
+                    <td>1</td>
+                    <td>@Model.EstimatedPrice ريال</td>
+                    <td class="fw-bold">@Model.EstimatedPrice ريال</td>
+                </tr>
+                @if (Model.UsedSpareParts != null)
+                {
+                    foreach (var part in Model.UsedSpareParts)
+                    {
+                        <tr>
+                            <td class="fw-bold text-start">@part.SparePart?.Name</td>
+                            <td>@part.QuantityUsed</td>
+                            <td>@part.SellingPriceAtTime ريال</td>
+                            <td class="fw-bold">@(part.QuantityUsed* part.SellingPriceAtTime) ريال</td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+
+        <div class="row justify-content-end">
+            <div class="col-md-6">
+                <div class="totals-box">
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="fw-bold text-muted">إجمالي الفاتورة:</span>
+                        <span class="fw-bold fs-5">@totalAmount ريال</span>
+                    </div>
+                    @if (Model.AdvancePayment > 0)
+                    {
+                        <div class="d-flex justify-content-between mb-2 text-danger border-bottom pb-2">
+                            <span class="fw-bold">تم دفع مقدم:</span>
+                            <span class="fw-bold fs-5">- @Model.AdvancePayment ريال</span>
+                        </div>
+                    }
+                    <div class="d-flex justify-content-between mt-3">
+                        <span class="fw-bold fs-4" style="color: #010217;">المبلغ المطلوب سداده:</span>
+                        <span class="fw-bold fs-3 text-success">@Model.FinalPrice ريال</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-5 pt-4 border-top">
+            <p class="fw-bold text-secondary mb-1">شكراً لثقتكم بخدمات شركة كابر للصيانة.</p>
+            <p class="text-muted small">هذه الفاتورة معتمدة إلكترونياً ولا تحتاج إلى توقيع.</p>
+        </div>
+    </div>
+</body>
+</html>

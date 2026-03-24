@@ -1,0 +1,86 @@
+﻿@model KaberSystem.Models.DamagedPart
+@{
+    ViewData["Title"] = "تسجيل تالف";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title text-danger">إعدام قطعة غيار (تالفة)</h1>
+        <p class="sys-page-desc">تسجيل القطع المكسورة أو التالفة لخصمها رسمياً من رصيد المخزن وإضافتها للمصروفات/الخسائر</p>
+    </div>
+    <a href="/Inventory/DamagedParts" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
+        <i class="fa-solid fa-arrow-right"></i> عودة لسجل التوالف
+    </a>
+</div>
+
+<div class="row justify-content-center mt-3">
+    <div class="col-lg-8">
+        <div class="sys-card border-top border-4 border-danger shadow-sm">
+
+            @if (TempData["ErrorMessage"] != null)
+            {
+                <div class="alert alert-danger fw-bold"><i class="fa-solid fa-triangle-exclamation me-2"></i> @TempData["ErrorMessage"]</div>
+            }
+
+            <form asp-action="RecordDamage" method="post">
+                <div class="row g-4">
+                    <div class="col-md-12">
+                        <label asp-for="PartId" class="form-label fw-bold text-dark">اختر القطعة التالفة <span class="text-danger">*</span></label>
+                        <select asp-for="PartId" class="form-select sys-input fw-bold" asp-items="ViewBag.PartId" required>
+                            <option value="">-- اضغط لاختيار القطعة --</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label asp-for="Quantity" class="form-label fw-bold text-dark">الكمية التالفة <span class="text-danger">*</span></label>
+                        <input asp-for="Quantity" type="number" class="form-control sys-input" min="1" placeholder="أدخل الكمية التي ترغب بخصمها" required />
+                    </div>
+
+                    <div class="col-md-12">
+                        <label asp-for="Reason" class="form-label fw-bold text-dark">سبب التلف أو الإعدام <span class="text-danger">*</span></label>
+                        <textarea asp-for="Reason" class="form-control sys-input" rows="3" placeholder="مثال: كسر أثناء النقل، عيب مصنعي ولم يتم استرجاعه..." required></textarea>
+                    </div>
+
+                    <div class="col-12 mt-5 text-end border-top pt-4">
+                        <button type="submit" class="sys-btn sys-btn-danger px-5 py-3 fs-5 shadow-sm">
+                            <i class="fa-solid fa-trash-can me-2"></i> اعتماد وخصم من المخزون
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sys-btn-danger {
+        background-color: var(--sys-danger);
+        color: white;
+        border: none;
+    }
+
+        .sys-btn-danger:hover {
+            background-color: #d14a40;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(238, 93, 80, 0.2);
+        }
+
+    .sys-input {
+        border: 2px solid var(--sys-border);
+        padding: 12px 18px;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s;
+        background-color: var(--sys-bg);
+        color: var(--sys-text-main);
+    }
+
+        .sys-input:focus {
+            border-color: var(--sys-danger);
+            box-shadow: 0 0 0 0.25rem rgba(238, 93, 80, 0.15);
+            background-color: #fff;
+            outline: none;
+        }
+</style>

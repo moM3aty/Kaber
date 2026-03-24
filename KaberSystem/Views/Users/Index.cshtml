@@ -1,0 +1,81 @@
+﻿@model IEnumerable<KaberSystem.Models.SystemUser>
+@{
+    ViewData["Title"] = "إدارة المستخدمين";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title">إدارة مستخدمي النظام</h1>
+        <p class="sys-page-desc">التحكم في حسابات الموظفين وتعديل صلاحيات الوصول لكل قسم</p>
+    </div>
+    <a href="/Users/Create" class="sys-btn sys-btn-primary">
+        <i class="fa-solid fa-user-plus"></i> إضافة موظف جديد
+    </a>
+</div>
+
+<div class="sys-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle text-center sys-table w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>الموظف</th>
+                    <th>اسم المستخدم (Login)</th>
+                    <th>الصلاحية</th>
+                    <th>تاريخ الإنشاء</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td class="text-start fw-bold">
+                            <img src="https://ui-avatars.com/api/?name=@item.Username&background=010217&color=fff" class="rounded-circle me-2" width="35">
+                            @item.Username
+                        </td>
+                        <td class="text-muted fw-bold">@item.Username</td>
+                        <td>
+                            @{
+                                string badgeClass = item.Role switch
+                                {
+                                    "Admin" => "bg-danger",
+                                    "CallCenter" => "bg-primary",
+                                    "Technician" => "bg-info text-dark",
+                                    "Store" => "bg-warning text-dark",
+                                    _ => "bg-secondary"
+                                };
+                            }
+                            <span class="badge @badgeClass px-3 py-2 rounded-pill shadow-sm">@item.Role</span>
+                        </td>
+                        <td dir="ltr" class="small text-muted fw-bold">@item.CreatedAt.ToString("yyyy/MM/dd")</td>
+                        <td>
+                            <div class="d-flex gap-2 justify-content-center">
+                                <a href="/Users/Edit/@item.UserId" class="btn btn-sm btn-outline-warning text-dark fw-bold rounded-3">
+                                    <i class="fa-solid fa-user-pen"></i> تعديل الصلاحية
+                                </a>
+                                @if (item.Username.ToLower() != "admin")
+                                {
+                                    <button type="button" onclick="confirmAdminDelete('/Users/Delete/@item.UserId', 'المستخدم: @item.Username')" class="btn btn-sm btn-outline-danger fw-bold rounded-3">
+                                        <i class="fa-solid fa-user-xmark"></i> حذف
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <script>Swal.fire({ icon: 'success', title: 'نجاح', text: '@TempData["SuccessMessage"]', confirmButtonColor: '#f1950b' });</script>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <script>Swal.fire({ icon: 'error', title: 'تنبيه', text: '@TempData["ErrorMessage"]', confirmButtonColor: '#ee5d50' });</script>
+    }
+}

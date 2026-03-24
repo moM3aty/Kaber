@@ -1,0 +1,48 @@
+﻿@model KaberSystem.Models.Technician
+@{
+    ViewData["Title"] = "تعديل بيانات الفني";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title text-primary">تعديل بيانات الفني: @Model.Name</h1>
+        <p class="sys-page-desc">شاشة الإدارة لتحديث أرقام التواصل أو حالة الفني</p>
+    </div>
+    <a href="/Technicians/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3">
+        <i class="fa-solid fa-arrow-right"></i> إلغاء والعودة
+    </a>
+</div>
+
+<div class="row justify-content-center mt-3">
+    <div class="col-lg-6">
+        <div class="sys-card border-top border-4 border-warning shadow-sm">
+            <form asp-action="Edit" method="post">
+                <input type="hidden" asp-for="TechnicianId" />
+                <input type="hidden" asp-for="TotalIncome" />
+
+                <div class="row g-4">
+                    <div class="col-md-12">
+                        <label asp-for="Name" class="form-label fw-bold">اسم الفني</label>
+                        <input asp-for="Name" class="form-control sys-input" required />
+                    </div>
+                    <div class="col-md-12">
+                        <label asp-for="Phone" class="form-label fw-bold">رقم الهاتف</label>
+                        <input asp-for="Phone" type="tel" class="form-control sys-input" dir="ltr" required />
+                    </div>
+                    <div class="col-md-12">
+                        <div class="form-check form-switch mt-2">
+                            <input class="form-check-input fs-4" type="checkbox" asp-for="IsAvailable">
+                            <label class="form-check-label fw-bold fs-5 ms-2" asp-for="IsAvailable">متاح للعمل (جاهز لاستلام طلبات)</label>
+                        </div>
+                    </div>
+                    <div class="col-12 mt-4 text-end border-top pt-4">
+                        <button type="submit" class="sys-btn btn-warning text-dark px-5 py-3 fs-5 fw-bold w-100">
+                            <i class="fa-solid fa-save me-2"></i> تحديث البيانات
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,102 @@
+﻿@{
+    ViewData["Title"] = "اتصل بنا";
+}
+
+<div class="header pt-5 hero min-vh-100">
+    <div class="container pt-5">
+        <h1 class="text-white fw-bold">تواصل معنا للحصول على الدعم وخدمات الصيانة</h1>
+        <p class="text-white text-center">
+            إذا كان لديك أي استفسار أو تحتاج إلى خدمة صيانة، لا تتردد في التواصل معنا، فريقنا جاهز لخدمتك في أي وقت.
+        </p>
+        <div class="d-flex gap-3 flex-wrap justify-content-center mt-3">
+            <a href="tel:0541683466" class="primary-btn">
+                <i class="fa-solid fa-phone"></i> احجز الآن 0541683466
+            </a>
+        </div>
+    </div>
+</div>
+
+<section class="section-padding contact-info" id="contact">
+    <div class="container" data-aos="fade-up" data-aos-delay="100">
+        <div class="row g-4 box pb-3 my-4 justify-content-center align-items-center">
+            <div class="col-lg-4">
+                <div class="inner d-flex gap-3 justify-content-center">
+                    <div class="icon d-flex justify-content-center align-items-center flex-shrink-0">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </div>
+                    <div class="content">
+                        <h3 class="fs-5"><span>العنوان</span></h3>
+                        <p><span>المنطقة الشرقية - الدمام</span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="inner d-flex gap-3 justify-content-center">
+                    <div class="icon d-flex justify-content-center align-items-center">
+                        <i class="fa-solid fa-phone-volume"></i>
+                    </div>
+                    <div class="content">
+                        <h3 class="fs-5"><span>اتصل بنا</span></h3>
+                        <p><span>0541683466</span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="inner d-flex gap-3 justify-content-center">
+                    <div class="icon d-flex justify-content-center align-items-center">
+                        <i class="fa-solid fa-envelope"></i>
+                    </div>
+                    <div class="content">
+                        <h3 class="fs-5"><span>راسلنا</span></h3>
+                        <p><span>info@company.com</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="contact-faq-section">
+    <div class="container-fluid">
+        <div class="row gx-4 align-items-start" data-aos="fade-up" data-aos-delay="100">
+            <div class="col-lg-6 form-col">
+                <div class="contact-box my-4">
+                    <span class="contact-subtitle">تواصل معنا</span>
+                    <h3 class="contact-title">أرسل رسالة</h3>
+                    <form id="contactForm">
+                        <div class="row g-4">
+                            <div class="col-md-6">
+                                <input type="text" class="form-control custom-input" placeholder="الاسم" id="name">
+                                <p class="error-msg text-danger small"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="email" class="form-control custom-input" placeholder="البريد الإلكتروني" id="email">
+                                <p class="error-msg text-danger small"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="tel" dir="rtl" class="form-control custom-input" placeholder="رقم الهاتف" id="phone">
+                                <p class="error-msg text-danger small"></p>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" class="form-control custom-input" placeholder="العنوان" id="address">
+                                <p class="error-msg text-danger small"></p>
+                            </div>
+                            <div class="col-12">
+                                <textarea class="form-control custom-input" rows="4" placeholder="اكتب رسالتك" id="message"></textarea>
+                                <p class="error-msg text-danger small"></p>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="primary-btn w-100">إرسال الرسالة</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="map-frame p-4">
+                    <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3573.95717402429!2d49.99065350000001!3d26.3925712!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3e3602f6d7b06bcd%3A0xcf68c07f2cd68a03!2zRUhBQTMxMTLYjCA2MzM52Iwg2LbYp9it2YrYqSDYp9mE2YXZhNmDINmB2YfYr9iMINin2YTYr9mF2KfZhSAzMjMxNNiMINin2YTYs9i52YjYr9mK2Kk!5e0!3m2!1sar!2seg!4v1773595261740!5m2!1sar!2seg" width="100%" height="450" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

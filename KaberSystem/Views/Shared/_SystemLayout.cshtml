@@ -1,0 +1,152 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewData["Title"] - لوحة تحكم كابر</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="~/css/dashboard-premium.css">
+    <link href="~/images/logo.png" type="image/x-icon" rel="icon" />
+
+</head>
+<body>
+    @{
+        var currentController = ViewContext.RouteData.Values["Controller"]?.ToString();
+    }
+
+    <div class="sys-wrapper">
+        <!-- 📌 Sidebar مبني على الصلاحيات (Roles) -->
+        <aside class="sys-sidebar">
+            <div class="sys-brand">
+               <img src="~/images/logo.png" width="150px" style="border-radius:25px;" alt="Kaber" />
+            </div>
+
+            <div class="sys-nav-section">القائمة الرئيسية</div>
+            <nav class="sys-nav">
+
+                @if (User.IsInRole("Admin"))
+                {
+                    <a href="/Dashboard" class="sys-nav-item @(currentController == "Dashboard" ? "active" : "")">
+                        <i class="fa-solid fa-chart-pie"></i> لوحة القيادة (تقارير)
+                    </a>
+                }
+
+                @if (User.IsInRole("Admin") || User.IsInRole("CallCenter") || User.IsInRole("Technician"))
+                {
+                    <a href="/Orders" class="sys-nav-item @(currentController == "Orders" ? "active" : "")">
+                        <i class="fa-solid fa-headset"></i> إدارة الطلبات
+                    </a>
+                }
+
+                @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
+                {
+                    <a href="/Technicians" class="sys-nav-item @(currentController == "Technicians" ? "active" : "")">
+                        <i class="fa-solid fa-users-gear"></i> المهندسين والفنيين
+                    </a>
+                }
+
+                @if (User.IsInRole("Admin") || User.IsInRole("Store"))
+                {
+                    <div class="sys-nav-section">المخزون والتوالف</div>
+                    <a href="/Inventory" class="sys-nav-item @(currentController == "Inventory" && ViewContext.RouteData.Values["Action"]?.ToString() != "DamagedParts" ? "active" : "")">
+                        <i class="fa-solid fa-boxes-stacked"></i> إدارة المخزون
+                    </a>
+                    <a href="/Inventory/DamagedParts" class="sys-nav-item @(currentController == "Inventory" && ViewContext.RouteData.Values["Action"]?.ToString() == "DamagedParts" ? "active" : "")">
+                        <i class="fa-solid fa-trash-can"></i> سجل التوالف
+                    </a>
+                }
+
+                @if (User.IsInRole("Admin") || User.IsInRole("PurchasingManager") || User.IsInRole("PurchasingRep") || User.IsInRole("Store"))
+                {
+                    <a href="/Purchases" class="sys-nav-item @(currentController == "Purchases" ? "active" : "")">
+                        <i class="fa-solid fa-cart-shopping"></i> المشتريات
+                    </a>
+                }
+
+                @if (User.IsInRole("Admin") || User.IsInRole("Accounting"))
+                {
+                    <div class="sys-nav-section">الإدارة المالية</div>
+                    <a href="/Accounting" class="sys-nav-item @(currentController == "Accounting" ? "active" : "")">
+                        <i class="fa-solid fa-file-invoice-dollar"></i> الحسابات والفواتير
+                    </a>
+                    <a href="/Expenses" class="sys-nav-item @(currentController == "Expenses" ? "active" : "")">
+                        <i class="fa-solid fa-hand-holding-dollar"></i> المصروفات والتوالف
+                    </a>
+                    <a href="/Technicians/IncomeReport" class="sys-nav-item">
+                        <i class="fa-solid fa-sack-dollar"></i> أرباح الفنيين
+                    </a>
+                }
+
+                @if (User.IsInRole("Admin") || User.IsInRole("PurchasingManager"))
+                {
+                    <div class="sys-nav-section">الإدارة التجارية</div>
+                    <a href="/Purchases/Pricing" class="sys-nav-item">
+                        <i class="fa-solid fa-tags"></i> تسعير المنتجات
+                    </a>
+                }
+                @if (User.IsInRole("Admin"))
+                {
+                    <div class="sys-nav-section">الإعدادات والأمان</div>
+                    <a href="/Users" class="sys-nav-item">
+                        <i class="fa-solid fa-user-shield"></i> إدارة المستخدمين
+                    </a>
+                }
+            </nav>
+
+            <div class="sys-sidebar-footer">
+                <a href="/Account/Logout" class="sys-nav-item sys-logout">
+                    <i class="fa-solid fa-arrow-right-from-bracket"></i> تسجيل الخروج
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="sys-main">
+            <header class="sys-header">
+ 
+                <div class="sys-user-area">
+                    <div class="sys-profile">
+                        <img src="https://ui-avatars.com/api/?name=@User.Identity.Name&background=f1950b&color=fff" alt="User">
+                        <div class="sys-profile-info">
+                            <h4>@User.Identity.Name</h4>
+                            <span class="badge bg-primary mt-1">@User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="sys-content">
+                @RenderBody()
+            </div>
+        </main>
+    </div>
+    <script>
+        function confirmAdminDelete(deleteUrl, itemName) {
+            Swal.fire({
+                title: 'تأكيد الحذف النهائي',
+                text: `هل أنت متأكد من رغبتك في حذف (${itemName})؟ هذه العملية لا يمكن التراجع عنها وسيتم مسح كافة السجلات المرتبطة.`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ee5d50',
+                cancelButtonColor: '#a3aed1',
+                confirmButtonText: '<i class="fa-solid fa-trash-can"></i> نعم، قم بالحذف!',
+                cancelButtonText: 'إلغاء'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = deleteUrl;
+                }
+            });
+        }
+    </script>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <script src="~/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="~/js/dashboard-app.js"></script>
+    @RenderSection("Scripts", required: false)
+</body>
+</html>

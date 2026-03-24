@@ -1,0 +1,91 @@
+﻿@model IEnumerable<KaberSystem.Models.PurchaseOrder>
+@{
+    ViewData["Title"] = "إدارة المشتريات";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title">سجل المشتريات الواردة</h1>
+        <p class="sys-page-desc">تسجيل طلبات الشراء، واعتماد استلام المخزن للبضائع لتُضاف للرصيد تلقائياً</p>
+    </div>
+    <a href="/Purchases/Create" class="sys-btn sys-btn-primary">
+        <i class="fa-solid fa-cart-plus"></i> تسجيل مشتريات جديدة
+    </a>
+</div>
+
+<div class="sys-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle text-center sys-table w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>رقم العملية</th>
+                    <th>اسم الصنف (قطعة الغيار)</th>
+                    <th>الكمية المشتراة</th>
+                    <th>سعر الشراء (للوحدة)</th>
+                    <th>الإجمالي</th>
+                    <th>تاريخ الشراء</th>
+                    <th>حالة الاستلام (المخزن)</th>
+                    <th>إجراء أمين المخزن</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td><span class="fw-bold px-2 py-1 bg-light border rounded text-muted">PO-#@item.PurchaseId</span></td>
+                        <td class="fw-bold text-dark text-start">@item.ItemName</td>
+                        <td class="fw-bold fs-5">@item.Quantity</td>
+                        <td class="text-danger fw-bold">@item.PurchasePrice <span class="small">ر.س</span></td>
+                        <td class="text-danger fw-bold fs-6 bg-light border-start border-end">@(item.Quantity* item.PurchasePrice) <span class="small">ر.س</span></td>
+                        <td dir="ltr" class="text-muted fw-bold">@item.PurchaseDate.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            @if (item.IsReceivedByStore)
+                            {
+                                <span class="badge bg-success rounded-pill px-3 py-2 fs-6"><i class="fa-solid fa-check-double me-1"></i> تم الاستلام</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fw-bold"><i class="fa-solid fa-truck-fast me-1"></i> في الطريق</span>
+                            }
+                        </td>
+                        <td>
+                            @if (!item.IsReceivedByStore)
+                            {
+                                <form asp-action="MarkAsReceived" method="post" class="d-inline">
+                                    <input type="hidden" name="id" value="@item.PurchaseId" />
+                                    <button type="submit" class="btn btn-sm btn-primary fw-bold px-3 rounded-3 shadow-sm hover-elevate">
+                                        <i class="fa-solid fa-box-open"></i> تأكيد وإضافة للمخزن
+                                    </button>
+                                </form>
+                            }
+                            else
+                            {
+                                <span class="text-success small fw-bold"><i class="fa-solid fa-lock text-success me-1"></i> تمت الإضافة للرصيد</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <script>
+            Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonText: 'حسناً', confirmButtonColor: '#f1950b' });
+        </script>
+    }
+}
+
+<style>
+    .hover-elevate {
+        transition: transform 0.2s;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-2px);
+        }
+</style>

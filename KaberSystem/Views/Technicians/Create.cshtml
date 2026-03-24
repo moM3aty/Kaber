@@ -1,0 +1,67 @@
+﻿@model KaberSystem.Models.Technician
+@{
+    ViewData["Title"] = "إضافة فني جديد";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title">إضافة مهندس / فني جديد</h1>
+        <p class="sys-page-desc">إدخال بيانات الفني الجديد للانضمام لفريق الصيانة وتلقي الطلبات</p>
+    </div>
+    <a href="/Technicians/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
+        <i class="fa-solid fa-arrow-right"></i> عودة للقائمة
+    </a>
+</div>
+
+<div class="row justify-content-center mt-3">
+    <div class="col-lg-6">
+        <div class="sys-card border-top border-4 border-primary shadow-sm">
+            <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+                <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex justify-content-center align-items-center me-3" style="width: 50px; height: 50px;">
+                    <i class="fa-solid fa-user-plus fs-4"></i>
+                </div>
+                <h4 class="fw-bold m-0 text-dark">بيانات الفني</h4>
+            </div>
+
+            <form asp-action="Create" method="post">
+                <div class="row g-4">
+                    <div class="col-md-12">
+                        <label asp-for="Name" class="form-label fw-bold text-dark">الاسم الكامل <span class="text-danger">*</span></label>
+                        <input asp-for="Name" class="form-control sys-input" placeholder="مثال: أحمد محمود" required />
+                    </div>
+
+                    <div class="col-md-12">
+                        <label asp-for="Phone" class="form-label fw-bold text-dark">رقم الهاتف (للتواصل وإرسال الطلبات) <span class="text-danger">*</span></label>
+                        <input asp-for="Phone" type="tel" class="form-control sys-input" placeholder="مثال: 05XXXXXXXX" dir="rtl" text-align="right" required />
+                    </div>
+
+                    <div class="col-12 mt-4 text-end border-top pt-4">
+                        <button type="submit" class="sys-btn sys-btn-primary px-5 py-3 fs-5 shadow-sm w-100 justify-content-center">
+                            <i class="fa-solid fa-save me-2"></i> حفظ وتسجيل الفني
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sys-input {
+        border: 2px solid var(--sys-border);
+        padding: 12px 18px;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s;
+        background-color: var(--sys-bg);
+        color: var(--sys-text-main);
+    }
+
+        .sys-input:focus {
+            border-color: var(--sys-primary);
+            box-shadow: 0 0 0 0.25rem rgba(241, 149, 11, 0.15);
+            background-color: #fff;
+            outline: none;
+        }
+</style>

@@ -1,0 +1,193 @@
+﻿@model KaberSystem.Models.Technician
+@{
+    ViewData["Title"] = "ملف المهندس: " + Model.Name;
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title">ملف الفني: @Model.Name</h1>
+        <p class="sys-page-desc">متابعة أداء الفني، الطلبات المسندة إليه، وجرد العهدة الحالية في سيارته</p>
+    </div>
+    <a href="/Technicians/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
+        <i class="fa-solid fa-arrow-right"></i> عودة للقائمة
+    </a>
+</div>
+
+<div class="row g-4">
+    <!-- معلومات الفني الأساسية -->
+    <div class="col-lg-4">
+        <div class="sys-card text-center h-100 py-5 position-relative overflow-hidden">
+            <div class="position-absolute top-0 start-0 w-100" style="height: 120px; background: linear-gradient(135deg, var(--sys-primary-light), #fff); z-index: 0;"></div>
+
+            <div class="position-relative z-1 mt-4">
+                <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(Model.Name)&background=f1950b&color=fff&size=120&bold=true" class="rounded-circle shadow border border-4 border-white mb-4">
+                <h3 class="fw-bold text-dark mb-2">@Model.Name</h3>
+                <p class="text-muted fw-bold fs-5" dir="ltr"><i class="fa-solid fa-phone text-primary me-2"></i>@Model.Phone</p>
+
+                <div class="mt-4">
+                    @if (Model.IsAvailable)
+                    {
+                        <span class="badge bg-success fs-6 rounded-pill px-4 py-2 w-75 shadow-sm"><i class="fa-solid fa-check-circle me-1"></i> متاح للعمل (جاهز للاستلام)</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-danger fs-6 rounded-pill px-4 py-2 w-75 shadow-sm"><i class="fa-solid fa-ban me-1"></i> مشغول حالياً</span>
+                    }
+                </div>
+
+                <div class="mt-5 border-top pt-4 d-flex justify-content-around">
+                    <div>
+                        <h4 class="fw-bold text-primary mb-1">@Model.AssignedOrders.Count</h4>
+                        <span class="text-muted fw-bold small">إجمالي الطلبات</span>
+                    </div>
+                    <div>
+                        <h4 class="fw-bold text-success mb-1">@Model.AssignedOrders.Count(o => o.Status == KaberSystem.Models.OrderStatus.Completed)</h4>
+                        <span class="text-muted fw-bold small">أوامر منجزة</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- سجل العهدة (المخزون مع الفني) -->
+    <div class="col-lg-8">
+        <div class="sys-card h-100">
+            <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                <h4 class="fw-bold text-primary m-0"><i class="fa-solid fa-toolbox me-2"></i> العهدة الحالية (صندوق الفني)</h4>
+                <button class="btn btn-primary fw-bold rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#assignStockModal">
+                    <i class="fa-solid fa-plus-circle me-1"></i> صرف قطع للفني
+                </button>
+            </div>
+
+            @if (Model.Inventory != null && Model.Inventory.Any())
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle text-center sys-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>كود القطعة</th>
+                                <th>اسم القطعة</th>
+                                <th>الكمية بالعهدة</th>
+                                <th>سعر البيع الافتراضي</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Inventory)
+                            {
+                                <tr>
+                                    <td><span class="text-muted fw-bold px-2 py-1 bg-light rounded">#@item.PartId</span></td>
+                                    <td class="fw-bold text-dark text-start">@item.SparePart.Name</td>
+                                    <td>
+                                        <span class="badge @(item.Quantity > 2 ? "bg-success" : "bg-danger") fs-6 rounded-pill px-3 py-2 shadow-sm">
+                                            @item.Quantity
+                                        </span>
+                                    </td>
+                                    <td class="fw-bold text-success">@item.SparePart.SellingPrice ريال</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-outline-danger fw-bold rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#returnStockModal-@item.PartId">
+                                            <i class="fa-solid fa-arrow-rotate-left"></i> مرتجع
+                                        </button>
+
+                                        <!-- Modal إرجاع العهدة للمخزن -->
+                                        <div class="modal fade" id="returnStockModal-@item.PartId" tabindex="-1" aria-hidden="true">
+                                            <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-content border-0 rounded-4 shadow-lg text-start">
+                                                    <div class="modal-header border-bottom-0 pb-0">
+                                                        <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-arrow-rotate-left me-2"></i> إرجاع قطعة للمخزن الرئيسي</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <form asp-action="ReturnStock" method="post">
+                                                        <div class="modal-body py-4">
+                                                            <input type="hidden" name="technicianId" value="@Model.TechnicianId" />
+                                                            <input type="hidden" name="partId" value="@item.PartId" />
+
+                                                            <p class="fw-bold text-dark mb-4">أنت على وشك إرجاع <span class="text-primary">@item.SparePart.Name</span> من عهدة الفني.</p>
+
+                                                            <div class="mb-3">
+                                                                <label class="form-label fw-bold text-dark">الكمية المراد إرجاعها <span class="text-danger">*</span></label>
+                                                                <input type="number" name="returnQuantity" class="form-control form-control-lg fw-bold bg-light border-0" min="1" max="@item.Quantity" value="1" required />
+                                                                <small class="text-muted fw-bold mt-1 d-block">الحد الأقصى المتاح للإرجاع: @item.Quantity</small>
+                                                            </div>
+                                                        </div>
+                                                        <div class="modal-footer border-top-0 pt-0">
+                                                            <button type="button" class="btn btn-light fw-bold px-4 rounded-3" data-bs-dismiss="modal">إلغاء</button>
+                                                            <button type="submit" class="btn btn-danger fw-bold px-4 rounded-3">تأكيد الإرجاع</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-5">
+                    <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 100px; height: 100px;">
+                        <i class="fa-solid fa-box-open fs-1 text-muted opacity-50"></i>
+                    </div>
+                    <h5 class="fw-bold text-muted mb-2">لا توجد عهدة مصروفة لهذا الفني حالياً.</h5>
+                    <p class="text-muted small">قم بصرف قطع الغيار له ليتمكن من استخدامها في طلبات الصيانة.</p>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Modal صرف عهدة للفني -->
+<div class="modal fade" id="assignStockModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary"><i class="fa-solid fa-truck-ramp-box me-2"></i> صرف قطع غيار للعهدة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="AssignStock" method="post">
+                <div class="modal-body py-4">
+                    <input type="hidden" name="technicianId" value="@Model.TechnicianId" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">اختر القطعة من المخزن العام <span class="text-danger">*</span></label>
+                        <select name="partId" class="form-select form-select-lg fw-bold bg-light border-0" required>
+                            <option value="">-- اضغط للاختيار --</option>
+                            @if (ViewData["AvailableParts"] != null)
+                            {
+                                foreach (var part in (IEnumerable<KaberSystem.Models.SparePart>)ViewData["AvailableParts"])
+                                {
+                                    <option value="@part.PartId">@part.Name (المتاح: @part.MainStockQuantity)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">الكمية المراد صرفها <span class="text-danger">*</span></label>
+                        <input type="number" name="quantity" class="form-control form-control-lg fw-bold bg-light border-0" min="1" value="1" required />
+                        <small class="text-muted fw-bold mt-1 d-block"><i class="fa-solid fa-info-circle text-primary"></i> سيتم نقل هذه الكمية من المخزن العام إلى عهدة الفني.</small>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold px-4 rounded-3" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4 rounded-3">تأكيد الصرف</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <script>Swal.fire({ icon: 'success', title: 'عملية ناجحة', html: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonText: 'حسناً', confirmButtonColor: '#f1950b' });</script>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <script>Swal.fire({ icon: 'error', title: 'خطأ', html: '@Html.Raw(TempData["ErrorMessage"])', confirmButtonText: 'إغلاق', confirmButtonColor: '#ee5d50' });</script>
+    }
+}

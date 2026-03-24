@@ -1,0 +1,87 @@
+﻿@model IEnumerable<KaberSystem.Models.SparePart>
+@{
+    ViewData["Title"] = "المخزون العام";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title">إدارة المخزون العام (المستودع)</h1>
+        <p class="sys-page-desc">مراقبة المخزون الرئيسي لقطع الغيار، التحكم بأسعار الشراء والبيع، ومتابعة النواقص</p>
+    </div>
+    @if (User.IsInRole("Admin") || User.IsInRole("Store"))
+    {
+        <a href="/Inventory/Create" class="sys-btn sys-btn-primary">
+            <i class="fa-solid fa-plus"></i> تعريف صنف جديد
+        </a>
+    }
+</div>
+
+<!-- (نفس البطاقات العلوية الإحصائية الموجودة مسبقاً، تم إخفاؤها هنا للاختصار، يمكنك إبقاؤها كما هي) -->
+
+<div class="sys-card mt-4">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle text-center sys-table w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>الكود</th>
+                    <th>اسم قطعة الغيار</th>
+                    <th>تكلفة الشراء</th>
+                    <th>سعر البيع (للعميل)</th>
+                    <th>رصيد المخزن الحالي</th>
+                    <th>إجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td><span class="fw-bold px-2 py-1 bg-light border rounded text-muted">#@item.PartId</span></td>
+                        <td class="fw-bold text-dark text-start">@item.Name</td>
+                        <td class="text-danger fw-bold">@item.PurchasePrice <span class="small">ر.س</span></td>
+                        <td class="text-success fw-bold fs-6">@item.SellingPrice <span class="small">ر.س</span></td>
+                        <td>
+                            @if (item.MainStockQuantity <= 0)
+                            {
+                                <span class="badge bg-danger rounded-pill px-3 py-2"><i class="fa-solid fa-xmark-circle me-1"></i> نفذت الكمية</span>
+                            }
+                            else if (item.MainStockQuantity <= 5)
+                            {
+                                <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fw-bold"><i class="fa-solid fa-exclamation-triangle me-1"></i> @item.MainStockQuantity (نواقص)</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-light text-dark border border-secondary rounded-pill px-3 py-2 fw-bold fs-6">@item.MainStockQuantity</span>
+                            }
+                        </td>
+                        <td>
+                            <div class="d-flex gap-2 justify-content-center">
+                                @if (User.IsInRole("Admin") || User.IsInRole("Store"))
+                                {
+                                    <a href="/Inventory/Edit/@item.PartId" class="btn btn-sm btn-outline-primary fw-bold rounded-3 px-2" title="تعديل بيانات الصنف">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </a>
+                                }
+
+                                <!-- زر الحذف للإدارة فقط -->
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <button type="button" onclick="confirmAdminDelete('/Inventory/Delete/@item.PartId', 'صنف: @item.Name')" class="btn btn-sm btn-outline-danger fw-bold px-2 rounded-3" title="حذف الصنف نهائياً">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                }
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <script>Swal.fire({ icon: 'success', title: 'نجاح', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#f1950b' });</script>
+    }
+}
