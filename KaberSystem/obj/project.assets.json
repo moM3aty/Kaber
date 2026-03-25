@@ -4016,23 +4016,23 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\Administrator\\.nuget\\packages\\": {},
+    "C:\\Users\\MOHAMED ABO-ELM3ATY\\.nuget\\packages\\": {},
     "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "D:\\Dev\\KaberSystem\\KaberSystem\\KaberSystem.csproj",
+      "projectUniqueName": "C:\\Users\\MOHAMED ABO-ELM3ATY\\Downloads\\Projects\\Kaber\\KaberSystem\\KaberSystem.csproj",
       "projectName": "KaberSystem",
-      "projectPath": "D:\\Dev\\KaberSystem\\KaberSystem\\KaberSystem.csproj",
-      "packagesPath": "C:\\Users\\Administrator\\.nuget\\packages\\",
-      "outputPath": "D:\\Dev\\KaberSystem\\KaberSystem\\obj\\",
+      "projectPath": "C:\\Users\\MOHAMED ABO-ELM3ATY\\Downloads\\Projects\\Kaber\\KaberSystem\\KaberSystem.csproj",
+      "packagesPath": "C:\\Users\\MOHAMED ABO-ELM3ATY\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\MOHAMED ABO-ELM3ATY\\Downloads\\Projects\\Kaber\\KaberSystem\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
       ],
       "configFilePaths": [
-        "C:\\Users\\Administrator\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\MOHAMED ABO-ELM3ATY\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
@@ -4041,6 +4041,7 @@
       ],
       "sources": {
         "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -4099,7 +4100,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.300/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.304/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
