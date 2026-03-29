@@ -17,7 +17,6 @@ namespace KaberSystem.Controllers
             _context = context;
         }
 
-        // عرض سجل المشتريات (لمندوب المشتريات والمخزن)
         [Authorize(Roles = "Admin,PurchasingManager,PurchasingRep,Store")]
         public async Task<IActionResult> Index()
         {
@@ -27,7 +26,6 @@ namespace KaberSystem.Controllers
             return View(purchases);
         }
 
-        // شاشة إضافة فاتورة مشتريات جديدة
         [Authorize(Roles = "Admin,PurchasingRep")]
         public IActionResult Create()
         {
@@ -37,13 +35,12 @@ namespace KaberSystem.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,PurchasingRep")]
-        // 📌 تم ربط حقول المورد هنا
         public async Task<IActionResult> Create([Bind("ItemName,Quantity,PurchasePrice,SupplierName,SupplierPhone,SupplierLocation")] PurchaseOrder purchaseOrder)
         {
             if (ModelState.IsValid)
             {
                 purchaseOrder.PurchaseDate = DateTime.Now;
-                purchaseOrder.IsReceivedByStore = false; // لم يستلمها المخزن بعد
+                purchaseOrder.IsReceivedByStore = false;
 
                 _context.Add(purchaseOrder);
                 await _context.SaveChangesAsync();
@@ -54,7 +51,7 @@ namespace KaberSystem.Controllers
             return View(purchaseOrder);
         }
 
-        // دالة للمخزن لتأكيد استلام البضاعة من مندوب المشتريات ونقل بيانات المورد
+        // 📌 دالة الاستلام: تم إضافة توليد الباركود الآلي هنا
         [HttpPost]
         [Authorize(Roles = "Admin,Store")]
         public async Task<IActionResult> MarkAsReceived(int id)
@@ -64,34 +61,40 @@ namespace KaberSystem.Controllers
             {
                 purchase.IsReceivedByStore = true;
 
-                // إضافة الكمية إلى المخزون العام وتحديث المورد
                 var existingPart = await _context.SpareParts.FirstOrDefaultAsync(p => p.Name == purchase.ItemName);
                 if (existingPart != null)
                 {
                     existingPart.MainStockQuantity += purchase.Quantity;
                     existingPart.PurchasePrice = purchase.PurchasePrice;
 
-                    // 📌 تحديث بيانات المورد في المخزن
                     if (!string.IsNullOrEmpty(purchase.SupplierName)) existingPart.SupplierName = purchase.SupplierName;
                     if (!string.IsNullOrEmpty(purchase.SupplierPhone)) existingPart.SupplierPhone = purchase.SupplierPhone;
                     if (!string.IsNullOrEmpty(purchase.SupplierLocation)) existingPart.SupplierLocation = purchase.SupplierLocation;
+
+                    // 📌 ربط الباركود للمنتج الموجود
+                    purchase.Barcode = existingPart.Barcode;
 
                     _context.Update(existingPart);
                 }
                 else
                 {
-                    // صنف جديد يضاف للمخزن مع بيانات المورد كاملة
+                    // 📌 توليد باركود فريد للصنف الجديد (KBR + 7 أرقام عشوائية)
+                    string generatedBarcode = "KBR" + new Random().Next(1000000, 9999999).ToString();
+
                     var newPart = new SparePart
                     {
                         Name = purchase.ItemName,
                         PurchasePrice = purchase.PurchasePrice,
-                        SellingPrice = purchase.PurchasePrice, // السعر المبدئي حتى يقوم مدير المشتريات بتسعيره
+                        SellingPrice = purchase.PurchasePrice,
                         MainStockQuantity = purchase.Quantity,
                         SupplierName = purchase.SupplierName,
                         SupplierPhone = purchase.SupplierPhone,
-                        SupplierLocation = purchase.SupplierLocation
+                        SupplierLocation = purchase.SupplierLocation,
+                        Barcode = generatedBarcode // حفظ الباركود في المخزن
                     };
                     _context.SpareParts.Add(newPart);
+
+                    purchase.Barcode = generatedBarcode; // حفظ الباركود في الفاتورة للطباعة
                 }
 
                 _context.Update(purchase);
@@ -102,7 +105,6 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // شاشة تسعير مدير المشتريات
         [Authorize(Roles = "Admin,PurchasingManager")]
         public async Task<IActionResult> Pricing()
         {

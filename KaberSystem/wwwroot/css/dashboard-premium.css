@@ -44,7 +44,9 @@ body {
     font-size: 15px;
     overflow-x: hidden;
 }
-
+.input-group {
+    direction: ltr;
+}
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
     width: 8px;
@@ -374,6 +376,7 @@ body {
     box-shadow: var(--sys-shadow-sm);
     border: 1px solid var(--sys-border);
     transition: var(--sys-transition);
+    padding: 70px 20px !important;
 }
 
     .sys-card:hover {

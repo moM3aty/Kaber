@@ -1,13 +1,13 @@
 ﻿@model IEnumerable<KaberSystem.Models.PurchaseOrder>
 @{
-    ViewData["Title"] = "تسعير المنتجات (مدير المشتريات)";
+    ViewData["Title"] = "تسعير المنتجات وطباعة الباركود";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 }
 
 <div class="sys-page-header">
     <div>
-        <h1 class="sys-page-title">تسعير المنتجات المستلمة</h1>
-        <p class="sys-page-desc">مراجعة المنتجات التي استلمها المخزن وتحديد سعر البيع النهائي للعملاء</p>
+        <h1 class="sys-page-title">تسعير المنتجات وطباعة الباركود</h1>
+        <p class="sys-page-desc">تحديد سعر البيع النهائي للعملاء، وطباعة ملصقات الباركود للصقها على المنتجات المستلمة</p>
     </div>
 </div>
 
@@ -23,19 +23,25 @@
         <table class="table table-hover align-middle text-center w-100">
             <thead class="table-light">
                 <tr>
-                    <th>رقم العملية</th>
+                    <th>رقم العملية / الباركود</th>
                     <th>اسم المنتج</th>
                     <th>الكمية المستلمة</th>
                     <th>تكلفة الشراء</th>
                     <th>تحديد سعر البيع (ر.س)</th>
-                    <th>إجراء</th>
+                    <th>إجراءات</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var item in Model)
                 {
+                    // 📌 الحل الذكي: إذا لم يكن هناك باركود مسجل (للمنتجات القديمة)، اصنع باركوداً بناءً على رقم العملية
+                    string displayBarcode = !string.IsNullOrEmpty(item.Barcode) ? item.Barcode : $"KBR-PO-{item.PurchaseId}";
+
                     <tr>
-                        <td><span class="fw-bold px-2 py-1 bg-light border rounded text-muted">PO-#@item.PurchaseId</span></td>
+                        <td>
+                            <span class="fw-bold px-2 py-1 bg-light border rounded text-muted d-block mb-1">PO-#@item.PurchaseId</span>
+                            <span class="badge bg-dark rounded-pill"><i class="fa-solid fa-barcode me-1"></i> @displayBarcode</span>
+                        </td>
                         <td class="fw-bold text-dark text-start">@item.ItemName</td>
                         <td class="fw-bold">@item.Quantity</td>
                         <td class="text-danger fw-bold">@item.PurchasePrice ر.س</td>
@@ -46,20 +52,169 @@
                                 <button type="submit" class="btn btn-primary fw-bold px-3 shadow-sm"><i class="fa-solid fa-check"></i> اعتماد</button>
                             </form>
                         </td>
-                        <td><span class="badge bg-warning text-dark"><i class="fa-solid fa-clock me-1"></i> بانتظار الاعتماد</span></td>
+                        <td>
+                            <div class="d-flex gap-2 justify-content-center">
+                                <!-- 📌 تمرير الباركود الآمن -->
+                                <button type="button" class="btn btn-sm btn-outline-dark fw-bold rounded-3 px-3"
+                                        data-barcode="@displayBarcode"
+                                        data-itemname="@item.ItemName"
+                                        onclick="openBarcodeModal(this)">
+                                    <i class="fa-solid fa-print"></i> باركود
+                                </button>
+                            </div>
+                        </td>
                     </tr>
                 }
-             
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="py-5 text-center text-muted">
+                            <i class="fa-solid fa-clipboard-check fs-1 mb-3 opacity-50"></i>
+                            <h5 class="fw-bold">لا توجد منتجات بانتظار التسعير</h5>
+                        </td>
+                    </tr>
+                }
             </tbody>
         </table>
     </div>
 </div>
 
-@section Scripts {
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <script>
-            Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonText: 'حسناً', confirmButtonColor: '#f1950b' });
-        </script>
+<!-- Modal نافذة طباعة الباركود بأحجام مختلفة -->
+<div class="modal fade" id="barcodeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-barcode text-primary me-2"></i> طباعة ملصق الباركود</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body py-4 text-center">
+
+                <!-- 📌 منطقة الطباعة المعزولة -->
+                <div id="barcodePrintArea" class="bg-white d-inline-block p-2 rounded-3 border mb-4">
+                    <div id="modalProductName" class="fw-bold text-dark mb-1" style="font-size: 13px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 auto;"></div>
+                    <svg id="barcodeSvg"></svg>
+                </div>
+
+                <div class="mb-3 text-start">
+                    <label class="fw-bold text-dark mb-2">اختر حجم الملصق للطابعة الحرارية:</label>
+                    <select id="printSize" class="form-select fw-bold border-secondary">
+                        <option value="small">ملصق صغير (38mm x 25mm) - مناسب للقطع الصغيرة</option>
+                        <option value="medium" selected>ملصق متوسط (50mm x 25mm) - قياسي</option>
+                        <option value="large">ملصق كبير (70mm x 40mm) - للكراتين الكبيرة</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0">
+                <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">إغلاق</button>
+                <button type="button" class="btn btn-dark fw-bold px-4" onclick="printBarcode()"><i class="fa-solid fa-print me-1"></i> طباعة الآن</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 📌 CSS خاص بالطباعة النظيفة من نفس الصفحة -->
+<style>
+    @@media print {
+        /* إخفاء كل محتويات الصفحة */
+        body * {
+            visibility: hidden;
+        }
+        /* إظهار منطقة الباركود فقط */
+        #barcodePrintArea, #barcodePrintArea * {
+            visibility: visible;
+        }
+        /* توسيط الباركود في منتصف الملصق */
+        #barcodePrintArea {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            text-align: center;
+        }
+
+        #modalProductName {
+            color: #000 !important;
+        }
+
+        svg {
+            max-width: 100%;
+            height: auto;
+        }
     }
+</style>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+    <script>
+        @if (TempData["SuccessMessage"] != null)
+        {
+                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]);
+                @:Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: @Html.Raw(msg), confirmButtonColor: '#f1950b' });
+        }
+
+        var currentBarcode = '';
+        var currentItemName = '';
+
+        function openBarcodeModal(buttonElement) {
+            var barcode = buttonElement.getAttribute('data-barcode');
+            var itemName = buttonElement.getAttribute('data-itemname');
+
+            if (!barcode || barcode === '') {
+                Swal.fire({ icon: 'error', title: 'خطأ', text: 'لا يوجد باركود لهذا الصنف، أو أنه لم يستلم بعد.', confirmButtonColor: '#ee5d50' });
+                return;
+            }
+
+            currentBarcode = barcode;
+            currentItemName = itemName;
+
+            document.getElementById('modalProductName').innerText = itemName;
+
+            // توليد الباركود بشكل قياسي
+            JsBarcode("#barcodeSvg", barcode, {
+                format: "CODE128",
+                width: 2,
+                height: 40,
+                displayValue: true,
+                fontSize: 14,
+                fontOptions: "bold",
+                margin: 5
+            });
+
+            var barcodeModal = new bootstrap.Modal(document.getElementById('barcodeModal'));
+            barcodeModal.show();
+        }
+
+        // 📌 دالة الطباعة الجديدة: تم إضافة التكبير والتصغير الديناميكي (Zoom/Scale)
+        function printBarcode() {
+            var size = document.getElementById('printSize').value;
+
+            var width, height, zoom;
+            if(size === 'small') { width = '38mm'; height = '25mm'; zoom = 0.6; }
+            else if(size === 'medium') { width = '50mm'; height = '25mm'; zoom = 0.8; }
+            else { width = '70mm'; height = '40mm'; zoom = 1.2; }
+
+            var style = document.createElement('style');
+            style.id = 'dynamicPrintStyle';
+            style.innerHTML = "\x40media print { " +
+                              "\x40page { size: " + width + " " + height + "; margin: 0; } " +
+                              "#barcodePrintArea { transform: translate(-50%, -50%) scale(" + zoom + ") !important; } " +
+                              "}";
+            document.head.appendChild(style);
+
+            // استدعاء نافذة الطباعة الافتراضية
+            window.print();
+
+            // تنظيف الصفحة بعد الطباعة
+            setTimeout(function() {
+                var dynamicStyle = document.getElementById('dynamicPrintStyle');
+                if(dynamicStyle) {
+                    dynamicStyle.remove();
+                }
+            }, 500);
+        }
+    </script>
 }

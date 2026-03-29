@@ -12,22 +12,6 @@ namespace KaberSystem.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
-                name: "Expenses",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "int", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    RecordedBy = table.Column<string>(type: "nvarchar(max)", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Expenses", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "PurchaseOrders",
                 columns: table => new
                 {
@@ -38,7 +22,11 @@ namespace KaberSystem.Migrations
                     PurchasePrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     PurchaseDate = table.Column<DateTime>(type: "datetime2", nullable: false),
                     IsReceivedByStore = table.Column<bool>(type: "bit", nullable: false),
-                    IsPricedByManager = table.Column<bool>(type: "bit", nullable: false)
+                    IsPricedByManager = table.Column<bool>(type: "bit", nullable: false),
+                    SupplierName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SupplierPhone = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SupplierLocation = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Barcode = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -54,7 +42,11 @@ namespace KaberSystem.Migrations
                     Name = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     PurchasePrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
                     SellingPrice = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
-                    MainStockQuantity = table.Column<int>(type: "int", nullable: false)
+                    MainStockQuantity = table.Column<int>(type: "int", nullable: false),
+                    SupplierName = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SupplierPhone = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    SupplierLocation = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    Barcode = table.Column<string>(type: "nvarchar(max)", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -116,6 +108,28 @@ namespace KaberSystem.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Expenses",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "int", nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Amount = table.Column<decimal>(type: "decimal(18,2)", nullable: false),
+                    Date = table.Column<DateTime>(type: "datetime2", nullable: false),
+                    RecordedBy = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    TechnicianId = table.Column<int>(type: "int", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Expenses", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Expenses_Technicians_TechnicianId",
+                        column: x => x.TechnicianId,
+                        principalTable: "Technicians",
+                        principalColumn: "TechnicianId");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Orders",
                 columns: table => new
                 {
@@ -125,7 +139,11 @@ namespace KaberSystem.Migrations
                     PhoneNumber = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     Address = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     LocationMapUrl = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    DeviceName = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ProblemDescription = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    TechnicianNotes = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    IsFeeApplied = table.Column<bool>(type: "bit", nullable: false),
+                    Type = table.Column<int>(type: "int", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false),
                     ScheduledDate = table.Column<DateTime>(type: "datetime2", nullable: true),
@@ -226,6 +244,11 @@ namespace KaberSystem.Migrations
                 name: "IX_DamagedParts_PartId",
                 table: "DamagedParts",
                 column: "PartId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Expenses_TechnicianId",
+                table: "Expenses",
+                column: "TechnicianId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Invoices_OrderId",

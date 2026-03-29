@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KaberSystem.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260328210554_Edit")]
-    partial class Edit
+    [Migration("20260329085825_initialCreate")]
+    partial class initialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -74,7 +74,12 @@ namespace KaberSystem.Migrations
                     b.Property<string>("RecordedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("TechnicianId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("TechnicianId");
 
                     b.ToTable("Expenses");
                 });
@@ -131,11 +136,18 @@ namespace KaberSystem.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("DeviceName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<decimal>("EstimatedPrice")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("FinalPrice")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<bool>("IsFeeApplied")
+                        .HasColumnType("bit");
 
                     b.Property<string>("LocationMapUrl")
                         .HasColumnType("nvarchar(max)");
@@ -156,6 +168,9 @@ namespace KaberSystem.Migrations
 
                     b.Property<int?>("TechnicianId")
                         .HasColumnType("int");
+
+                    b.Property<string>("TechnicianNotes")
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("Type")
                         .HasColumnType("int");
@@ -204,6 +219,9 @@ namespace KaberSystem.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PurchaseId"));
 
+                    b.Property<string>("Barcode")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsPricedByManager")
                         .HasColumnType("bit");
 
@@ -223,6 +241,15 @@ namespace KaberSystem.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
+                    b.Property<string>("SupplierLocation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SupplierName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SupplierPhone")
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("PurchaseId");
 
                     b.ToTable("PurchaseOrders");
@@ -236,6 +263,9 @@ namespace KaberSystem.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PartId"));
 
+                    b.Property<string>("Barcode")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<int>("MainStockQuantity")
                         .HasColumnType("int");
 
@@ -248,6 +278,15 @@ namespace KaberSystem.Migrations
 
                     b.Property<decimal>("SellingPrice")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("SupplierLocation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SupplierName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SupplierPhone")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("PartId");
 
@@ -346,6 +385,15 @@ namespace KaberSystem.Migrations
                     b.Navigation("SparePart");
                 });
 
+            modelBuilder.Entity("KaberSystem.Models.Expense", b =>
+                {
+                    b.HasOne("KaberSystem.Models.Technician", "Technician")
+                        .WithMany("Expenses")
+                        .HasForeignKey("TechnicianId");
+
+                    b.Navigation("Technician");
+                });
+
             modelBuilder.Entity("KaberSystem.Models.Invoice", b =>
                 {
                     b.HasOne("KaberSystem.Models.Order", "Order")
@@ -414,6 +462,8 @@ namespace KaberSystem.Migrations
             modelBuilder.Entity("KaberSystem.Models.Technician", b =>
                 {
                     b.Navigation("AssignedOrders");
+
+                    b.Navigation("Expenses");
 
                     b.Navigation("Inventory");
                 });

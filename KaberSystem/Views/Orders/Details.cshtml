@@ -11,6 +11,7 @@
     // حساب الرسوم المطبقة بناء على اختيار الفني
     decimal appliedFee = Model.IsFeeApplied ? Model.EstimatedPrice : 0;
 
+    // 📌 رسالة الفاتورة النهائية
     string waMessage = $"مرحباً *{Model.CustomerName}*،\n\n" +
                        $"إليك تفاصيل فاتورة الصيانة الخاصة بك من *(شركة كابر)*:\n" +
                        $"▫️ *رقم الطلب:* #{Model.OrderId}\n" +
@@ -25,7 +26,7 @@
         waMessage += $"▫️ *رسوم الفحص:* مجاناً (تم إسقاطها)\n";
     }
 
-    waMessage += $"▫️ *إجمالي قطع الغيار:* {partsTotal} ريال\n";
+    waMessage += $"▫️ *إجمالي قطع الغيار (شامل الضريبة):* {partsTotal} ريال\n";
 
     if (Model.AdvancePayment > 0)
     {
@@ -36,19 +37,38 @@
                  $"شكراً لثقتكم بخدماتنا! 🛠️";
 
     string encodedMessage = Uri.EscapeDataString(waMessage);
+
+    // 📌 رسالة عرض السعر (Quotation)
+    decimal qtLabor = Model.IsFeeApplied ? Model.EstimatedPrice : 0;
+    decimal qtTotal = partsTotal + qtLabor;
+    string waQuoteMessage = $"مرحباً *{Model.CustomerName}*،\n\n" +
+                            $"بناءً على طلبكم، إليك تفاصيل عرض السعر المبدئي لصيانة: *( {Model.DeviceName} )*\n\n" +
+                            $"▫️ رسوم الفحص/العمل: {qtLabor} ريال\n" +
+                            $"▫️ إجمالي قطع الغيار: {partsTotal} ريال\n" +
+                            $"➖➖➖➖➖➖\n" +
+                            $"💰 *الإجمالي المقدر: {qtTotal} ريال*\n\n" +
+                            $"للاطلاع على عرض السعر الرسمي بالتفصيل وتأكيد الموافقة يرجى زيارتنا أو طلب نسخة PDF.\n" +
+                            $"نحن في خدمتك! 🛠️";
+    string encodedQuote = Uri.EscapeDataString(waQuoteMessage);
+
+    // جلب طلبات قطع الغيار النواقص من الـ ViewBag
+    var partRequests = ViewBag.PartRequests as IEnumerable<KaberSystem.Models.OrderPartRequest>;
 }
 
 <div class="sys-page-header d-print-none">
     <div>
         <h1 class="sys-page-title">متابعة الطلب #@Model.OrderId</h1>
-        <p class="sys-page-desc">مراجعة وتحديث بيانات العميل، الفني المختص، وإدارة الفواتير وقطع الغيار</p>
+        <p class="sys-page-desc">إدارة تفاصيل الزيارة، الميزانية، وطلب نواقص قطع الغيار (عامة أو لموديل محدد)</p>
     </div>
     <div class="d-flex gap-2">
         <a href="/Orders/Index" class="btn btn-outline-secondary fw-bold px-4 border-2 rounded-3">
             <i class="fa-solid fa-arrow-right"></i> عودة
         </a>
+        <a href="/Orders/Quotation/@Model.OrderId" target="_blank" class="sys-btn btn-warning text-dark fw-bold">
+            <i class="fa-solid fa-file-signature"></i> إنشاء عرض سعر
+        </a>
         <a href="/Orders/PrintInvoice/@Model.OrderId" target="_blank" class="sys-btn sys-btn-primary">
-            <i class="fa-solid fa-file-invoice"></i> عرض الفاتورة للعميل
+            <i class="fa-solid fa-file-invoice"></i> عرض الفاتورة النهائية
         </a>
     </div>
 </div>
@@ -86,277 +106,389 @@
     </div>
 </div>
 
+@if (ViewBag.HasWarranty != null && (bool)ViewBag.HasWarranty)
+{
+    <!-- 📌 تنبيه ذكي: العميل تحت الضمان -->
+    <div class="alert alert-success border-2 border-success d-flex align-items-center mb-4 shadow-sm" role="alert">
+        <div class="bg-success bg-opacity-10 p-3 rounded-circle me-3">
+            <i class="fa-solid fa-shield-halved fs-2 text-success"></i>
+        </div>
+        <div>
+            <h5 class="fw-bold text-success mb-1">تنبيه: العميل مشمول بالضمان!</h5>
+            <p class="mb-0 fw-bold text-dark">
+                هذا الجوال لديه طلب صيانة سابق رقم
+                <a href="/Orders/Details/@ViewBag.PreviousOrderId" target="_blank" class="text-decoration-underline text-success fw-bolder">#@ViewBag.PreviousOrderId</a>
+                مكتمل حديثاً، وتبقى في فترة الضمان <span class="badge bg-danger fs-6 mx-1">@ViewBag.WarrantyDaysLeft يوم</span>. يرجى مراجعة الصنف السابق وعدم تحصيل رسوم فحص.
+            </p>
+        </div>
+    </div>
+}
+
 <div class="row g-4">
     <!-- بيانات العميل والمشكلة -->
     <div class="col-lg-8">
         <div class="sys-card h-100 printable-card">
-
-            <div class="d-none d-print-block text-center border-bottom pb-4 mb-4">
-                <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-bolt text-primary me-2"></i> شركة كابر للصيانة</h2>
-                <h4 class="text-muted fw-bold mb-3">فاتورة صيانة وقطع غيار</h4>
-                <div class="d-flex justify-content-between align-items-center mt-3 px-3">
-                    <p class="m-0 fw-bold fs-5">تاريخ الإصدار: @DateTime.Now.ToString("yyyy-MM-dd")</p>
-                    <p class="m-0 fw-bold fs-5">رقم الفاتورة: #@Model.OrderId</p>
-                </div>
-            </div>
-
             <div class="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4 d-print-none">
                 <h4 class="fw-bold text-primary m-0"><i class="fa-solid fa-user-tag me-2"></i> بيانات الطلب والعميل</h4>
                 <span class="badge bg-light text-dark border fs-6">ORD-#@Model.OrderId</span>
             </div>
 
             <div class="row mb-3">
-                <div class="col-md-4 text-muted fw-bold"><i class="fa-regular fa-user me-1"></i> اسم العميل:</div>
+                <div class="col-md-4 text-muted fw-bold">اسم العميل:</div>
                 <div class="col-md-8 fw-bold fs-5 text-dark">@Model.CustomerName</div>
             </div>
             <div class="row mb-3">
-                <div class="col-md-4 text-muted fw-bold"><i class="fa-solid fa-phone me-1"></i> رقم الهاتف:</div>
+                <div class="col-md-4 text-muted fw-bold">رقم الهاتف:</div>
                 <div class="col-md-8 fw-bold fs-5" dir="ltr" style="text-align: right;">
                     @Model.PhoneNumber
                     <a href="https://wa.me/@waNumber" target="_blank" class="text-success ms-2 d-print-none"><i class="fa-brands fa-whatsapp fs-4"></i></a>
                 </div>
             </div>
-
             <div class="row mb-3">
-                <div class="col-md-4 text-muted fw-bold"><i class="fa-solid fa-tv me-1"></i> نوع الجهاز/المنتج:</div>
+                <div class="col-md-4 text-muted fw-bold">نوع الجهاز / الموديل:</div>
                 <div class="col-md-8 fw-bold fs-5 text-primary">@Model.DeviceName</div>
             </div>
             <div class="row mb-3">
-                <div class="col-md-4 text-muted fw-bold"><i class="fa-regular fa-calendar-check me-1"></i> الموعد المطلوب للتنفيذ:</div>
-                <div class="col-md-8 fw-bold text-danger">@(Model.ScheduledDate?.ToString("yyyy-MM-dd hh:mm tt") ?? "غير محدد")</div>
-            </div>
-
-            <div class="row mb-3">
-                <div class="col-md-4 text-muted fw-bold"><i class="fa-solid fa-location-dot me-1"></i> العنوان:</div>
+                <div class="col-md-4 text-muted fw-bold">العنوان:</div>
                 <div class="col-md-8 fw-bold text-dark">@Model.Address</div>
             </div>
-            @if (!string.IsNullOrEmpty(Model.LocationMapUrl))
-            {
-                <div class="row mb-3 d-print-none">
-                    <div class="col-md-4 text-muted fw-bold"><i class="fa-solid fa-map me-1"></i> الموقع (GPS):</div>
-                    <div class="col-md-8">
-                        <a href="@Model.LocationMapUrl" target="_blank" class="btn btn-sm btn-outline-primary fw-bold rounded-3"><i class="fa-solid fa-map-location-dot"></i> فتح الخريطة عبر جوجل</a>
-                    </div>
-                </div>
-            }
 
-            <div class="p-4 bg-light rounded-4 border-start border-4 border-danger print-no-border mb-4">
-                <h6 class="fw-bold text-danger mb-2"><i class="fa-solid fa-triangle-exclamation"></i> وصف المشكلة (الشكوى):</h6>
+            <div class="p-4 bg-light rounded-4 border-start border-4 border-danger mb-4 mt-4">
+                <h6 class="fw-bold text-danger mb-2">وصف المشكلة (الشكوى):</h6>
                 <p class="mb-0 fw-bold text-dark fs-6 lh-lg">@Model.ProblemDescription</p>
             </div>
 
-            <!-- 📌 تقرير الفني يظهر هنا إذا تمت كتابته -->
             @if (!string.IsNullOrEmpty(Model.TechnicianNotes))
             {
-                <div class="p-4 bg-success bg-opacity-10 rounded-4 border-start border-4 border-success print-no-border">
-                    <h6 class="fw-bold text-success mb-2"><i class="fa-solid fa-clipboard-check"></i> التقرير الفني (ما تم إنجازه):</h6>
+                <div class="p-4 bg-success bg-opacity-10 rounded-4 border-start border-4 border-success">
+                    <h6 class="fw-bold text-success mb-2">التقرير الفني (ما تم إنجازه):</h6>
                     <p class="mb-0 fw-bold text-dark fs-6 lh-lg">@Model.TechnicianNotes</p>
                 </div>
             }
-
         </div>
     </div>
 
-    <!-- حالة الطلب والفني والتحديث -->
+    <!-- حالة الطلب والفني -->
     <div class="col-lg-4">
-        <div class="sys-card h-100 d-print-none">
+        <div class="sys-card h-100 d-print-none text-center">
             <h4 class="fw-bold mb-4 text-primary border-bottom pb-3"><i class="fa-solid fa-bars-progress me-2"></i> التحكم بالحالة</h4>
-
-            <form asp-action="UpdateStatus" method="post" class="mb-4 bg-light p-3 rounded-3 border">
+            <form asp-action="UpdateStatus" method="post" class="mb-4 bg-light p-3 rounded-3 border text-start">
                 <input type="hidden" name="id" value="@Model.OrderId" />
-
                 <div class="mb-3">
-                    <label class="fw-bold mb-2 text-dark small">تحديث حالة الطلب يدوياً:</label>
-                    <select name="newStatus" class="form-select fw-bold border-secondary">
-                        <option value="New" selected="@(Model.Status == KaberSystem.Models.OrderStatus.New)">جديد</option>
-                        <option value="Assigned" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Assigned)">تم التعيين</option>
-                        <option value="Confirmed" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Confirmed)">مؤكد</option>
-                        <option value="InProgress" selected="@(Model.Status == KaberSystem.Models.OrderStatus.InProgress)">قيد التنفيذ</option>
+                    <label class="fw-bold mb-2 text-dark small">تحديث حالة الطلب:</label>
+                    <select name="newStatus" class="form-select fw-bold border-secondary text-primary">
+                        <option value="InProgress" selected="@(Model.Status == KaberSystem.Models.OrderStatus.InProgress)">قيد التنفيذ / بانتظار القطع</option>
                         <option value="Completed" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Completed)">مكتمل (ترحيل للحسابات)</option>
                         <option value="Cancelled" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Cancelled)">ملغي</option>
                     </select>
                 </div>
-
-                <!-- 📌 حقل تطبيق الرسوم (1 أو 0) -->
                 <div class="mb-3">
-                    <label class="fw-bold mb-2 text-dark small">تطبيق رسوم الفحص: (1 = نعم، 0 = لا)</label>
-                    <select name="isFeeApplied" class="form-select fw-bold border-secondary text-primary">
-                        <option value="1" selected="@(Model.IsFeeApplied)">1 - إضافة الرسوم للفاتورة (@Model.EstimatedPrice ريال)</option>
-                        <option value="0" selected="@(!Model.IsFeeApplied)">0 - إسقاط الرسوم (مجانًا)</option>
+                    <label class="fw-bold mb-2 text-dark small">تطبيق رسوم الفحص:</label>
+                    <select name="isFeeApplied" class="form-select fw-bold border-secondary">
+                        <option value="1" selected="@(Model.IsFeeApplied)">نعم (@Model.EstimatedPrice ريال)</option>
+                        <option value="0" selected="@(!Model.IsFeeApplied)">لا (إعفاء ضريبي/ضمان)</option>
                     </select>
                 </div>
-
-                <!-- 📌 حقل تقرير الفني -->
                 <div class="mb-3">
-                    <label class="fw-bold mb-2 text-dark small">ملاحظات وتقرير الفني:</label>
-                    <textarea name="technicianNotes" class="form-control fw-bold border-secondary" rows="2" placeholder="ماذا تم في الموعد؟...">@Model.TechnicianNotes</textarea>
+                    <label class="fw-bold mb-2 text-dark small">تقرير الفني النهائي:</label>
+                    <textarea name="technicianNotes" class="form-control fw-bold border-secondary" rows="2">@Model.TechnicianNotes</textarea>
                 </div>
-
-                <div class="d-grid mt-2">
-                    <button type="submit" class="btn btn-primary fw-bold py-2"><i class="fa-solid fa-save"></i> حفظ وتحديث الطلب</button>
-                </div>
+                <button type="submit" class="btn btn-primary fw-bold w-100 py-2"><i class="fa-solid fa-save"></i> حفظ وتحديث الطلب</button>
             </form>
 
-            <h6 class="fw-bold text-muted mb-3 mt-4">الفني المختص (المنفذ):</h6>
+            <h6 class="fw-bold text-muted mb-3">الفني المختص:</h6>
             @if (Model.Technician != null)
             {
-                <div class="d-flex align-items-center p-3 border rounded-4 bg-white shadow-sm">
-                    <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(Model.Technician.Name)&background=f1950b&color=fff" class="rounded-circle me-3 border border-2 border-primary" width="55" height="55">
+                <div class="d-flex align-items-center p-3 border rounded-4 bg-white shadow-sm text-start">
+                    <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(Model.Technician.Name)&background=f1950b&color=fff" class="rounded-circle me-3 border border-2 border-primary" width="50">
                     <div>
-                        <h6 class="fw-bold mb-1 text-dark fs-5">@Model.Technician.Name</h6>
-                        <span class="text-muted fw-bold" dir="ltr"><i class="fa-solid fa-phone small text-primary"></i> @Model.Technician.Phone</span>
+                        <h6 class="fw-bold mb-1 text-dark">@Model.Technician.Name</h6>
+                        <span class="text-muted small fw-bold" dir="ltr">@Model.Technician.Phone</span>
                     </div>
-                </div>
-            }
-            else
-            {
-                <div class="alert alert-warning text-center fw-bold rounded-4 border-warning">
-                    <i class="fa-solid fa-user-clock fs-1 mb-2 text-warning opacity-75 d-block"></i>
-                    لم يتم تعيين فني للصيانة بعد!
-                    <a href="/Orders/Assign/@Model.OrderId" class="btn btn-dark d-block mt-3 fw-bold rounded-pill">تعيين فني الآن <i class="fa-solid fa-arrow-left"></i></a>
                 </div>
             }
         </div>
     </div>
 
-    <!-- الفواتير وقطع الغيار -->
+    <!-- 📌 القسم الجديد: طلبات توفير قطع الغيار (النواقص والدورة المستندية) -->
+    <div class="col-12 d-print-none">
+        <div class="sys-card bg-primary bg-opacity-10 border border-primary">
+            <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-primary pb-3">
+                <h4 class="fw-bold text-primary m-0"><i class="fa-solid fa-boxes-packing me-2"></i> طلبات توفير قطع الغيار (Workflow)</h4>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#requestWarehouseModal">
+                        <i class="fa-solid fa-warehouse"></i> طلب حجز من المخزن
+                    </button>
+                    <button class="btn btn-dark fw-bold" data-bs-toggle="modal" data-bs-target="#requestPurchaseModal">
+                        <i class="fa-solid fa-cart-plus"></i> طلب شراء (غير متوفرة)
+                    </button>
+                </div>
+            </div>
+
+            @if (partRequests != null && partRequests.Any())
+            {
+                <div class="table-responsive bg-white rounded-3 shadow-sm">
+                    <table class="table table-bordered text-center align-middle mb-0">
+                        <thead class="table-light text-muted">
+                            <tr>
+                                <th>نوع الطلب / التصنيف</th>
+                                <th>اسم القطعة والكود</th>
+                                <th>الموديل المتوافق</th>
+                                <th>الكمية</th>
+                                <th>الحالة والمتابعة</th>
+                                <th>تاريخ الطلب</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var req in partRequests)
+                            {
+                                <tr>
+                                    <td>
+                                        @if (req.RequestType == KaberSystem.Models.PartRequestType.FromWarehouse)
+                                        {
+                                            <span class="badge bg-primary px-2">حجز مخزن</span>
+                                        }
+                                        else
+                                        {
+
+                                            <span class="badge bg-dark px-2">طلب شراء</span>
+                                        }
+                                        <div class="small fw-bold mt-1 @(req.IsCommonRequest || (req.SparePart?.IsCommon ?? false) ? "text-info" : "text-secondary")">
+                                            @(req.IsCommonRequest || (req.SparePart?.IsCommon ?? false) ? "(Common)" : "(Specific)")
+                                        </div>
+                                    </td>
+                                    <td class="fw-bold text-dark text-start">
+                                        @(req.RequestType == KaberSystem.Models.PartRequestType.FromWarehouse ? req.SparePart?.Name : req.NewPartName)
+                                        <div class="text-muted small">Code: @(req.SparePart?.PartCode ?? "Pending...")</div>
+                                    </td>
+                                    <td class="text-primary fw-bold">@(req.SparePart?.TargetModel ?? req.DeviceModel ?? "عام لجميع الموديلات")</td>
+                                    <td class="fw-bold fs-5">@req.Quantity</td>
+                                    <td>
+                                        @switch (req.Status)
+                                        {
+                                            case KaberSystem.Models.PartRequestStatus.PendingWarehouse:
+                                                <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock"></i> بانتظار المخزن</span>
+                                                break;
+                                            case KaberSystem.Models.PartRequestStatus.PendingPurchasing:
+
+                                                <span class="badge bg-warning text-dark"><i class="fa-solid fa-clock"></i> بانتظار الشراء</span>
+                                                break;
+                                            case KaberSystem.Models.PartRequestStatus.ReadyForInstallation:
+
+                                                <span class="badge bg-success fs-6"><i class="fa-solid fa-phone-volume"></i> جاهزة (تواصل مع العميل)</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td dir="ltr" class="text-muted fw-bold small">@req.RequestDate.ToString("MM/dd HH:mm")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="text-center py-4 text-muted fw-bold">لا توجد طلبات نواقص معلقة لهذا الموعد.</div>
+            }
+        </div>
+    </div>
+
+    <!-- الفواتير وقطع الغيار المركبة -->
     <div class="col-12">
         <div class="sys-card printable-card">
-            <h4 class="fw-bold mb-4 text-primary border-bottom pb-3 d-print-none"><i class="fa-solid fa-file-invoice-dollar me-2"></i> التسعير وقطع الغيار المصروفة</h4>
-            <h4 class="fw-bold mb-4 text-dark border-bottom pb-3 d-none d-print-block">تفاصيل الفاتورة</h4>
-
+            <h4 class="fw-bold mb-4 text-primary border-bottom pb-3 d-print-none"><i class="fa-solid fa-file-invoice-dollar me-2"></i> التسعير وقطع الغيار المُرَكّبة</h4>
             <div class="row g-4 print-row-stack">
-                <div class="col-md-7 print-col-full">
+                <div class="col-md-8 print-col-full">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold text-dark m-0"><i class="fa-solid fa-boxes-stacked text-primary d-print-none"></i> قطع الغيار المستخدمة في هذا الطلب</h6>
-                        @if (Model.Status == KaberSystem.Models.OrderStatus.InProgress || Model.Status == KaberSystem.Models.OrderStatus.Assigned)
+                        <h6 class="fw-bold text-dark m-0">قطع الغيار المستخدمة (من عهدة الفني)</h6>
+                        @if (Model.Status != KaberSystem.Models.OrderStatus.Completed || User.IsInRole("Admin"))
                         {
                             <button type="button" class="btn btn-sm btn-outline-primary fw-bold d-print-none" data-bs-toggle="modal" data-bs-target="#addPartModal">
-                                <i class="fa-solid fa-plus"></i> إضافة قطعة (خصم من العهدة)
+                                <i class="fa-solid fa-plus"></i> تركيب من العهدة
                             </button>
                         }
                     </div>
 
                     @if (Model.UsedSpareParts != null && Model.UsedSpareParts.Any())
                     {
-                        <table class="table table-bordered text-center align-middle bg-white print-table">
-                            <thead class="table-light text-muted">
-                                <tr>
-                                    <th>اسم القطعة</th>
-                                    <th>الكمية</th>
-                                    <th>سعر الوحدة</th>
-                                    <th>الإجمالي</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var part in Model.UsedSpareParts)
-                                {
+                        <div class="table-responsive">
+                            <table class="table table-bordered text-center align-middle bg-white print-table">
+                                <thead class="table-light text-muted">
                                     <tr>
-                                        <td class="fw-bold text-dark text-start">@part.SparePart.Name</td>
-                                        <td class="fw-bold">@part.QuantityUsed</td>
-                                        <td class="fw-bold text-muted">@part.SellingPriceAtTime ريال</td>
-                                        <td class="fw-bold text-success">@(part.QuantityUsed* part.SellingPriceAtTime) ريال</td>
+                                        <th>كود الصنف</th>
+                                        <th>اسم القطعة</th>
+                                        <th>الكمية</th>
+                                        <th>الإجمالي (+15%)</th>
+                                        <th class="d-print-none">إجراء</th>
                                     </tr>
-                                }
-                            </tbody>
-                        </table>
-                    }
-                    else
-                    {
-                        <div class="p-4 bg-light border rounded-3 text-center text-muted fw-bold print-no-bg">
-                            لم يتم استخدام أي قطع غيار في هذه الصيانة.
+                                </thead>
+                                <tbody>
+                                    @foreach (var part in Model.UsedSpareParts)
+                                    {
+                                        <tr>
+                                            <td><span class="badge bg-dark">@part.SparePart.PartCode</span></td>
+                                            <td class="fw-bold text-dark text-start">@part.SparePart.Name</td>
+                                            <td class="fw-bold">@part.QuantityUsed</td>
+                                            <td class="fw-bold text-success">@((part.QuantityUsed * part.SellingPriceAtTime).ToString("N2")) ريال</td>
+                                            <td class="d-print-none">
+                                                <div class="d-flex gap-1 justify-content-center">
+                                                    <!-- زر طباعة ملصق القطعة -->
+                                                    <button class="btn btn-sm btn-light border" onclick="printPartLabel('@part.SparePart.PartCode', '@part.SparePart.Name')" title="طباعة ملصق"><i class="fa-solid fa-barcode"></i></button>
+                                                    @if (Model.Status != KaberSystem.Models.OrderStatus.Completed || User.IsInRole("Admin"))
+                                                    {
+                                                        <form asp-action="RemoveUsedPart" method="post">
+                                                            <input type="hidden" name="orderId" value="@Model.OrderId" /><input type="hidden" name="recordId" value="@part.Id" />
+                                                            <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('تأكيد الحذف؟')"><i class="fa-solid fa-trash"></i></button>
+                                                        </form>
+                                                    }
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
                         </div>
                     }
                 </div>
 
-                <div class="col-md-5 print-col-full">
-                    <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-receipt text-primary d-print-none"></i> الملخص المالي</h6>
+                <div class="col-md-4 print-col-full">
+                    <h6 class="fw-bold text-dark mb-3 d-print-none">الملخص المالي النهائي</h6>
                     <div class="p-4 border rounded-4 bg-light shadow-sm print-no-bg">
-
-                        <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
-                            <span class="fw-bold text-muted">رسوم الفحص / الزيارة:</span>
-                            @if (Model.IsFeeApplied)
-                            {
-                                <span class="fw-bold text-dark fs-5">@Model.EstimatedPrice ريال</span>
-                            }
-                            else
-                            {
-                                <span class="fw-bold text-danger fs-5 text-decoration-line-through me-2">@Model.EstimatedPrice</span>
-                                <span class="fw-bold text-success fs-5">0.00 ريال (معفاة)</span>
-                            }
-                        </div>
-
-                        <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
-                            <span class="fw-bold text-muted">إجمالي قطع الغيار:</span>
-                            <span class="fw-bold text-dark fs-5">@partsTotal ريال</span>
-                        </div>
-                        @if (Model.AdvancePayment > 0)
-                        {
-                            <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
-                                <span class="fw-bold text-muted">الدفعة المقدمة:</span>
-                                <span class="fw-bold text-danger fs-5">- @Model.AdvancePayment ريال</span>
-                            </div>
-                        }
-                        <div class="d-flex justify-content-between align-items-center mt-4">
-                            <span class="fw-bold text-dark fs-4">المبلغ المستحق:</span>
-                            <span class="fw-bold text-success fs-3 border border-success px-3 py-1 rounded-3">@Model.FinalPrice ريال</span>
-                        </div>
-
-                        <!-- زر الواتساب المنسق -->
-                        <div class="text-center mt-4 pt-3 d-print-none">
-                            <a href="https://wa.me/@waNumber?text=@encodedMessage" target="_blank" class="btn btn-success fw-bold w-100 py-3 rounded-pill fs-5 shadow-sm hover-elevate text-white">
-                                <i class="fa-brands fa-whatsapp fs-4 me-1"></i> إرسال الفاتورة للعميل
-                            </a>
+                        <div class="d-flex justify-content-between mb-3 border-bottom pb-3"><span class="fw-bold text-muted">رسوم الفحص:</span><span class="fw-bold text-dark fs-5">@appliedFee.ToString("N2") ريال</span></div>
+                        <div class="d-flex justify-content-between mb-3 border-bottom pb-3"><span class="fw-bold text-muted">قطع الغيار:</span><span class="fw-bold text-dark fs-5">@partsTotal.ToString("N2") ريال</span></div>
+                        <div class="d-flex justify-content-between align-items-center mt-4"><span class="fw-bold text-dark fs-4">المستحق:</span><span class="fw-bold text-success fs-3 border border-success px-3 py-1 rounded-3">@Model.FinalPrice.ToString("N2") ريال</span></div>
+                        <div class="text-center mt-4 d-print-none d-flex flex-column gap-2">
+                            <a href="https://wa.me/@waNumber?text=@encodedQuote" target="_blank" class="btn btn-warning text-dark fw-bold w-100 py-3 rounded-pill shadow-sm"><i class="fa-brands fa-whatsapp me-1"></i> إرسال عرض السعر</a>
+                            <a href="https://wa.me/@waNumber?text=@encodedMessage" target="_blank" class="btn btn-success fw-bold w-100 py-3 rounded-pill text-white shadow-sm"><i class="fa-brands fa-whatsapp me-1"></i> إرسال الفاتورة</a>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- تذييل الطباعة -->
-            <div class="d-none d-print-block mt-5 pt-4 border-top text-center">
-                <p class="fw-bold fs-5 text-dark mb-1">شكراً لثقتكم بخدمات شركة كابر للصيانة.</p>
-                <p class="text-muted fw-bold">لأي استفسار يرجى التواصل معنا على الرقم: 0541683466</p>
-            </div>
-
         </div>
     </div>
 </div>
 
-<!-- Modal إضافة قطعة غيار -->
-<div class="modal fade d-print-none" id="addPartModal" tabindex="-1" aria-hidden="true">
+<!-- 📌 Modal: طلب حجز من المخزن الرئيسي -->
+<div class="modal fade" id="requestWarehouseModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 rounded-4 shadow-lg">
             <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-primary"><i class="fa-solid fa-plus-circle me-2"></i> استهلاك قطعة غيار من العهدة</h5>
+                <h5 class="modal-title fw-bold text-primary"><i class="fa-solid fa-warehouse me-2"></i> طلب حجز قطعة من المخزن</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form asp-action="AddUsedPart" method="post">
-                <div class="modal-body py-4">
+            <form asp-action="RequestFromWarehouse" method="post">
+                <div class="modal-body py-4 text-start">
                     <input type="hidden" name="orderId" value="@Model.OrderId" />
-
+                    <div class="alert alert-primary py-2 small fw-bold">سيتم إخطار أمين المخزن بحجز القطعة فوراً.</div>
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-dark">اختر القطعة <span class="text-danger">*</span></label>
-                        <select name="partId" class="form-select form-select-lg fw-bold bg-light border-0" required>
-                            <option value="">-- اضغط للاختيار --</option>
+                        <label class="form-label fw-bold">اختر القطعة المطلوبة <span class="text-danger">*</span></label>
+                        <select name="partId" class="form-select fw-bold bg-light" required>
+                            <option value="">-- اختر من مخزن المؤسسة --</option>
                             @if (ViewData["AvailableParts"] != null)
                             {
-                                foreach (var part in (IEnumerable<KaberSystem.Models.SparePart>)ViewData["AvailableParts"])
+                                foreach (var p in (IEnumerable<KaberSystem.Models.SparePart>)ViewData["AvailableParts"])
                                 {
-                                    <option value="@part.PartId">@part.Name (السعر: @part.SellingPrice ريال)</option>
+                                    <option value="@p.PartId">@p.Name [@(p.IsCommon ? "عامة" : p.TargetModel)] (المتاح: @p.MainStockQuantity)</option>
                                 }
                             }
                         </select>
                     </div>
-
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-dark">الكمية المستخدمة <span class="text-danger">*</span></label>
-                        <input type="number" name="quantity" class="form-control form-control-lg fw-bold bg-light border-0" min="1" value="1" required />
-                        <small class="text-danger fw-bold mt-1 d-block"><i class="fa-solid fa-circle-info"></i> سيتم خصم هذه الكمية من عهدة الفني تلقائياً.</small>
+                        <label class="form-label fw-bold">الكمية</label>
+                        <input type="number" name="quantity" class="form-control fw-bold" min="1" value="1" required />
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 pt-0">
                     <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-primary fw-bold px-4">تأكيد الإضافة</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">إرسال الطلب</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 📌 Modal: طلب شراء خارجي وتكويد جديد -->
+<div class="modal fade" id="requestPurchaseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-cart-plus text-warning me-2"></i> طلب شراء صنف وتكويده</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="RequestPurchase" method="post" enctype="multipart/form-data">
+                <div class="modal-body py-4 text-start">
+                    <input type="hidden" name="orderId" value="@Model.OrderId" />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">اسم القطعة المطلوبة <span class="text-danger">*</span></label>
+                        <input type="text" name="partName" class="form-control fw-bold bg-light" placeholder="مثال: كومبريسور كاريير 3 حصان" required />
+                    </div>
+                    <div class="bg-light p-3 rounded-3 border mb-3">
+                        <label class="fw-bold text-primary mb-2">تصنيف التكويد:</label>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="isCommon" id="cmYes" value="true" checked onclick="toggleMdInput(true)">
+                            <label class="form-check-label fw-bold" for="cmYes">صنف مشترك (Common)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="isCommon" id="cmNo" value="false" onclick="toggleMdInput(false)">
+                            <label class="form-check-label fw-bold" for="cmNo">صنف لموديل محدد (Specific)</label>
+                        </div>
+                    </div>
+                    <div id="mdGroup" class="mb-3 d-none">
+                        <label class="form-label fw-bold">رقم الموديل / الجهاز</label>
+                        <input type="text" name="deviceModel" class="form-control fw-bold border-primary" placeholder="رقم الموديل لربط القطعة" />
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-bold">الكمية</label>
+                            <input type="number" name="quantity" class="form-control fw-bold" min="1" value="1" required />
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-bold">صورة المرفق (اختياري)</label>
+                            <input type="file" name="partImage" class="form-control" accept="image/*" />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-dark fw-bold px-4">إرسال للمشتريات</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- (نفس الـ Modal الأصلي الخاص بإضافة قطعة من عهدة الفني) -->
+<div class="modal fade d-print-none" id="addPartModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary"><i class="fa-solid fa-plus-circle me-2"></i> تركيب قطعة من عهدتك</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="AddUsedPart" method="post">
+                <div class="modal-body py-4 text-start">
+                    <input type="hidden" name="orderId" value="@Model.OrderId" />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">اختر القطعة من عهدتك <span class="text-danger">*</span></label>
+                        <select name="partId" class="form-select fw-bold bg-light" required>
+                            <option value="">-- اختر صنفاً --</option>
+                            @if (ViewData["AvailableParts"] != null)
+                            {
+                                foreach (var p in (IEnumerable<KaberSystem.Models.SparePart>)ViewData["AvailableParts"])
+                                {
+                                    <option value="@p.PartId">@p.Name [Code: @p.PartCode] (السعر: @p.SellingPrice)</option>
+                                }
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">الكمية</label>
+                        <input type="number" name="quantity" class="form-control fw-bold" min="1" value="1" required />
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">تأكيد التركيب</button>
                 </div>
             </form>
         </div>
@@ -364,38 +496,50 @@
 </div>
 
 @section Scripts {
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <script>
-            Swal.fire({ icon: 'success', title: 'تم التحديث', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonText: 'حسناً', confirmButtonColor: '#f1950b' });
-        </script>
-    }
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <script>
-            Swal.fire({ icon: 'error', title: 'خطأ', text: '@Html.Raw(TempData["ErrorMessage"])', confirmButtonText: 'إغلاق', confirmButtonColor: '#ee5d50' });
-        </script>
-    }
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script>
+        function toggleMdInput(isCommon) {
+            var g = document.getElementById('mdGroup');
+            if(isCommon) g.classList.add('d-none'); else g.classList.remove('d-none');
+        }
+
+        function printPartLabel(code, name) {
+            var printFrame = document.createElement('iframe');
+            printFrame.style.display = 'none';
+            document.body.appendChild(printFrame);
+            var doc = printFrame.contentWindow.document;
+            var styleAt = String.fromCharCode(64);
+            doc.write('<html><head><style>' + styleAt + 'page { size: 50mm 25mm; margin:0; } body { font-family: Cairo; text-align:center; padding:2px; } .title { font-size:10px; font-weight:bold; margin-bottom:2px; overflow:hidden; white-space:nowrap; } svg { width:100%; height:auto; }</style></head><body>');
+            doc.write('<div class="title">' + name + '</div><svg id="bc"></svg>');
+            doc.write('<script src="https://cdn.jsdelivr.net/npm/jsbarcode@@3.11.5/dist/JsBarcode.all.min.js"><\/script>');
+            doc.write('<script>window.onload = function() { JsBarcode("#bc", "' + code + '", { height:30, fontSize:12, margin:0 }); window.print(); setTimeout(function(){ window.close(); }, 500); }<\/script></body></html>');
+            doc.close();
+            setTimeout(function() { document.body.removeChild(printFrame); }, 3000);
+        }
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+                <text>Swal.fire({ icon: 'success', title: 'تم التحديث', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#f1950b' });</text>
+        }
+        @if (TempData["ErrorMessage"] != null)
+        {
+                <text>Swal.fire({ icon: 'error', title: 'خطأ', text: '@Html.Raw(TempData["ErrorMessage"])', confirmButtonColor: '#ee5d50' });</text>
+        }
+    </script>
 }
 
 <style>
-    .hover-elevate {
-        transition: transform 0.3s;
+    .sys-card {
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
     }
 
-        .hover-elevate:hover {
-            transform: translateY(-3px);
-        }
-
-    /* تنسيقات الطباعة الاحترافية للفاتورة */
     @@media print {
         body {
             background: white !important;
-            margin: 0 !important;
-            padding: 0 !important;
         }
 
-        .sys-sidebar, .sys-header, .d-print-none, #backToTop, .whatsapp-btn {
+        .sys-sidebar, .sys-header, .d-print-none {
             display: none !important;
         }
 
@@ -405,56 +549,23 @@
             width: 100% !important;
         }
 
-        .sys-content {
-            padding: 0 !important;
-        }
-
         .printable-card {
             box-shadow: none !important;
-            border: 2px solid #000 !important;
+            border: 1px solid #000 !important;
             border-radius: 10px !important;
-            padding: 30px !important;
-            break-inside: avoid;
-            width: 100%;
+            padding: 20px !important;
         }
 
         .print-no-border {
             border: none !important;
-            border-right: 4px solid #000 !important; /* للغة العربية الاتجاه يمين */
+            border-right: 4px solid #000 !important;
         }
 
         .print-no-bg {
             background-color: transparent !important;
         }
 
-        .print-row-stack {
-            display: flex !important;
-            flex-direction: column !important;
-        }
-
-        .print-col-full {
-            width: 100% !important;
-            flex: 0 0 100% !important;
-            max-width: 100% !important;
-            margin-bottom: 20px;
-        }
-
         .print-table th, .print-table td {
-            border: 1px solid #000 !important;
-            color: #000 !important;
-        }
-
-        * {
-            color: #000 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
-
-        .text-success, .text-danger, .text-primary {
-            color: #000 !important;
-        }
-
-        .badge {
             border: 1px solid #000 !important;
             color: #000 !important;
         }

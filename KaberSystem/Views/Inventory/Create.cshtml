@@ -7,7 +7,7 @@
 <div class="sys-page-header">
     <div>
         <h1 class="sys-page-title">إضافة صنف (قطعة غيار)</h1>
-        <p class="sys-page-desc">إدخال بيانات قطعة غيار جديدة لتعريفها في المخزون العام للشركة</p>
+        <p class="sys-page-desc">إدخال بيانات قطعة غيار وتكويدها في المخزون العام للشركة</p>
     </div>
     <a href="/Inventory/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
         <i class="fa-solid fa-arrow-right"></i> عودة للمخزون
@@ -21,14 +21,44 @@
                 <div class="bg-primary bg-opacity-10 text-primary rounded-circle d-flex justify-content-center align-items-center me-3" style="width: 50px; height: 50px;">
                     <i class="fa-solid fa-box-open fs-4"></i>
                 </div>
-                <h4 class="fw-bold m-0 text-dark">بيانات الصنف الجديد</h4>
+                <h4 class="fw-bold m-0 text-dark">بيانات وتكويد الصنف الجديد</h4>
             </div>
 
             <form asp-action="Create" method="post">
                 <div class="row g-4">
-                    <div class="col-md-12">
-                        <label asp-for="Name" class="form-label fw-bold text-dark">اسم القطعة <span class="text-danger">*</span></label>
+
+                    <!-- 📌 حقل كود الصنف -->
+                    <div class="col-md-6">
+                        <label asp-for="PartCode" class="form-label fw-bold text-dark"><i class="fa-solid fa-barcode text-primary me-1"></i> كود الصنف (الباركود)</label>
+                        <div class="input-group">
+                            <input asp-for="PartCode" id="PartCode" class="form-control sys-input border-end-0" placeholder="اتركه فارغاً للتوليد التلقائي" />
+                            <button type="button" class="btn btn-secondary fw-bold" onclick="generateCode()"><i class="fa-solid fa-wand-magic-sparkles"></i> توليد</button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="Name" class="form-label fw-bold text-dark">اسم القطعة (البيان) <span class="text-danger">*</span></label>
                         <input asp-for="Name" class="form-control sys-input" placeholder="مثال: كمبروسر تكييف سامسونج 2 حصان" required />
+                    </div>
+
+                    <!-- 📌 تصنيف القطعة (عامة أم مخصصة) -->
+                    <div class="col-md-12">
+                        <div class="bg-light p-3 rounded-3 border">
+                            <label class="fw-bold text-primary mb-2"><i class="fa-solid fa-layer-group me-1"></i> تصنيف توافق القطعة:</label>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="IsCommon" id="cmYes" value="true" checked onclick="toggleMdInput(true)">
+                                <label class="form-check-label fw-bold" for="cmYes">قطعة عامة (Common) - تركب على عدة أجهزة وماركات</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="IsCommon" id="cmNo" value="false" onclick="toggleMdInput(false)">
+                                <label class="form-check-label fw-bold" for="cmNo">قطعة مخصصة (Specific) - تركب لموديل محدد فقط</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="mdGroup" class="col-md-12 d-none">
+                        <label asp-for="TargetModel" class="form-label fw-bold text-dark">رقم الموديل / الجهاز المستهدف</label>
+                        <input asp-for="TargetModel" class="form-control sys-input border-primary" placeholder="مثال: غسالة LG موديل WT-1000" />
                     </div>
 
                     <div class="col-md-6">
@@ -84,6 +114,18 @@
     </div>
 </div>
 
+@section Scripts {
+    <script>
+        function generateCode() {
+            document.getElementById('PartCode').value = 'KBR-' + Math.floor(100000 + Math.random() * 900000);
+        }
+        function toggleMdInput(isCommon) {
+            var g = document.getElementById('mdGroup');
+            if(isCommon) g.classList.add('d-none'); else g.classList.remove('d-none');
+        }
+    </script>
+}
+
 <style>
     .sys-input {
         border: 2px solid var(--sys-border);
@@ -106,7 +148,7 @@
         border-radius: 0 10px 10px 0; /* Bootstrap RTL fix */
     }
 
-    .input-group .input-group-text {
+    .input-group .input-group-text, .input-group .btn {
         border: 2px solid var(--sys-border);
         border-right: none;
         border-radius: 10px 0 0 10px;

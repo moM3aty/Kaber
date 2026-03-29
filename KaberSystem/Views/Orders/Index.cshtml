@@ -13,6 +13,19 @@
         <i class="fa-solid fa-plus"></i> إنشاء طلب جديد
     </a>
 </div>
+<div class="sys-card mb-4 bg-light border-0">
+    <form method="get" asp-action="Index" class="row g-3 align-items-center">
+        <div class="col-md-9">
+            <div class="input-group input-group-lg shadow-sm">
+                <span class="input-group-text bg-white border-end-0 text-primary"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" name="searchQuery" value="@ViewData["CurrentSearch"]" class="form-control border-start-0 fw-bold" placeholder="ابحث باسم العميل أو رقم الجوال..." />
+            </div>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">بحث</button>
+        </div>
+    </form>
+</div>
 
 <div class="sys-card">
     <div class="table-responsive">

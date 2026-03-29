@@ -44,11 +44,8 @@ body {
     font-size: 15px;
     overflow-x: hidden;
 }
-.input-group{
-    direction:ltr !important;
-}
-div.dataTables_wrapper div.dataTables_paginate ul.pagination {
-    direction: ltr !important;
+.input-group {
+    direction: ltr;
 }
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
@@ -73,6 +70,7 @@ div.dataTables_wrapper div.dataTables_paginate ul.pagination {
 .sys-wrapper {
     display: flex;
     min-height: 100vh;
+    overflow-x: hidden;
 }
 
 /* Sidebar */
@@ -85,10 +83,15 @@ div.dataTables_wrapper div.dataTables_paginate ul.pagination {
     position: fixed;
     height: 100vh;
     right: 0;
-    z-index: 100;
+    z-index: 1000;
     box-shadow: var(--sys-shadow-sm);
-    transition: var(--sys-transition);
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+    /* 📌 إخفاء القائمة الجانبية (Collapsible Sidebar) */
+    .sys-sidebar.collapsed {
+        transform: translateX(100%); /* سحبها لليمين خارج الشاشة */
+    }
 
 .sys-brand {
     height: 85px;
@@ -184,8 +187,13 @@ div.dataTables_wrapper div.dataTables_paginate ul.pagination {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
-    transition: var(--sys-transition);
+    transition: margin-right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+    /* 📌 توسيع الشاشة عند إخفاء القائمة */
+    .sys-main.expanded {
+        margin-right: 0;
+    }
 
 /* Header */
 .sys-header {
@@ -236,7 +244,7 @@ div.dataTables_wrapper div.dataTables_paginate ul.pagination {
 .sys-user-area {
     display: flex;
     align-items: center;
-    gap: 30px;
+    gap: 20px;
 }
 
 .sys-icon-btn {
@@ -253,6 +261,7 @@ div.dataTables_wrapper div.dataTables_paginate ul.pagination {
     display: flex;
     justify-content: center;
     align-items: center;
+    text-decoration: none;
 }
 
     .sys-icon-btn:hover {
@@ -276,6 +285,8 @@ div.dataTables_wrapper div.dataTables_paginate ul.pagination {
     display: flex;
     align-items: center;
     cursor: pointer;
+    padding-right: 15px;
+    border-right: 1px solid var(--sys-border);
 }
 
     .sys-profile img {
@@ -365,6 +376,7 @@ div.dataTables_wrapper div.dataTables_paginate ul.pagination {
     box-shadow: var(--sys-shadow-sm);
     border: 1px solid var(--sys-border);
     transition: var(--sys-transition);
+    padding: 70px 20px !important;
 }
 
     .sys-card:hover {
@@ -419,5 +431,19 @@ div.dataTables_wrapper div.dataTables_paginate ul.pagination {
     to {
         opacity: 1;
         transform: translateY(0);
+    }
+}
+
+@media (max-width: 992px) {
+    .sys-sidebar {
+        transform: translateX(100%);
+    }
+
+        .sys-sidebar.mobile-open {
+            transform: translateX(0);
+        }
+
+    .sys-main {
+        margin-right: 0;
     }
 }

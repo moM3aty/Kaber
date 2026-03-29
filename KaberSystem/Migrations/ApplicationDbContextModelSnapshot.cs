@@ -71,7 +71,12 @@ namespace KaberSystem.Migrations
                     b.Property<string>("RecordedBy")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("TechnicianId")
+                        .HasColumnType("int");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("TechnicianId");
 
                     b.ToTable("Expenses");
                 });
@@ -174,6 +179,53 @@ namespace KaberSystem.Migrations
                     b.ToTable("Orders");
                 });
 
+            modelBuilder.Entity("KaberSystem.Models.OrderPartRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("DeviceModel")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImagePath")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsCommonRequest")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("NewPartName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("PartId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("RequestDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("RequestType")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("PartId");
+
+                    b.ToTable("OrderPartRequests");
+                });
+
             modelBuilder.Entity("KaberSystem.Models.OrderSparePart", b =>
                 {
                     b.Property<int>("Id")
@@ -211,6 +263,9 @@ namespace KaberSystem.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PurchaseId"));
 
+                    b.Property<string>("Barcode")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsPricedByManager")
                         .HasColumnType("bit");
 
@@ -230,6 +285,15 @@ namespace KaberSystem.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("int");
 
+                    b.Property<string>("SupplierLocation")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SupplierName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SupplierPhone")
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("PurchaseId");
 
                     b.ToTable("PurchaseOrders");
@@ -243,10 +307,20 @@ namespace KaberSystem.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("PartId"));
 
+                    b.Property<string>("Barcode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsCommon")
+                        .HasColumnType("bit");
+
                     b.Property<int>("MainStockQuantity")
                         .HasColumnType("int");
 
                     b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PartCode")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -263,6 +337,9 @@ namespace KaberSystem.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SupplierPhone")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TargetModel")
                         .HasColumnType("nvarchar(max)");
 
                     b.HasKey("PartId");
@@ -362,6 +439,15 @@ namespace KaberSystem.Migrations
                     b.Navigation("SparePart");
                 });
 
+            modelBuilder.Entity("KaberSystem.Models.Expense", b =>
+                {
+                    b.HasOne("KaberSystem.Models.Technician", "Technician")
+                        .WithMany("Expenses")
+                        .HasForeignKey("TechnicianId");
+
+                    b.Navigation("Technician");
+                });
+
             modelBuilder.Entity("KaberSystem.Models.Invoice", b =>
                 {
                     b.HasOne("KaberSystem.Models.Order", "Order")
@@ -380,6 +466,23 @@ namespace KaberSystem.Migrations
                         .HasForeignKey("TechnicianId");
 
                     b.Navigation("Technician");
+                });
+
+            modelBuilder.Entity("KaberSystem.Models.OrderPartRequest", b =>
+                {
+                    b.HasOne("KaberSystem.Models.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("KaberSystem.Models.SparePart", "SparePart")
+                        .WithMany()
+                        .HasForeignKey("PartId");
+
+                    b.Navigation("Order");
+
+                    b.Navigation("SparePart");
                 });
 
             modelBuilder.Entity("KaberSystem.Models.OrderSparePart", b =>
@@ -430,6 +533,8 @@ namespace KaberSystem.Migrations
             modelBuilder.Entity("KaberSystem.Models.Technician", b =>
                 {
                     b.Navigation("AssignedOrders");
+
+                    b.Navigation("Expenses");
 
                     b.Navigation("Inventory");
                 });

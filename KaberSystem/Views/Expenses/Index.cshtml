@@ -7,7 +7,7 @@
 <div class="sys-page-header">
     <div>
         <h1 class="sys-page-title">المصروفات اليومية</h1>
-        <p class="sys-page-desc">تسجيل ومتابعة مصروفات الشركة والتوالف لخصمها من الأرباح الصافية</p>
+        <p class="sys-page-desc">تسجيل ومتابعة مصروفات الشركة العامة، وسلف/مصروفات الفنيين لخصمها من أرباحهم</p>
     </div>
 </div>
 
@@ -19,8 +19,17 @@
             <form asp-action="Create" method="post">
                 <div class="mb-3">
                     <label class="form-label fw-bold text-dark">البيان (وصف المصروف) <span class="text-danger">*</span></label>
-                    <input type="text" name="description" class="form-control sys-input" required />
+                    <input type="text" name="description" class="form-control sys-input" required placeholder="مثال: وقود، صيانة سيارة، سلفة..." />
                 </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold text-dark">توجيه المصروف (يُخصم من؟)</label>
+                    <!-- 📌 تم تصحيح خطأ الـ ViewData هنا -->
+                    <select name="technicianId" class="form-select sys-input fw-bold bg-light border-secondary" asp-items="@(ViewData["Technicians"] as SelectList)">
+                        <option value="">-- مصروف عام (يُخصم من الشركة) --</option>
+                    </select>
+                </div>
+
                 <div class="mb-4">
                     <label class="form-label fw-bold text-dark">المبلغ <span class="text-danger">*</span></label>
                     <div class="input-group">
@@ -28,13 +37,14 @@
                         <span class="input-group-text bg-light border-secondary border-start-0 fw-bold">ر.س</span>
                     </div>
                 </div>
+
                 <button type="submit" class="sys-btn sys-btn-primary w-100 justify-content-center py-3 fs-5">
-                    <i class="fa-solid fa-save"></i> تسجيل
+                    <i class="fa-solid fa-save"></i> تسجيل واعتماد
                 </button>
             </form>
 
             <div class="mt-5 p-3 bg-danger bg-opacity-10 rounded-3 text-center border border-danger">
-                <h6 class="fw-bold text-danger mb-2">إجمالي المصروفات</h6>
+                <h6 class="fw-bold text-danger mb-2">إجمالي المصروفات (عام + فنيين)</h6>
                 <h3 class="fw-bold text-danger m-0">@ViewData["TotalExpenses"] ر.س</h3>
             </div>
         </div>
@@ -50,8 +60,9 @@
                         <tr>
                             <th>رقم القيد</th>
                             <th>البيان</th>
+                            <th>التوجيه (يُخصم من)</th>
                             <th>المبلغ</th>
-                            <th>تاريخ الصرف</th>
+                            <th>التاريخ</th>
                             <th>بواسطة</th>
                             @if (User.IsInRole("Admin"))
                             {
@@ -65,11 +76,20 @@
                             <tr>
                                 <td><span class="text-muted fw-bold">#@item.Id</span></td>
                                 <td class="fw-bold text-dark text-start">@item.Description</td>
+                                <td>
+                                    @if (item.TechnicianId.HasValue && item.Technician != null)
+                                    {
+                                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill shadow-sm"><i class="fa-solid fa-user-gear"></i> حساب: @item.Technician.Name</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge bg-secondary px-3 py-2 rounded-pill shadow-sm"><i class="fa-solid fa-building"></i> مصروف شركة</span>
+                                    }
+                                </td>
                                 <td class="text-danger fw-bold fs-6">@item.Amount ر.س</td>
-                                <td dir="ltr" class="text-muted fw-bold">@item.Date.ToString("yyyy/MM/dd hh:mm tt")</td>
-                                <td><span class="badge bg-secondary">@item.RecordedBy</span></td>
+                                <td dir="ltr" class="text-muted fw-bold small">@item.Date.ToString("yyyy/MM/dd hh:mm tt")</td>
+                                <td><span class="badge bg-light text-muted border">@item.RecordedBy</span></td>
 
-                                <!-- زر الحذف للإدارة فقط لمعالجة الإدخال الخاطئ -->
                                 @if (User.IsInRole("Admin"))
                                 {
                                     <td>
@@ -78,6 +98,15 @@
                                         </button>
                                     </td>
                                 }
+                            </tr>
+                        }
+                        @if (!Model.Any())
+                        {
+                            <tr>
+                                <td colspan="7" class="py-5 text-center text-muted">
+                                    <i class="fa-solid fa-file-invoice fs-1 mb-3 opacity-50"></i>
+                                    <h5 class="fw-bold">لا توجد مصروفات مسجلة حالياً</h5>
+                                </td>
                             </tr>
                         }
                     </tbody>
@@ -94,6 +123,7 @@
         border-radius: 10px;
         font-weight: 600;
         background-color: var(--sys-bg);
+        transition: all 0.3s;
     }
 
         .sys-input:focus {

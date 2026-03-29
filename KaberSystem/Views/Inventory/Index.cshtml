@@ -7,7 +7,7 @@
 <div class="sys-page-header">
     <div>
         <h1 class="sys-page-title">إدارة المخزون العام (المستودع)</h1>
-        <p class="sys-page-desc">مراقبة المخزون الرئيسي لقطع الغيار، التحكم بأسعار الشراء والبيع، ومتابعة النواقص</p>
+        <p class="sys-page-desc">مراقبة المخزون، التحكم بالتسعير، وطباعة ملصقات الباركود للقطع</p>
     </div>
     @if (User.IsInRole("Admin") || User.IsInRole("Store"))
     {
@@ -22,8 +22,8 @@
         <table class="table table-hover align-middle text-center sys-table w-100">
             <thead class="table-light">
                 <tr>
-                    <th>الكود</th>
-                    <th>اسم قطعة الغيار</th>
+                    <th>الكود والطباعة</th>
+                    <th>البيان والتصنيف</th>
                     <th>المورد</th>
                     <th>تكلفة الشراء</th>
                     <th>سعر البيع (للعميل)</th>
@@ -35,12 +35,33 @@
                 @foreach (var item in Model)
                 {
                     <tr>
-                        <td><span class="fw-bold px-2 py-1 bg-light border rounded text-muted">#@item.PartId</span></td>
-                        <td class="fw-bold text-dark text-start">@item.Name</td>
+                        <td>
+                            <div class="d-flex flex-column align-items-center gap-2">
+                                <span class="fw-bold px-3 py-1 bg-dark text-white rounded-pill shadow-sm small" style="letter-spacing: 1px;">
+                                    <i class="fa-solid fa-barcode me-1"></i> @(item.PartCode ?? $"#P-{item.PartId}")
+                                </span>
+                                <button type="button" class="btn btn-sm btn-outline-secondary py-1 fw-bold border" onclick="printPartLabel('@(item.PartCode ?? $"P-{item.PartId}")', '@item.Name')" title="طباعة ملصق الباركود">
+                                    <i class="fa-solid fa-print text-dark"></i> طباعة
+                                </button>
+                            </div>
+                        </td>
+                        <td class="fw-bold text-dark text-start">
+                            @item.Name
+                            <div class="small mt-2">
+                                @if (item.IsCommon)
+                                {
+                                    <span class="badge bg-info text-dark px-2 border"><i class="fa-solid fa-layer-group"></i> عام (Common)</span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary px-2"><i class="fa-solid fa-tag"></i> موديل: @item.TargetModel</span>
+                                }
+                            </div>
+                        </td>
                         <td>
                             @if (!string.IsNullOrEmpty(item.SupplierName))
                             {
-                                <span class="badge bg-info text-dark rounded-pill px-2"><i class="fa-solid fa-truck"></i> @item.SupplierName</span>
+                                <span class="badge bg-light text-dark border border-secondary rounded-pill px-2"><i class="fa-solid fa-truck text-muted"></i> @item.SupplierName</span>
                             }
                             else
                             {
@@ -72,7 +93,6 @@
                                     </a>
                                 }
 
-                                <!-- 📌 زر الحذف يظهر للإدارة (Admin) فقط -->
                                 @if (User.IsInRole("Admin"))
                                 {
                                     <button type="button" onclick="confirmAdminDelete('/Inventory/Delete/@item.PartId', 'صنف: @item.Name')" class="btn btn-sm btn-outline-danger fw-bold px-2 rounded-3" title="حذف الصنف نهائياً">
@@ -89,8 +109,33 @@
 </div>
 
 @section Scripts {
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <script>Swal.fire({ icon: 'success', title: 'نجاح', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#f1950b' });</script>
-    }
+    <!-- 📌 استدعاء مكتبة الباركود -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+
+    <script>
+        // 📌 دالة طباعة ملصق القطعة المعزولة لمنع حظر المتصفحات
+        function printPartLabel(code, name) {
+            var printFrame = document.createElement('iframe');
+            printFrame.style.display = 'none';
+            document.body.appendChild(printFrame);
+
+            var doc = printFrame.contentWindow.document;
+            var styleAt = String.fromCharCode(64);
+
+            // تصميم الملصق المتوافق مع الطابعات الحرارية
+            doc.write('<html><head><style>' + styleAt + 'page { size: 50mm 25mm; margin:0; } body { font-family: Cairo, Arial, sans-serif; text-align:center; padding:2px; background: white; margin: 0; } .title { font-size:10px; font-weight:bold; margin-bottom:2px; overflow:hidden; white-space:nowrap; text-overflow: ellipsis; color: black; } svg { width:100%; height:auto; }</style></head><body>');
+            doc.write('<div class="title">' + name + '</div><svg id="bc"></svg>');
+            doc.write('<script src="https://cdn.jsdelivr.net/npm/jsbarcode@@3.11.5/dist/JsBarcode.all.min.js"><\/script>');
+            doc.write('<script>window.onload = function() { JsBarcode("#bc", "' + code + '", { height:30, fontSize:12, fontOptions: "bold", margin:0, displayValue: true }); window.print(); setTimeout(function(){ window.close(); }, 500); }<\/script></body></html>');
+            doc.close();
+
+            // تنظيف بعد الطباعة
+            setTimeout(function() { document.body.removeChild(printFrame); }, 3000);
+        }
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+                <text>Swal.fire({ icon: 'success', title: 'نجاح', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#f1950b' });</text>
+        }
+    </script>
 }

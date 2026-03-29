@@ -19,12 +19,18 @@ namespace KaberSystem.Controllers
             _context = context;
         }
 
-        public async Task<IActionResult> Index()
+        public async Task<IActionResult> Index(string searchQuery)
         {
-            var orders = await _context.Orders
-                .Include(o => o.Technician)
-                .OrderByDescending(o => o.CreatedAt)
-                .ToListAsync();
+            ViewData["CurrentSearch"] = searchQuery; 
+
+            var query = _context.Orders.Include(o => o.Technician).AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchQuery))
+            {
+                query = query.Where(o => o.CustomerName.Contains(searchQuery) || o.PhoneNumber.Contains(searchQuery));
+            }
+
+            var orders = await query.OrderByDescending(o => o.CreatedAt).ToListAsync();
             return View(orders);
         }
 
@@ -137,24 +143,81 @@ namespace KaberSystem.Controllers
             return RedirectToAction("Details", new { id = order?.OrderId });
         }
 
+
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return NotFound();
 
             var order = await _context.Orders
                 .Include(o => o.Technician)
-                .Include(o => o.Invoices)
-                .Include(o => o.UsedSpareParts)
-                    .ThenInclude(p => p.SparePart)
+                .Include(o => o.UsedSpareParts).ThenInclude(up => up.SparePart)
                 .FirstOrDefaultAsync(m => m.OrderId == id);
 
             if (order == null) return NotFound();
 
+            ViewBag.PartRequests = await _context.OrderPartRequests
+                .Include(pr => pr.SparePart)
+                .Where(pr => pr.OrderId == id)
+                .OrderByDescending(pr => pr.RequestDate)
+                .ToListAsync();
+
             ViewData["AvailableParts"] = await _context.SpareParts.Where(p => p.MainStockQuantity > 0).ToListAsync();
+
             return View(order);
         }
 
-        // 📌 التحديث الشامل: تحديث الحالة، التقرير، رسوم الفحص وترحيل الحسابات
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RequestFromWarehouse(int orderId, int partId, int quantity)
+        {
+            var request = new OrderPartRequest
+            {
+                OrderId = orderId,
+                RequestType = PartRequestType.FromWarehouse,
+                PartId = partId,
+                Quantity = quantity,
+                Status = PartRequestStatus.PendingWarehouse
+            };
+
+            _context.OrderPartRequests.Add(request);
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "تم طلب القطعة من المخزن بنجاح.";
+            return RedirectToAction(nameof(Details), new { id = orderId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RequestPurchase(int orderId, string partName, string deviceModel, int quantity, bool isCommon, IFormFile partImage)
+        {
+            string imagePath = null;
+            if (partImage != null && partImage.Length > 0)
+            {
+                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "parts");
+                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+                string uniqueFileName = Guid.NewGuid().ToString() + "_" + partImage.FileName;
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create)) { await partImage.CopyToAsync(fileStream); }
+                imagePath = "/uploads/parts/" + uniqueFileName;
+            }
+
+            var request = new OrderPartRequest
+            {
+                OrderId = orderId,
+                RequestType = PartRequestType.PurchaseNew,
+                NewPartName = partName,
+                DeviceModel = deviceModel,
+                IsCommonRequest = isCommon,
+                Quantity = quantity,
+                ImagePath = imagePath,
+                Status = PartRequestStatus.PendingPurchasing
+            };
+
+            _context.OrderPartRequests.Add(request);
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "تم إرسال طلب الشراء. سيتم تكويد القطعة وربطها بالموديل عند الشراء.";
+            return RedirectToAction(nameof(Details), new { id = orderId });
+        }
         [HttpPost]
         public async Task<IActionResult> UpdateStatus(int id, OrderStatus newStatus, string technicianNotes, int isFeeApplied)
         {
@@ -272,7 +335,21 @@ namespace KaberSystem.Controllers
 
             return View(order);
         }
+        [Authorize(Roles = "Admin,CallCenter,Technician")]
+        public async Task<IActionResult> Quotation(int? id)
+        {
+            if (id == null) return NotFound();
 
+            var order = await _context.Orders
+                .Include(o => o.Technician)
+                .Include(o => o.UsedSpareParts)
+                    .ThenInclude(up => up.SparePart)
+                .FirstOrDefaultAsync(m => m.OrderId == id);
+
+            if (order == null) return NotFound();
+
+            return View(order);
+        }
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int? id)
         {
@@ -311,6 +388,59 @@ namespace KaberSystem.Controllers
                 TempData["SuccessMessage"] = "تم حذف الطلب نهائياً من النظام.";
             }
             return RedirectToAction(nameof(Index));
+        }
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,Technician,CallCenter")]
+        public async Task<IActionResult> RemoveUsedPart(int orderId, int recordId)
+        {
+            var usedPart = await _context.UsedSpareParts
+                .Include(up => up.Order)
+                .FirstOrDefaultAsync(up => up.Id == recordId && up.OrderId == orderId);
+
+            if (usedPart == null) return NotFound();
+
+            var order = usedPart.Order;
+
+            // 📌 الحماية الأمنية: يمنع الحذف إذا كان الطلب مكتمل إلا للإدارة
+            if (order.Status == OrderStatus.Completed && !User.IsInRole("Admin"))
+            {
+                TempData["ErrorMessage"] = "مغلق! لا يمكن حذف القطع بعد اكتمال الطلب إلا من قبل الإدارة.";
+                return RedirectToAction(nameof(Details), new { id = orderId });
+            }
+
+            // 1. إرجاع الكمية لعهدة الفني
+            if (order.TechnicianId.HasValue)
+            {
+                var techStock = await _context.TechnicianStocks
+                    .FirstOrDefaultAsync(ts => ts.TechnicianId == order.TechnicianId && ts.PartId == usedPart.PartId);
+
+                if (techStock != null)
+                {
+                    techStock.Quantity += usedPart.QuantityUsed;
+                    _context.Update(techStock);
+                }
+                else
+                {
+                    _context.TechnicianStocks.Add(new TechnicianStock
+                    {
+                        TechnicianId = order.TechnicianId.Value,
+                        PartId = usedPart.PartId,
+                        Quantity = usedPart.QuantityUsed
+                    });
+                }
+            }
+
+            // 2. خصم قيمة القطعة من الفاتورة النهائية
+            order.FinalPrice -= (usedPart.QuantityUsed * usedPart.SellingPriceAtTime);
+            _context.Update(order);
+
+            // 3. حذف سجل الاستخدام
+            _context.UsedSpareParts.Remove(usedPart);
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "تم حذف القطعة، إرجاعها للعهدة، وتحديث الفاتورة بنجاح.";
+            return RedirectToAction(nameof(Details), new { id = orderId });
         }
     }
 }

@@ -22,7 +22,7 @@ namespace KaberSystem.Controllers
         // عرض المخزون العام لكل قطع الغيار
         public async Task<IActionResult> Index()
         {
-            var parts = await _context.SpareParts.ToListAsync();
+            var parts = await _context.SpareParts.OrderByDescending(p => p.PartId).ToListAsync();
             return View(parts);
         }
 
@@ -34,15 +34,27 @@ namespace KaberSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        // 📌 تم إضافة حقول المورد هنا
-        public async Task<IActionResult> Create([Bind("Name,PurchasePrice,SellingPrice,MainStockQuantity,SupplierName,SupplierPhone,SupplierLocation")] SparePart sparePart)
+        // 📌 تم إضافة حقول التكويد والتصنيف والمورد
+        public async Task<IActionResult> Create([Bind("PartCode,Name,IsCommon,TargetModel,PurchasePrice,SellingPrice,MainStockQuantity,SupplierName,SupplierPhone,SupplierLocation")] SparePart sparePart)
         {
+            // توليد كود تلقائي إذا تركه المستخدم فارغاً
+            if (string.IsNullOrEmpty(sparePart.PartCode))
+            {
+                sparePart.PartCode = "KBR-" + new Random().Next(100000, 999999).ToString();
+            }
+
+            // تنظيف الموديل المستهدف إذا كانت القطعة عامة
+            if (sparePart.IsCommon)
+            {
+                sparePart.TargetModel = null;
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(sparePart);
                 await _context.SaveChangesAsync();
 
-                TempData["SuccessMessage"] = "تم إضافة الصنف الجديد للمخزون بنجاح!";
+                TempData["SuccessMessage"] = "تم إضافة الصنف وتكويده في المخزون بنجاح!";
                 return RedirectToAction(nameof(Index));
             }
             return View(sparePart);
@@ -59,8 +71,7 @@ namespace KaberSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        // 📌 تم إضافة حقول المورد هنا
-        public async Task<IActionResult> Edit(int id, [Bind("PartId,Name,PurchasePrice,SellingPrice,MainStockQuantity,SupplierName,SupplierPhone,SupplierLocation")] SparePart sparePart)
+        public async Task<IActionResult> Edit(int id, [Bind("PartId,PartCode,Name,IsCommon,TargetModel,PurchasePrice,SellingPrice,MainStockQuantity,SupplierName,SupplierPhone,SupplierLocation")] SparePart sparePart)
         {
             if (id != sparePart.PartId) return NotFound();
 
@@ -72,8 +83,11 @@ namespace KaberSystem.Controllers
                     var existingPart = await _context.SpareParts.FindAsync(id);
                     if (existingPart == null) return NotFound();
 
-                    // تحديث البيانات الأساسية (مسموح للكل: أدمن وأمين مخزن)
+                    // تحديث البيانات الأساسية
+                    existingPart.PartCode = string.IsNullOrEmpty(sparePart.PartCode) ? existingPart.PartCode : sparePart.PartCode;
                     existingPart.Name = sparePart.Name;
+                    existingPart.IsCommon = sparePart.IsCommon;
+                    existingPart.TargetModel = sparePart.IsCommon ? null : sparePart.TargetModel;
                     existingPart.PurchasePrice = sparePart.PurchasePrice;
                     existingPart.SellingPrice = sparePart.SellingPrice;
 
@@ -90,7 +104,7 @@ namespace KaberSystem.Controllers
 
                     _context.Update(existingPart);
                     await _context.SaveChangesAsync();
-                    TempData["SuccessMessage"] = "تم تحديث بيانات الصنف بنجاح!";
+                    TempData["SuccessMessage"] = "تم تحديث بيانات وتصنيف الصنف بنجاح!";
                 }
                 catch (DbUpdateConcurrencyException)
                 {

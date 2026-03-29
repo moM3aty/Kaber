@@ -2,27 +2,60 @@
 @{
     ViewData["Title"] = "تقرير أرباح الفنيين";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
+
+    // 📌 جلب متغيرات الفلتر من الرابط (أو وضع قيم افتراضية)
+    decimal commissionPercent = decimal.TryParse(Context.Request.Query["commission"], out decimal c) ? c : 30m;
+    decimal commissionRate = commissionPercent / 100m;
+    
+    DateTime? startDate = DateTime.TryParse(Context.Request.Query["startDate"], out DateTime sd) ? sd : null;
+    DateTime? endDate = DateTime.TryParse(Context.Request.Query["endDate"], out DateTime ed) ? ed : null;
 }
 
 <div class="sys-page-header d-print-none">
     <div>
         <h1 class="sys-page-title">أرباح وإنتاجية الفنيين</h1>
-        <p class="sys-page-desc">تقرير محاسبي يوضح إجمالي الإيرادات التي حققها كل فني وحساب العمولة المستحقة له</p>
+        <p class="sys-page-desc">تقرير محاسبي مفصل يوضح الإيرادات، العمولات، وتفاصيل كل موعد تم تنفيذه مع الخصومات والمصروفات</p>
     </div>
     <button class="sys-btn sys-btn-primary" onclick="window.print()">
         <i class="fa-solid fa-print"></i> طباعة التقرير
     </button>
 </div>
 
-<div class="sys-card printable-card">
+<!-- 📌 فلتر البحث وتعديل النسبة -->
+<div class="sys-card mb-4 d-print-none bg-light border-0">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label fw-bold text-dark"><i class="fa-regular fa-calendar me-1"></i> من تاريخ (اختياري)</label>
+            <input type="date" name="startDate" class="form-control sys-input" value="@Context.Request.Query["startDate"]" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-bold text-dark"><i class="fa-regular fa-calendar-check me-1"></i> إلى تاريخ (اختياري)</label>
+            <input type="date" name="endDate" class="form-control sys-input" value="@Context.Request.Query["endDate"]" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label fw-bold text-primary"><i class="fa-solid fa-percent me-1"></i> نسبة العمولة للفنيين</label>
+            <div class="input-group">
+                <input type="number" step="0.01" name="commission" class="form-control sys-input border-end-0 fw-bold text-primary" value="@commissionPercent" min="0" max="100" required />
+                <span class="input-group-text bg-white border-start-0 text-muted fw-bold">%</span>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="sys-btn sys-btn-primary w-100 py-3 fs-6">
+                <i class="fa-solid fa-filter me-2"></i> تحديث التقرير والحسابات
+            </button>
+        </div>
+    </form>
+</div>
 
+<div class="sys-card printable-card">
+    
     <!-- ترويسة الطباعة (تظهر فقط في الورق) -->
     <div class="d-none d-print-block text-center border-bottom pb-4 mb-4">
         <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-bolt text-primary me-2"></i> شركة كابر للصيانة</h2>
-        <h4 class="text-muted fw-bold mb-3">تقرير أرباح وعمولات الفنيين</h4>
+        <h4 class="text-muted fw-bold mb-3">تقرير أرباح وعمولات الفنيين التفصيلي</h4>
         <div class="d-flex justify-content-between align-items-center mt-3 px-3">
-            <p class="m-0 fw-bold fs-5">تاريخ الطباعة: @DateTime.Now.ToString("yyyy-MM-dd")</p>
-            <p class="m-0 fw-bold fs-5">القسم: الإدارة المالية</p>
+            <p class="m-0 fw-bold fs-5">نسبة العمولة المطبقة: @commissionPercent%</p>
+            <p class="m-0 fw-bold fs-5">الفترة: @(startDate?.ToString("yyyy/MM/dd") ?? "بداية العمل") إلى @(endDate?.ToString("yyyy/MM/dd") ?? "اليوم")</p>
         </div>
     </div>
 
@@ -31,7 +64,7 @@
         <div class="bg-success bg-opacity-10 text-success rounded-circle d-flex justify-content-center align-items-center me-3" style="width: 50px; height: 50px;">
             <i class="fa-solid fa-hand-holding-dollar fs-4"></i>
         </div>
-        <h4 class="fw-bold m-0 text-dark">كشف حساب الفنيين</h4>
+        <h4 class="fw-bold m-0 text-dark">كشف حساب الفنيين الإجمالي</h4>
     </div>
 
     <div class="table-responsive overflow-visible">
@@ -39,58 +72,173 @@
             <thead class="table-light">
                 <tr>
                     <th>اسم الفني</th>
-                    <th>إجمالي الطلبات المنجزة</th>
-                    <th>إجمالي إيرادات أجور اليد (الفحص)</th>
-                    <th>العمولة المستحقة (30%)</th>
+                    <th>الطلبات المنجزة</th>
+                    <th>إيرادات رسوم الفحص</th>
+                    <th>العمولة (@commissionPercent%)</th>
+                    <th class="text-danger">الخصومات والمصروفات</th>
+                    <th class="text-primary fs-6">الصافي للمحاسبة</th>
                     <th>الحالة</th>
+                    <th class="d-print-none">الإجراءات والتفاصيل</th>
                 </tr>
             </thead>
             <tbody>
                 @{
                     decimal totalAllIncomes = 0;
                     decimal totalAllCommissions = 0;
+                    decimal totalAllExpenses = 0;
+                    decimal totalAllNet = 0;
+                    int colsCount = User.IsInRole("Admin") ? 8 : 7;
                 }
                 @foreach (var tech in Model)
                 {
-                    // حساب أجور اليد فقط (بدون قطع الغيار) للطلبات المكتملة
-                    decimal totalLaborIncome = tech.AssignedOrders?
-                    .Where(o => o.Status == KaberSystem.Models.OrderStatus.Completed)
-                    .Sum(o => o.EstimatedPrice) ?? 0;
+                    // 📌 1. تصفية الطلبات المكتملة بناءً على الفلتر الزمني
+                    var completedOrders = tech.AssignedOrders?
+                        .Where(o => o.Status == KaberSystem.Models.OrderStatus.Completed)
+                        .Where(o => (!startDate.HasValue || (o.ScheduledDate ?? o.CreatedAt).Date >= startDate.Value.Date) &&
+                                    (!endDate.HasValue || (o.ScheduledDate ?? o.CreatedAt).Date <= endDate.Value.Date))
+                        .ToList() ?? new List<KaberSystem.Models.Order>();
 
-                    // حساب العمولة (مثلاً 30%)
-                    decimal commission = totalLaborIncome * 0.30m;
+                    // 📌 2. تصفية المصروفات والخصومات بناءً على الفلتر الزمني
+                    var techExpensesList = tech.Expenses?
+                        .Where(e => (!startDate.HasValue || e.Date.Date >= startDate.Value.Date) &&
+                                    (!endDate.HasValue || e.Date.Date <= endDate.Value.Date))
+                        .ToList() ?? new List<KaberSystem.Models.Expense>();
 
-                    // تجميع الإجماليات
+                    // 📌 3. الحسابات الإجمالية
+                    decimal totalLaborIncome = completedOrders.Sum(o => o.EstimatedPrice);
+                    decimal grossCommission = totalLaborIncome * commissionRate;
+                    decimal techExpenses = techExpensesList.Sum(e => e.Amount);
+                    decimal netCommission = grossCommission - techExpenses;
+
+                    // 📌 4. تجميع الإجماليات أسفل الجدول
                     totalAllIncomes += totalLaborIncome;
-                    totalAllCommissions += commission;
+                    totalAllCommissions += grossCommission;
+                    totalAllExpenses += techExpenses;
+                    totalAllNet += netCommission;
 
                     <tr>
-                        <td class="fw-bold text-dark text-start">
+                        <td class="fw-bold text-dark text-end">
                             <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(tech.Name)&background=f1950b&color=fff" class="rounded-circle me-2 d-print-none" width="35" height="35">
                             @tech.Name
                         </td>
-                        <td class="fw-bold fs-5">@(tech.AssignedOrders?.Count(o => o.Status == KaberSystem.Models.OrderStatus.Completed) ?? 0)</td>
-                        <td class="text-success fw-bold fs-5 bg-light">@totalLaborIncome ر.س</td>
-                        <td class="text-primary fw-bold fs-5">@commission ر.س</td>
+                        <td class="fw-bold fs-5">@completedOrders.Count</td>
+                        <td class="text-dark fw-bold fs-5 bg-light">@totalLaborIncome <span class="small text-muted">ر.س</span></td>
+                        <td class="text-success fw-bold fs-5">@grossCommission <span class="small text-muted">ر.س</span></td>
+                        <td class="text-danger fw-bold fs-5 bg-danger bg-opacity-10 border-start border-end">@techExpenses <span class="small text-muted">ر.س</span></td>
+                        <td class="text-primary fw-bold fs-4">@netCommission <span class="small text-muted">ر.س</span></td>
                         <td>
-                            @if (commission > 0)
+                            @if (netCommission > 0)
                             {
                                 <span class="badge bg-warning text-dark px-3 py-2 rounded-pill print-badge"><i class="fa-solid fa-clock d-print-none"></i> مستحقة الدفع</span>
                             }
+                            else if (netCommission < 0)
+                            {
+                                <span class="badge bg-danger px-3 py-2 rounded-pill print-badge"><i class="fa-solid fa-triangle-exclamation d-print-none"></i> حساب مكشوف</span>
+                            }
                             else
                             {
-                                <span class="text-muted small fw-bold">لا يوجد أرباح</span>
+                                <span class="text-muted small fw-bold">لا يوجد رصيد</span>
                             }
+                        </td>
+                        <td class="d-print-none">
+                            <div class="d-flex gap-2 justify-content-center">
+                                <!-- 📌 زر إظهار التفاصيل لكل فني -->
+                                <button type="button" class="btn btn-sm btn-info text-dark fw-bold rounded-3 px-3 shadow-sm" data-bs-toggle="collapse" data-bs-target="#details-@tech.TechnicianId">
+                                    <i class="fa-solid fa-list-check"></i> تفاصيل الحركات
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <!-- 📌 الصف المخفي: تفاصيل كل موعد وكل خصم للفني -->
+                    <tr class="collapse fade border-0" id="details-@tech.TechnicianId">
+                        <td colspan="@colsCount" class="p-0 border-0">
+                            <div class="bg-light p-4 m-2 rounded-4 border border-secondary shadow-inner">
+                                <div class="row g-4">
+                                    
+                                    <!-- جدول الطلبات المنجزة بالتفصيل -->
+                                    <div class="col-md-7">
+                                        <h6 class="fw-bold text-success mb-3"><i class="fa-solid fa-screwdriver-wrench me-1"></i> تفاصيل المواعيد والطلبات المنجزة</h6>
+                                        @if(completedOrders.Any())
+                                        {
+                                            <div class="table-responsive bg-white rounded-3 shadow-sm">
+                                                <table class="table table-sm table-bordered text-center align-middle mb-0">
+                                                    <thead class="table-success">
+                                                        <tr>
+                                                            <th>رقم الطلب</th>
+                                                            <th>تاريخ التنفيذ</th>
+                                                            <th>رسوم الفحص/العمل</th>
+                                                            <th>العمولة (@commissionPercent%)</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach(var o in completedOrders)
+                                                        {
+                                                            <tr>
+                                                                <td class="fw-bold text-muted">ORD-#@o.OrderId</td>
+                                                                <td dir="ltr" class="small fw-bold">@(o.ScheduledDate?.ToString("yyyy/MM/dd") ?? o.CreatedAt.ToString("yyyy/MM/dd"))</td>
+                                                                <td class="fw-bold">@o.EstimatedPrice ر.س</td>
+                                                                <td class="text-success fw-bold">@(o.EstimatedPrice * commissionRate) ر.س</td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="alert alert-light border text-center small fw-bold">لا توجد طلبات منجزة في هذه الفترة.</div>
+                                        }
+                                    </div>
+
+                                    <!-- جدول الخصومات والتوالف والسلف بالتفصيل -->
+                                    <div class="col-md-5">
+                                        <h6 class="fw-bold text-danger mb-3"><i class="fa-solid fa-minus-circle me-1"></i> تفاصيل المصروفات والخصومات والتوالف</h6>
+                                        @if(techExpensesList.Any())
+                                        {
+                                            <div class="table-responsive bg-white rounded-3 shadow-sm">
+                                                <table class="table table-sm table-bordered text-center align-middle mb-0">
+                                                    <thead class="table-danger">
+                                                        <tr>
+                                                            <th>التاريخ</th>
+                                                            <th>البيان (نوع الخصم)</th>
+                                                            <th>المبلغ المخصوم</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        @foreach(var e in techExpensesList)
+                                                        {
+                                                            <tr>
+                                                                <td dir="ltr" class="small fw-bold text-muted">@e.Date.ToString("yyyy/MM/dd")</td>
+                                                                <td class="fw-bold text-start">@e.Description</td>
+                                                                <td class="text-danger fw-bold">@e.Amount ر.س</td>
+                                                            </tr>
+                                                        }
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="alert alert-light border text-center small fw-bold">لا توجد خصومات أو مصروفات مسجلة في هذه الفترة.</div>
+                                        }
+                                    </div>
+
+                                </div>
+                            </div>
                         </td>
                     </tr>
                 }
-
+                
                 <!-- صف الإجمالي يظهر في الطباعة والشاشة -->
                 <tr class="table-dark text-white fw-bold fs-5">
-                    <td colspan="2" class="text-end pe-4">الإجمالي العام:</td>
-                    <td class="text-white">@totalAllIncomes ر.س</td>
-                    <td class="text-warning">@totalAllCommissions ر.س</td>
+                    <td colspan="2" class="text-end pe-4">الإجمالي العام (للفترة المحددة):</td>
+                    <td class="text-white">@totalAllIncomes <span class="small">ر.س</span></td>
+                    <td class="text-success">@totalAllCommissions <span class="small">ر.س</span></td>
+                    <td class="text-danger">@totalAllExpenses <span class="small">ر.س</span></td>
+                    <td class="text-warning">@totalAllNet <span class="small">ر.س</span></td>
                     <td></td>
+                    <td class="d-print-none"></td>
                 </tr>
             </tbody>
         </table>
@@ -98,6 +246,10 @@
 
     <!-- أماكن التوقيع (تظهر فقط في الطباعة) -->
     <div class="d-none d-print-flex justify-content-between mt-5 pt-5 px-5">
+        <div class="text-center">
+            <h5 class="fw-bold text-dark mb-4">توقيع الفني المُستلم</h5>
+            <p>.......................................</p>
+        </div>
         <div class="text-center">
             <h5 class="fw-bold text-dark mb-4">المحاسب المختص</h5>
             <p>.......................................</p>
@@ -109,73 +261,35 @@
     </div>
 </div>
 
+@section Scripts {
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <script>
+            Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonText: 'حسناً', confirmButtonColor: '#f1950b' });
+        </script>
+    }
+}
+
 <style>
+    .sys-input { border: 2px solid var(--sys-border); padding: 10px 15px; border-radius: 8px; font-weight: 600; background-color: var(--sys-bg); transition: all 0.3s;}
+    .sys-input:focus { border-color: var(--sys-primary); box-shadow: 0 0 0 0.25rem rgba(241, 149, 11, 0.15); background-color: #fff; outline: none; }
+    .shadow-inner { box-shadow: inset 0 2px 10px rgba(0,0,0,0.05); }
+    
     /* تنسيقات الطباعة الاحترافية للتقرير */
     @@media print {
-        body {
-            background: white !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        /* إخفاء العناصر غير المطلوبة */
-        .sys-sidebar, .sys-header, .d-print-none, #backToTop, .whatsapp-btn, .dataTables_wrapper .row {
-            display: none !important;
-        }
-
-        .sys-main {
-            margin: 0 !important;
-            padding: 20px !important;
-            width: 100% !important;
-        }
-
-        .sys-content {
-            padding: 0 !important;
-        }
-
-        .printable-card {
-            box-shadow: none !important;
-            border: 2px solid #000 !important;
-            border-radius: 10px !important;
-            padding: 30px !important;
-            break-inside: avoid;
-            width: 100%;
-        }
-        /* ضبط الجدول للطباعة */
-        .print-table {
-            border-collapse: collapse !important;
-            width: 100% !important;
-            margin-bottom: 30px !important;
-        }
-
-            .print-table th, .print-table td {
-                border: 1px solid #000 !important;
-                color: #000 !important;
-                padding: 12px !important;
-                background-color: transparent !important;
-            }
-
-            .print-table th {
-                background-color: #f8f9fa !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-        /* توحيد الألوان للأسود لتبدو رسمية */
-        * {
-            color: #000 !important;
-        }
-
-        .table-dark th, .table-dark td {
-            background-color: #eee !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-        }
-        /* تحويل الـ Badges لنص عادي مع إطار خفيف */
-        .print-badge {
-            border: 1px solid #000 !important;
-            background: transparent !important;
-            color: #000 !important;
-            border-radius: 5px !important;
-            padding: 5px 10px !important;
-        }
+        body { background: white !important; margin: 0 !important; padding: 0 !important; }
+        .sys-sidebar, .sys-header, .d-print-none, #backToTop, .whatsapp-btn, .dataTables_wrapper .row { display: none !important; }
+        .sys-main { margin: 0 !important; padding: 20px !important; width: 100% !important; }
+        .sys-content { padding: 0 !important; }
+        .printable-card { box-shadow: none !important; border: 2px solid #000 !important; border-radius: 10px !important; padding: 30px !important; break-inside: avoid; width: 100%; }
+        .print-table { border-collapse: collapse !important; width: 100% !important; margin-bottom: 30px !important; }
+        .print-table th, .print-table td { border: 1px solid #000 !important; color: #000 !important; padding: 12px !important; background-color: transparent !important; }
+        .print-table th { background-color: #f8f9fa !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        * { color: #000 !important; }
+        .table-dark th, .table-dark td { background-color: #eee !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        .print-badge { border: 1px solid #000 !important; background: transparent !important; color: #000 !important; border-radius: 5px !important; padding: 5px 10px !important; }
+        
+        /* إظهار التفاصيل المنسدلة إجبارياً في الطباعة ليكون التقرير كامل */
+        .collapse { display: table-row !important; visibility: visible !important; }
     }
 </style>
