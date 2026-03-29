@@ -31,7 +31,31 @@
 
                     <div class="col-md-6">
                         <label asp-for="PurchasePrice" class="form-label fw-bold text-dark"><i class="fa-solid fa-money-bill-wave text-primary me-1"></i> سعر الشراء (للوحدة) <span class="text-danger">*</span></label>
-                        <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control sys-input" placeholder="0.00" required />
+                        <div class="input-group">
+                            <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control sys-input border-end-0" placeholder="0.00" required />
+                            <span class="input-group-text bg-light border-start-0 text-muted fw-bold" style="border-radius: 12px 0 0 12px; border-color: var(--sys-border);">ر.س</span>
+                        </div>
+                    </div>
+
+                    <!-- 📌 إضافة بيانات المورد -->
+                    <div class="col-12 border-top pt-3 mt-4">
+                        <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-truck-field me-2"></i> بيانات المورد (اختياري)</h5>
+                        <p class="text-muted small fw-bold mb-3">سيتم نقل هذه البيانات تلقائياً إلى بطاقة الصنف في المخزون عند اعتماد الفاتورة.</p>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="SupplierName" class="form-label fw-bold text-dark">اسم المورد / الشركة</label>
+                        <input asp-for="SupplierName" class="form-control sys-input" placeholder="اسم مورد هذه القطعة" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="SupplierPhone" class="form-label fw-bold text-dark">رقم الجوال</label>
+                        <input asp-for="SupplierPhone" class="form-control sys-input" dir="ltr" placeholder="05XXXXXXXX" style="text-align: right;" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="SupplierLocation" class="form-label fw-bold text-dark">موقع المورد (العنوان)</label>
+                        <input asp-for="SupplierLocation" class="form-control sys-input" placeholder="المدينة، الشارع، أو رابط الخريطة" />
                     </div>
 
                     <div class="col-12 mt-5 text-end border-top pt-4">
@@ -49,7 +73,7 @@
             <h5 class="fw-bold mb-3 text-primary"><i class="fa-solid fa-circle-info"></i> ملاحظة لمندوب المشتريات</h5>
             <p class="text-muted fw-bold lh-lg">
                 بمجرد تسجيل الفاتورة هنا، ستظهر لدى (أمين المخزن) كبضاعة <b>"في الطريق"</b>.<br><br>
-                <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> لن يتم إضافة الكميات للرصيد الفعلي أو تغيير الأسعار إلا بعد أن يقوم أمين المخزن بمراجعتها والضغط على زر <span class="text-primary">"تأكيد وإضافة للمخزن"</span> من حسابه.
+                <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> لن يتم إضافة الكميات للرصيد الفعلي أو تغيير الأسعار أو بيانات المورد إلا بعد أن يقوم أمين المخزن بمراجعتها والضغط على زر <span class="text-primary">"تأكيد وإضافة للمخزن"</span> من حسابه.
             </p>
         </div>
     </div>

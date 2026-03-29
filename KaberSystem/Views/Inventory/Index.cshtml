@@ -17,8 +17,6 @@
     }
 </div>
 
-<!-- (نفس البطاقات العلوية الإحصائية الموجودة مسبقاً، تم إخفاؤها هنا للاختصار، يمكنك إبقاؤها كما هي) -->
-
 <div class="sys-card mt-4">
     <div class="table-responsive">
         <table class="table table-hover align-middle text-center sys-table w-100">
@@ -26,6 +24,7 @@
                 <tr>
                     <th>الكود</th>
                     <th>اسم قطعة الغيار</th>
+                    <th>المورد</th>
                     <th>تكلفة الشراء</th>
                     <th>سعر البيع (للعميل)</th>
                     <th>رصيد المخزن الحالي</th>
@@ -38,6 +37,16 @@
                     <tr>
                         <td><span class="fw-bold px-2 py-1 bg-light border rounded text-muted">#@item.PartId</span></td>
                         <td class="fw-bold text-dark text-start">@item.Name</td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(item.SupplierName))
+                            {
+                                <span class="badge bg-info text-dark rounded-pill px-2"><i class="fa-solid fa-truck"></i> @item.SupplierName</span>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">غير محدد</span>
+                            }
+                        </td>
                         <td class="text-danger fw-bold">@item.PurchasePrice <span class="small">ر.س</span></td>
                         <td class="text-success fw-bold fs-6">@item.SellingPrice <span class="small">ر.س</span></td>
                         <td>
@@ -63,7 +72,7 @@
                                     </a>
                                 }
 
-                                <!-- زر الحذف للإدارة فقط -->
+                                <!-- 📌 زر الحذف يظهر للإدارة (Admin) فقط -->
                                 @if (User.IsInRole("Admin"))
                                 {
                                     <button type="button" onclick="confirmAdminDelete('/Inventory/Delete/@item.PartId', 'صنف: @item.Name')" class="btn btn-sm btn-outline-danger fw-bold px-2 rounded-3" title="حذف الصنف نهائياً">

@@ -7,7 +7,7 @@
 <div class="sys-page-header">
     <div>
         <h1 class="sys-page-title">إنشاء طلب صيانة جديد</h1>
-        <p class="sys-page-desc">إدخال بيانات العميل والمشكلة لبدء دورة الصيانة وإسنادها لاحقاً للفنيين</p>
+        <p class="sys-page-desc">إدخال بيانات العميل، تحديد الجهاز، والموعد المطلوب لبدء دورة الصيانة</p>
     </div>
     <a href="/Orders/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
         <i class="fa-solid fa-arrow-right"></i> عودة للقائمة
@@ -33,6 +33,19 @@
                         <span asp-validation-for="PhoneNumber" class="text-danger small fw-bold"></span>
                     </div>
 
+                    <!-- 📌 نوع الجهاز -->
+                    <div class="col-md-6">
+                        <label asp-for="DeviceName" class="form-label fw-bold text-dark"><i class="fa-solid fa-tv text-primary me-1"></i> نوع الجهاز (المنتج) <span class="text-danger">*</span></label>
+                        <input asp-for="DeviceName" class="form-control sys-input" placeholder="مثال: ثلاجة، غسالة، فرن كهربائي..." required />
+                        <span asp-validation-for="DeviceName" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <!-- 📌 الموعد المطلوب -->
+                    <div class="col-md-6">
+                        <label asp-for="ScheduledDate" class="form-label fw-bold text-dark"><i class="fa-regular fa-calendar-check text-primary me-1"></i> الموعد المطلوب للتنفيذ <span class="text-danger">*</span></label>
+                        <input asp-for="ScheduledDate" type="datetime-local" class="form-control sys-input" required />
+                    </div>
+
                     <div class="col-md-12">
                         <label asp-for="Address" class="form-label fw-bold text-dark"><i class="fa-solid fa-location-dot text-primary me-1"></i> العنوان بالتفصيل <span class="text-danger">*</span></label>
                         <input asp-for="Address" class="form-control sys-input" placeholder="المدينة، الحي، الشارع، رقم المبنى (مثال: الدمام - حي الشاطئ)" required />
@@ -41,10 +54,39 @@
 
                     <div class="col-md-12">
                         <label asp-for="LocationMapUrl" class="form-label fw-bold text-dark"><i class="fa-solid fa-map text-primary me-1"></i> رابط الموقع (Google Maps) <span class="text-muted small">- اختياري</span></label>
-                        <input asp-for="LocationMapUrl" class="form-control sys-input" placeholder="انسخ والصق رابط الموقع المرسل من العميل عبر الواتساب" dir="ltr" text-align="left" />
+                        <input asp-for="LocationMapUrl" class="form-control sys-input" placeholder="انسخ والصق رابط الموقع المرسل من العميل عبر الواتساب" dir="ltr" style="text-align: left;" />
                     </div>
 
-                    <div class="col-md-12">
+                    <div class="col-12 border-top pt-3 mt-4">
+                        <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-clipboard-list me-2"></i> تفاصيل الطلب والتسعير</h5>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Type" class="form-label fw-bold text-dark">نوع الطلب <span class="text-danger">*</span></label>
+                        <select asp-for="Type" class="form-select sys-input fw-bold bg-light">
+                            <option value="Maintenance">صيانة وإصلاح</option>
+                            <option value="NewInstallation">تركيب جديد</option>
+                            <option value="Warranty">ضمان (بدون رسوم)</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="TechnicianId" class="form-label fw-bold text-dark">تحديد الفني (المنفذ)</label>
+                        <select asp-for="TechnicianId" class="form-select sys-input fw-bold bg-light" asp-items="ViewBag.TechnicianId">
+                            <option value="">-- يحدد لاحقاً --</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <!-- 📌 تم تغيير المسمى إلى "رسوم فحص" -->
+                        <label asp-for="EstimatedPrice" class="form-label fw-bold text-dark">رسوم الفحص</label>
+                        <div class="input-group">
+                            <input asp-for="EstimatedPrice" type="number" step="0.01" class="form-control sys-input border-end-0 fw-bold" placeholder="0.00" />
+                            <span class="input-group-text bg-white border-2 border-start-0 border-secondary fw-bold text-muted" style="border-radius: 12px 0 0 12px;">ر.س</span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-12 mt-3">
                         <label asp-for="ProblemDescription" class="form-label fw-bold text-dark"><i class="fa-solid fa-triangle-exclamation text-primary me-1"></i> وصف المشكلة (الشكوى) <span class="text-danger">*</span></label>
                         <textarea asp-for="ProblemDescription" class="form-control sys-input" rows="4" placeholder="اكتب تفاصيل العطل بدقة لتسهيل المهمة على الفني (مثال: الغسالة لا تسحب الماء، الثلاجة لا تبرد من الأسفل)..." required></textarea>
                         <span asp-validation-for="ProblemDescription" class="text-danger small fw-bold"></span>
@@ -65,10 +107,10 @@
         <div class="sys-card bg-light border-0 h-100" style="border-right: 4px solid var(--sys-primary) !important;">
             <h5 class="fw-bold mb-4 text-primary"><i class="fa-solid fa-circle-info"></i> تعليمات الكول سنتر</h5>
             <ul class="list-unstyled lh-lg text-muted fw-bold">
-                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>تأكد من رقم الهاتف بإعادة قراءته للعميل لمنع أي خطأ.</span></li>
-                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>اطلب رابط الموقع الدقيق من العميل على الواتساب إن أمكن لسهولة وصول الفني.</span></li>
-                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>اسأل العميل عن نوع الجهاز وماركته لتقدير العطل وتوفير قطع الغيار مسبقاً.</span></li>
-                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>لا تنسَ إخبار العميل بتكلفة الفحص المبدئية والرسوم التقريبية.</span></li>
+                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>تأكد من <b>(نوع الجهاز)</b> والماركة لتقدير العطل وتوفير القطع المسبقة.</span></li>
+                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>حدد <b>(الموعد المطلوب)</b> بناءً على رغبة العميل ليتمكن الفني من جدولته.</span></li>
+                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>لا تنسَ إخبار العميل بـ <b>(رسوم الفحص)</b> المبدئية.</span></li>
+                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>إذا كان الطلب (ضمان) فلا تضع مبلغاً لرسوم الفحص.</span></li>
             </ul>
         </div>
     </div>
@@ -91,4 +133,8 @@
             background-color: #fff;
             outline: none;
         }
+
+    .input-group .sys-input {
+        border-radius: 0 12px 12px 0;
+    }
 </style>

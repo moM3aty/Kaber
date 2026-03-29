@@ -8,11 +8,24 @@
     string waNumber = "966" + phone;
     decimal partsTotal = Model.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
 
+    // حساب الرسوم المطبقة بناء على اختيار الفني
+    decimal appliedFee = Model.IsFeeApplied ? Model.EstimatedPrice : 0;
+
     string waMessage = $"مرحباً *{Model.CustomerName}*،\n\n" +
                        $"إليك تفاصيل فاتورة الصيانة الخاصة بك من *(شركة كابر)*:\n" +
                        $"▫️ *رقم الطلب:* #{Model.OrderId}\n" +
-                       $"▫️ *تكلفة الفحص / أجور اليد:* {Model.EstimatedPrice} ريال\n" +
-                       $"▫️ *إجمالي قطع الغيار:* {partsTotal} ريال\n";
+                       $"▫️ *المنتج:* {Model.DeviceName}\n";
+
+    if (Model.IsFeeApplied)
+    {
+        waMessage += $"▫️ *رسوم الفحص:* {Model.EstimatedPrice} ريال\n";
+    }
+    else
+    {
+        waMessage += $"▫️ *رسوم الفحص:* مجاناً (تم إسقاطها)\n";
+    }
+
+    waMessage += $"▫️ *إجمالي قطع الغيار:* {partsTotal} ريال\n";
 
     if (Model.AdvancePayment > 0)
     {
@@ -44,15 +57,12 @@
 <div class="sys-card mb-4 d-print-none text-center py-4">
     <h5 class="fw-bold mb-4 text-secondary">مسار وتتبع الطلب</h5>
     <div class="d-flex justify-content-between align-items-center position-relative w-75 mx-auto">
-        <!-- الخط الخلفي -->
         <div class="position-absolute w-100" style="height: 4px; background: var(--sys-border); top: 50%; transform: translateY(-50%); z-index: 1;"></div>
-        <!-- الخط الملون بناءً على الحالة -->
         @{
             int progress = Model.Status switch { KaberSystem.Models.OrderStatus.New => 0, KaberSystem.Models.OrderStatus.Assigned => 25, KaberSystem.Models.OrderStatus.Confirmed => 50, KaberSystem.Models.OrderStatus.InProgress => 75, KaberSystem.Models.OrderStatus.Completed => 100, _ => 0 };
         }
         <div class="position-absolute" style="height: 4px; background: var(--sys-primary); top: 50%; transform: translateY(-50%); z-index: 2; width: @progress%; transition: 1s ease;"></div>
 
-        <!-- النقاط -->
         <div class="position-relative z-3 bg-white rounded-circle p-1 @(progress >= 0 ? "text-primary" : "text-muted")">
             <i class="fa-solid fa-circle-dot fs-3"></i>
             <div class="position-absolute top-100 start-50 translate-middle-x mt-2 fw-bold small">جديد</div>
@@ -81,7 +91,6 @@
     <div class="col-lg-8">
         <div class="sys-card h-100 printable-card">
 
-            <!-- ترويسة الطباعة (تظهر فقط عند الطباعة) -->
             <div class="d-none d-print-block text-center border-bottom pb-4 mb-4">
                 <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-bolt text-primary me-2"></i> شركة كابر للصيانة</h2>
                 <h4 class="text-muted fw-bold mb-3">فاتورة صيانة وقطع غيار</h4>
@@ -107,6 +116,16 @@
                     <a href="https://wa.me/@waNumber" target="_blank" class="text-success ms-2 d-print-none"><i class="fa-brands fa-whatsapp fs-4"></i></a>
                 </div>
             </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4 text-muted fw-bold"><i class="fa-solid fa-tv me-1"></i> نوع الجهاز/المنتج:</div>
+                <div class="col-md-8 fw-bold fs-5 text-primary">@Model.DeviceName</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-4 text-muted fw-bold"><i class="fa-regular fa-calendar-check me-1"></i> الموعد المطلوب للتنفيذ:</div>
+                <div class="col-md-8 fw-bold text-danger">@(Model.ScheduledDate?.ToString("yyyy-MM-dd hh:mm tt") ?? "غير محدد")</div>
+            </div>
+
             <div class="row mb-3">
                 <div class="col-md-4 text-muted fw-bold"><i class="fa-solid fa-location-dot me-1"></i> العنوان:</div>
                 <div class="col-md-8 fw-bold text-dark">@Model.Address</div>
@@ -120,36 +139,61 @@
                     </div>
                 </div>
             }
-            <div class="row mb-4 d-print-none">
-                <div class="col-md-4 text-muted fw-bold"><i class="fa-regular fa-clock me-1"></i> تاريخ ووقت الطلب:</div>
-                <div class="col-md-8 fw-bold text-dark">@Model.CreatedAt.ToString("yyyy-MM-dd hh:mm tt")</div>
-            </div>
 
-            <div class="p-4 bg-light rounded-4 border-start border-4 border-danger print-no-border">
+            <div class="p-4 bg-light rounded-4 border-start border-4 border-danger print-no-border mb-4">
                 <h6 class="fw-bold text-danger mb-2"><i class="fa-solid fa-triangle-exclamation"></i> وصف المشكلة (الشكوى):</h6>
                 <p class="mb-0 fw-bold text-dark fs-6 lh-lg">@Model.ProblemDescription</p>
             </div>
+
+            <!-- 📌 تقرير الفني يظهر هنا إذا تمت كتابته -->
+            @if (!string.IsNullOrEmpty(Model.TechnicianNotes))
+            {
+                <div class="p-4 bg-success bg-opacity-10 rounded-4 border-start border-4 border-success print-no-border">
+                    <h6 class="fw-bold text-success mb-2"><i class="fa-solid fa-clipboard-check"></i> التقرير الفني (ما تم إنجازه):</h6>
+                    <p class="mb-0 fw-bold text-dark fs-6 lh-lg">@Model.TechnicianNotes</p>
+                </div>
+            }
+
         </div>
     </div>
 
-    <!-- حالة الطلب والفني -->
+    <!-- حالة الطلب والفني والتحديث -->
     <div class="col-lg-4">
         <div class="sys-card h-100 d-print-none">
             <h4 class="fw-bold mb-4 text-primary border-bottom pb-3"><i class="fa-solid fa-bars-progress me-2"></i> التحكم بالحالة</h4>
 
             <form asp-action="UpdateStatus" method="post" class="mb-4 bg-light p-3 rounded-3 border">
                 <input type="hidden" name="id" value="@Model.OrderId" />
-                <label class="fw-bold mb-2 text-dark small">تحديث حالة الطلب يدوياً:</label>
-                <div class="d-flex gap-2">
+
+                <div class="mb-3">
+                    <label class="fw-bold mb-2 text-dark small">تحديث حالة الطلب يدوياً:</label>
                     <select name="newStatus" class="form-select fw-bold border-secondary">
                         <option value="New" selected="@(Model.Status == KaberSystem.Models.OrderStatus.New)">جديد</option>
                         <option value="Assigned" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Assigned)">تم التعيين</option>
                         <option value="Confirmed" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Confirmed)">مؤكد</option>
                         <option value="InProgress" selected="@(Model.Status == KaberSystem.Models.OrderStatus.InProgress)">قيد التنفيذ</option>
-                        <option value="Completed" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Completed)">مكتمل</option>
+                        <option value="Completed" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Completed)">مكتمل (ترحيل للحسابات)</option>
                         <option value="Cancelled" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Cancelled)">ملغي</option>
                     </select>
-                    <button type="submit" class="btn btn-primary fw-bold"><i class="fa-solid fa-save"></i> تحديث</button>
+                </div>
+
+                <!-- 📌 حقل تطبيق الرسوم (1 أو 0) -->
+                <div class="mb-3">
+                    <label class="fw-bold mb-2 text-dark small">تطبيق رسوم الفحص: (1 = نعم، 0 = لا)</label>
+                    <select name="isFeeApplied" class="form-select fw-bold border-secondary text-primary">
+                        <option value="1" selected="@(Model.IsFeeApplied)">1 - إضافة الرسوم للفاتورة (@Model.EstimatedPrice ريال)</option>
+                        <option value="0" selected="@(!Model.IsFeeApplied)">0 - إسقاط الرسوم (مجانًا)</option>
+                    </select>
+                </div>
+
+                <!-- 📌 حقل تقرير الفني -->
+                <div class="mb-3">
+                    <label class="fw-bold mb-2 text-dark small">ملاحظات وتقرير الفني:</label>
+                    <textarea name="technicianNotes" class="form-control fw-bold border-secondary" rows="2" placeholder="ماذا تم في الموعد؟...">@Model.TechnicianNotes</textarea>
+                </div>
+
+                <div class="d-grid mt-2">
+                    <button type="submit" class="btn btn-primary fw-bold py-2"><i class="fa-solid fa-save"></i> حفظ وتحديث الطلب</button>
                 </div>
             </form>
 
@@ -228,10 +272,20 @@
                 <div class="col-md-5 print-col-full">
                     <h6 class="fw-bold text-dark mb-3"><i class="fa-solid fa-receipt text-primary d-print-none"></i> الملخص المالي</h6>
                     <div class="p-4 border rounded-4 bg-light shadow-sm print-no-bg">
+
                         <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
-                            <span class="fw-bold text-muted">تكلفة الفحص / أجور اليد:</span>
-                            <span class="fw-bold text-dark fs-5">@Model.EstimatedPrice ريال</span>
+                            <span class="fw-bold text-muted">رسوم الفحص / الزيارة:</span>
+                            @if (Model.IsFeeApplied)
+                            {
+                                <span class="fw-bold text-dark fs-5">@Model.EstimatedPrice ريال</span>
+                            }
+                            else
+                            {
+                                <span class="fw-bold text-danger fs-5 text-decoration-line-through me-2">@Model.EstimatedPrice</span>
+                                <span class="fw-bold text-success fs-5">0.00 ريال (معفاة)</span>
+                            }
                         </div>
+
                         <div class="d-flex justify-content-between mb-3 border-bottom pb-3">
                             <span class="fw-bold text-muted">إجمالي قطع الغيار:</span>
                             <span class="fw-bold text-dark fs-5">@partsTotal ريال</span>
@@ -335,77 +389,74 @@
 
     /* تنسيقات الطباعة الاحترافية للفاتورة */
     @@media print {
-        body
+        body {
+            background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
 
-    {
-        background: white !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
+        .sys-sidebar, .sys-header, .d-print-none, #backToTop, .whatsapp-btn {
+            display: none !important;
+        }
 
-    .sys-sidebar, .sys-header, .d-print-none, #backToTop, .whatsapp-btn {
-        display: none !important;
-    }
+        .sys-main {
+            margin: 0 !important;
+            padding: 15px !important;
+            width: 100% !important;
+        }
 
-    .sys-main {
-        margin: 0 !important;
-        padding: 15px !important;
-        width: 100% !important;
-    }
+        .sys-content {
+            padding: 0 !important;
+        }
 
-    .sys-content {
-        padding: 0 !important;
-    }
+        .printable-card {
+            box-shadow: none !important;
+            border: 2px solid #000 !important;
+            border-radius: 10px !important;
+            padding: 30px !important;
+            break-inside: avoid;
+            width: 100%;
+        }
 
-    .printable-card {
-        box-shadow: none !important;
-        border: 2px solid #000 !important;
-        border-radius: 10px !important;
-        padding: 30px !important;
-        break-inside: avoid;
-        width: 100%;
-    }
+        .print-no-border {
+            border: none !important;
+            border-right: 4px solid #000 !important; /* للغة العربية الاتجاه يمين */
+        }
 
-    .print-no-border {
-        border: none !important;
-        border-right: 4px solid #000 !important; /* للغة العربية الاتجاه يمين */
-    }
+        .print-no-bg {
+            background-color: transparent !important;
+        }
 
-    .print-no-bg {
-        background-color: transparent !important;
-    }
+        .print-row-stack {
+            display: flex !important;
+            flex-direction: column !important;
+        }
 
-    .print-row-stack {
-        display: flex !important;
-        flex-direction: column !important;
-    }
+        .print-col-full {
+            width: 100% !important;
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
+            margin-bottom: 20px;
+        }
 
-    .print-col-full {
-        width: 100% !important;
-        flex: 0 0 100% !important;
-        max-width: 100% !important;
-        margin-bottom: 20px;
-    }
+        .print-table th, .print-table td {
+            border: 1px solid #000 !important;
+            color: #000 !important;
+        }
 
-    .print-table th, .print-table td {
-        border: 1px solid #000 !important;
-        color: #000 !important;
-    }
+        * {
+            color: #000 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
 
-    * {
-        color: #000 !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
+        .text-success, .text-danger, .text-primary {
+            color: #000 !important;
+        }
 
-    .text-success, .text-danger, .text-primary {
-        color: #000 !important;
-    }
-
-    .badge {
-        border: 1px solid #000 !important;
-        color: #000 !important;
-    }
-
+        .badge {
+            border: 1px solid #000 !important;
+            color: #000 !important;
+        }
     }
 </style>

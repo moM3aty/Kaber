@@ -1,0 +1,116 @@
+﻿@model KaberSystem.Models.SystemUser
+@{
+    ViewData["Title"] = "تعديل صلاحيات المستخدم";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title text-primary">تعديل بيانات وصلاحيات المستخدم</h1>
+        <p class="sys-page-desc">تعديل معلومات حساب الدخول أو تغيير مستوى صلاحية الوصول للنظام</p>
+    </div>
+    <a href="/Users/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
+        <i class="fa-solid fa-arrow-right"></i> عودة للقائمة
+    </a>
+</div>
+
+<div class="row justify-content-center mt-3">
+    <div class="col-lg-6">
+        <div class="sys-card border-top border-4 border-warning shadow-sm h-100">
+
+            <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+                <div class="bg-warning bg-opacity-10 text-warning rounded-circle d-flex justify-content-center align-items-center me-3" style="width: 50px; height: 50px;">
+                    <i class="fa-solid fa-user-pen fs-4"></i>
+                </div>
+                <h4 class="fw-bold m-0 text-dark">بيانات الحساب: @Model.Username</h4>
+            </div>
+
+            @if (ViewBag.Error != null)
+            {
+                <div class="alert alert-danger fw-bold">
+                    <i class="fa-solid fa-triangle-exclamation me-2"></i> @ViewBag.Error
+                </div>
+            }
+
+            <form asp-action="Edit" method="post">
+                <input type="hidden" asp-for="UserId" />
+                <input type="hidden" asp-for="CreatedAt" />
+
+                <div class="row g-4">
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">اسم المستخدم (Login Name) <span class="text-danger">*</span></label>
+                        <input asp-for="Username" class="form-control sys-input" required />
+                        <span asp-validation-for="Username" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">كلمة المرور <span class="text-danger">*</span></label>
+                        <input asp-for="Password" type="text" class="form-control sys-input" required />
+                        <span asp-validation-for="Password" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">صلاحية الوصول (Role) <span class="text-danger">*</span></label>
+                        <select asp-for="Role" class="form-select sys-input fw-bold bg-light" required>
+                            <option value="">-- اختر الصلاحية --</option>
+                            <option value="Admin">مدير النظام (Admin)</option>
+                            <option value="CallCenter">خدمة العملاء (Call Center)</option>
+                            <option value="Technician">فني صيانة (Technician)</option>
+                            <option value="Accounting">محاسب (Accounting)</option>
+                            <option value="Store">أمين مخزن (Store)</option>
+                            <option value="PurchasingManager">مدير مشتريات</option>
+                            <option value="PurchasingRep">مندوب مشتريات</option>
+                        </select>
+                        <span asp-validation-for="Role" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <div class="col-12 mt-4 text-end border-top pt-4">
+                        <button type="submit" class="sys-btn btn-warning text-dark w-100 justify-content-center py-3 fs-5 shadow-sm fw-bold">
+                            <i class="fa-solid fa-save me-2"></i> حفظ التعديلات
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- قسم التعليمات الجانبي -->
+    <div class="col-lg-4">
+        <div class="sys-card bg-light border-0 h-100" style="border-right: 4px solid var(--sys-warning) !important;">
+            <h5 class="fw-bold mb-4 text-dark"><i class="fa-solid fa-circle-info text-warning me-2"></i> ملاحظات الإدارة</h5>
+            <ul class="list-unstyled lh-lg text-muted fw-bold">
+                <li class="mb-3 d-flex align-items-start">
+                    <i class="fa-solid fa-shield-halved text-warning ms-2 mt-1 fs-5"></i>
+                    <span>تغيير الصلاحية سيؤدي إلى تغيير الشاشات التي يمكن لهذا المستخدم الوصول إليها.</span>
+                </li>
+                <li class="mb-3 d-flex align-items-start">
+                    <i class="fa-solid fa-key text-warning ms-2 mt-1 fs-5"></i>
+                    <span>يمكنك رؤية كلمة المرور القديمة وتعديلها في حال فقدان الموظف لبياناته.</span>
+                </li>
+                <li class="mb-3 d-flex align-items-start">
+                    <i class="fa-solid fa-triangle-exclamation text-danger ms-2 mt-1 fs-5"></i>
+                    <span>لا تقم بتعديل صلاحية حساب (Admin) الأساسي لتجنب فقدان السيطرة.</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sys-input {
+        border: 2px solid var(--sys-border);
+        padding: 12px 18px;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s;
+        background-color: var(--sys-bg);
+        color: var(--sys-text-main);
+    }
+
+        .sys-input:focus {
+            border-color: var(--sys-primary);
+            box-shadow: 0 0 0 0.25rem rgba(241, 149, 11, 0.15);
+            background-color: #fff;
+            outline: none;
+        }
+</style>

@@ -102,7 +102,15 @@
                         </td>
                     </tr>
                 }
-               
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="py-5 text-muted text-center">
+                            <i class="fa-solid fa-receipt fs-1 mb-3 opacity-50"></i>
+                            <h5 class="fw-bold">لا توجد فواتير مصدرة حالياً</h5>
+                        </td>
+                    </tr>
+                }
             </tbody>
         </table>
     </div>

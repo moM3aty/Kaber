@@ -20,8 +20,8 @@ namespace KaberSystem.Models
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<DamagedPart> DamagedParts { get; set; }
         public DbSet<SystemUser> SystemUsers { get; set; }
-
     }
+
     public class SystemUser
     {
         [Key]
@@ -29,11 +29,12 @@ namespace KaberSystem.Models
         [Required(ErrorMessage = "اسم المستخدم مطلوب")]
         public string Username { get; set; }
         [Required(ErrorMessage = "كلمة المرور مطلوبة")]
-        public string Password { get; set; } // يفضل تشفيرها في المشاريع الحقيقية
+        public string Password { get; set; }
         [Required(ErrorMessage = "الصلاحية مطلوبة")]
-        public string Role { get; set; } // Admin, CallCenter, Technician, etc.
+        public string Role { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
+
     public class Order
     {
         [Key]
@@ -45,11 +46,18 @@ namespace KaberSystem.Models
         [Required(ErrorMessage = "العنوان مطلوب")]
         public string Address { get; set; }
 
-        // تم إضافة ? ليصبح الحقل اختيارياً ولا يسبب خطأ
         public string? LocationMapUrl { get; set; }
+
+        [Required(ErrorMessage = "نوع الجهاز مطلوب")]
+        public string DeviceName { get; set; }
 
         [Required(ErrorMessage = "وصف المشكلة مطلوب")]
         public string ProblemDescription { get; set; }
+
+        public string? TechnicianNotes { get; set; }
+        public bool IsFeeApplied { get; set; } = true;
+
+        public OrderType Type { get; set; } = OrderType.Maintenance;
 
         public OrderStatus Status { get; set; } = OrderStatus.New;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
@@ -57,16 +65,17 @@ namespace KaberSystem.Models
 
         public int? TechnicianId { get; set; }
         [ForeignKey("TechnicianId")]
-        public Technician? Technician { get; set; } // إضافة ? لمنع أخطاء الـ Validation
+        public Technician? Technician { get; set; }
 
         public decimal EstimatedPrice { get; set; }
         public decimal AdvancePayment { get; set; }
         public decimal FinalPrice { get; set; }
 
-        public ICollection<Invoice>? Invoices { get; set; } // إضافة ?
-        public ICollection<OrderSparePart>? UsedSpareParts { get; set; } // إضافة ?
+        public ICollection<Invoice>? Invoices { get; set; }
+        public ICollection<OrderSparePart>? UsedSpareParts { get; set; }
     }
 
+    public enum OrderType { Maintenance, NewInstallation, Warranty }
     public enum OrderStatus { New, Assigned, Confirmed, InProgress, Completed, Cancelled }
 
     public class Invoice
@@ -110,6 +119,11 @@ namespace KaberSystem.Models
         public decimal PurchasePrice { get; set; }
         public decimal SellingPrice { get; set; }
         public int MainStockQuantity { get; set; }
+
+        // 📌 بيانات المورد
+        public string? SupplierName { get; set; }
+        public string? SupplierPhone { get; set; }
+        public string? SupplierLocation { get; set; }
     }
 
     public class TechnicianStock
@@ -148,6 +162,11 @@ namespace KaberSystem.Models
         public DateTime PurchaseDate { get; set; }
         public bool IsReceivedByStore { get; set; } = false;
         public bool IsPricedByManager { get; set; } = false;
+
+        // 📌 بيانات المورد في المشتريات
+        public string? SupplierName { get; set; }
+        public string? SupplierPhone { get; set; }
+        public string? SupplierLocation { get; set; }
     }
 
     public class Expense

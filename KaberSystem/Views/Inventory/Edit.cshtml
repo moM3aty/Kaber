@@ -28,38 +28,48 @@
                 <input type="hidden" asp-for="PartId" />
                 <div class="row g-4">
                     <div class="col-md-12">
-                        <label asp-for="Name" class="form-label fw-bold text-dark">اسم القطعة <span class="text-danger">*</span></label>
-                        <input asp-for="Name" class="form-control sys-input" required />
-                    </div>
+                        <!-- الحماية البصرية للكمية -->
+                        <div class="col-md-12">
+                            <label asp-for="MainStockQuantity" class="form-label fw-bold text-dark">الكمية الحالية بالمخزن (تعديل الجرد)</label>
 
-                    <div class="col-md-6">
-                        <label asp-for="PurchasePrice" class="form-label fw-bold text-dark">سعر الشراء (التكلفة) <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control sys-input border-end-0" required />
-                            <span class="input-group-text bg-light border-start-0 text-muted fw-bold">ر.س</span>
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <input asp-for="MainStockQuantity" type="number" class="form-control sys-input border-primary" />
+                                <small class="text-danger fw-bold mt-2 d-block"><i class="fa-solid fa-triangle-exclamation"></i> أنت تمتلك صلاحية (المدير) للتعديل اليدوي على الكميات.</small>
+                            }
+                            else
+                            {
+                                <input asp-for="MainStockQuantity" type="number" class="form-control sys-input bg-light text-muted" readonly style="pointer-events: none;" />
+                                <small class="text-danger fw-bold d-block mt-2"><i class="fa-solid fa-lock me-1"></i> غير مصرح لك بتعديل الكمية يدوياً. الكمية تتحدث تلقائياً عبر فواتير المشتريات.</small>
+                            }
+                        </div>
+
+                        <!-- 📌 إضافة بيانات المورد -->
+                        <div class="col-12 border-top pt-3 mt-4">
+                            <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-truck-field me-2"></i> بيانات المورد (اختياري)</h5>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="SupplierName" class="form-label fw-bold text-dark">اسم المورد / الشركة</label>
+                            <input asp-for="SupplierName" class="form-control sys-input" placeholder="اسم مورد هذه القطعة" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="SupplierPhone" class="form-label fw-bold text-dark">رقم الجوال</label>
+                            <input asp-for="SupplierPhone" class="form-control sys-input" dir="ltr" placeholder="05XXXXXXXX" style="text-align: right;" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label asp-for="SupplierLocation" class="form-label fw-bold text-dark">موقع المورد (العنوان)</label>
+                            <input asp-for="SupplierLocation" class="form-control sys-input" placeholder="المدينة، الشارع، أو رابط الخريطة" />
+                        </div>
+
+                        <div class="col-12 mt-5 text-end border-top pt-4">
+                            <button type="submit" class="sys-btn sys-btn-warning text-dark px-5 py-3 fs-5 shadow-sm fw-bold">
+                                <i class="fa-solid fa-check-double me-2"></i> حفظ التعديلات
+                            </button>
                         </div>
                     </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="SellingPrice" class="form-label fw-bold text-dark">سعر البيع (للعميل) <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <input asp-for="SellingPrice" type="number" step="0.01" class="form-control sys-input border-end-0" required />
-                            <span class="input-group-text bg-light border-start-0 text-muted fw-bold">ر.س</span>
-                        </div>
-                    </div>
-
-                    <div class="col-md-12">
-                        <label asp-for="MainStockQuantity" class="form-label fw-bold text-dark">الكمية الحالية بالمخزن (تعديل الجرد)</label>
-                        <input asp-for="MainStockQuantity" type="number" class="form-control sys-input" />
-                        <small class="text-danger fw-bold mt-2 d-block"><i class="fa-solid fa-triangle-exclamation"></i> احذر عند تعديل الكمية يدوياً! يُفضل الاعتماد على دورة المشتريات والاستهلاك.</small>
-                    </div>
-
-                    <div class="col-12 mt-5 text-end border-top pt-4">
-                        <button type="submit" class="sys-btn sys-btn-warning text-dark px-5 py-3 fs-5 shadow-sm">
-                            <i class="fa-solid fa-check-double me-2"></i> حفظ التعديلات
-                        </button>
-                    </div>
-                </div>
             </form>
         </div>
     </div>

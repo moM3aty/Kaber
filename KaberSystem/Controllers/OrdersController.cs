@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace KaberSystem.Controllers
 {
-    [Authorize] // حماية كاملة للمتحكم بناءً على تسجيل الدخول
+    [Authorize]
     public class OrdersController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -19,7 +19,6 @@ namespace KaberSystem.Controllers
             _context = context;
         }
 
-        // عرض جميع الطلبات
         public async Task<IActionResult> Index()
         {
             var orders = await _context.Orders
@@ -29,10 +28,10 @@ namespace KaberSystem.Controllers
             return View(orders);
         }
 
-        // شاشة إنشاء طلب جديد (مخصصة للكول سنتر والإدارة)
         [Authorize(Roles = "Admin,CallCenter")]
-        public IActionResult Create()
+        public async Task<IActionResult> Create()
         {
+            ViewData["TechnicianId"] = new SelectList(await _context.Technicians.Where(t => t.IsAvailable).ToListAsync(), "TechnicianId", "Name");
             return View();
         }
 
@@ -43,18 +42,32 @@ namespace KaberSystem.Controllers
         {
             if (ModelState.IsValid)
             {
-                order.Status = OrderStatus.New;
+                order.Status = order.TechnicianId.HasValue ? OrderStatus.Assigned : OrderStatus.New;
                 order.CreatedAt = DateTime.Now;
                 _context.Add(order);
                 await _context.SaveChangesAsync();
 
+                if (order.EstimatedPrice > 0)
+                {
+                    var invoice = new Invoice
+                    {
+                        OrderId = order.OrderId,
+                        Amount = order.EstimatedPrice,
+                        Type = InvoiceType.Advance,
+                        Status = InvoiceStatus.NotReceived,
+                        IssuedAt = DateTime.Now
+                    };
+                    _context.Invoices.Add(invoice);
+                    await _context.SaveChangesAsync();
+                }
+
                 TempData["SuccessMessage"] = "تم إنشاء الطلب بنجاح!";
                 return RedirectToAction(nameof(Index));
             }
+            ViewData["TechnicianId"] = new SelectList(await _context.Technicians.Where(t => t.IsAvailable).ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
             return View(order);
         }
 
-        // شاشة تعيين فني للطلب المفتوح
         [Authorize(Roles = "Admin,CallCenter")]
         public async Task<IActionResult> Assign(int? id)
         {
@@ -84,7 +97,6 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // شاشة تأكيد الطلب وتحديد السعر المبدئي
         [Authorize(Roles = "Admin,CallCenter")]
         public async Task<IActionResult> Confirm(int? id)
         {
@@ -102,13 +114,11 @@ namespace KaberSystem.Controllers
             var order = await _context.Orders.FindAsync(id);
             if (order != null)
             {
-                // تحديث بيانات الطلب
                 order.ScheduledDate = scheduledDate;
                 order.EstimatedPrice = estimatedPrice;
                 order.AdvancePayment = advancePayment;
                 order.Status = OrderStatus.Confirmed;
 
-                // إنشاء الفاتورة المبدئية في الحسابات
                 var invoice = new Invoice
                 {
                     OrderId = order.OrderId,
@@ -127,7 +137,6 @@ namespace KaberSystem.Controllers
             return RedirectToAction("Details", new { id = order?.OrderId });
         }
 
-        // عرض تفاصيل الطلب بالكامل
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return NotFound();
@@ -145,22 +154,60 @@ namespace KaberSystem.Controllers
             return View(order);
         }
 
-        // تحديث حالة الطلب يدوياً
+        // 📌 التحديث الشامل: تحديث الحالة، التقرير، رسوم الفحص وترحيل الحسابات
         [HttpPost]
-        public async Task<IActionResult> UpdateStatus(int id, OrderStatus newStatus)
+        public async Task<IActionResult> UpdateStatus(int id, OrderStatus newStatus, string technicianNotes, int isFeeApplied)
         {
-            var order = await _context.Orders.FindAsync(id);
+            var order = await _context.Orders
+                .Include(o => o.UsedSpareParts)
+                .Include(o => o.Invoices)
+                .FirstOrDefaultAsync(o => o.OrderId == id);
+
             if (order != null)
             {
                 order.Status = newStatus;
+                order.TechnicianNotes = technicianNotes;
+                order.IsFeeApplied = (isFeeApplied == 1);
+
+                // إعادة حساب السعر النهائي بناءً على خيار (رسوم الفحص)
+                decimal partsTotal = order.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
+                decimal appliedFee = order.IsFeeApplied ? order.EstimatedPrice : 0;
+
+                order.FinalPrice = appliedFee + partsTotal - order.AdvancePayment;
+
+                // التسميع في الحسابات: إذا أصبح الطلب (مكتمل)
+                if (newStatus == OrderStatus.Completed)
+                {
+                    var finalInvoice = order.Invoices?.FirstOrDefault(i => i.Type == InvoiceType.Final);
+
+                    // إذا لم تكن هناك فاتورة نهائية، قم بإنشائها لترحل للحسابات
+                    if (finalInvoice == null)
+                    {
+                        var invoice = new Invoice
+                        {
+                            OrderId = order.OrderId,
+                            Amount = order.FinalPrice > 0 ? order.FinalPrice : 0,
+                            Type = InvoiceType.Final,
+                            Status = InvoiceStatus.NotReceived, // تذهب للحسابات بانتظار التحصيل
+                            IssuedAt = DateTime.Now
+                        };
+                        _context.Invoices.Add(invoice);
+                    }
+                    else
+                    {
+                        // تحديث المبلغ إذا تم تعديل الطلب المكتمل مسبقاً
+                        finalInvoice.Amount = order.FinalPrice > 0 ? order.FinalPrice : 0;
+                        _context.Update(finalInvoice);
+                    }
+                }
+
                 _context.Update(order);
                 await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم تحديث حالة الطلب بنجاح!";
+                TempData["SuccessMessage"] = "تم تحديث الطلب، وتطبيق الحسابات بنجاح!";
             }
             return RedirectToAction(nameof(Details), new { id = id });
         }
 
-        // إضافة قطعة غيار للطلب وخصمها من عهدة الفني
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,Technician,CallCenter")]
@@ -175,19 +222,16 @@ namespace KaberSystem.Controllers
 
             if (order != null && part != null && order.Technician != null)
             {
-                // استخدام ? لتفادي أخطاء الـ Null
                 var techStock = order.Technician.Inventory?.FirstOrDefault(i => i.PartId == partId);
 
                 if (techStock != null && techStock.Quantity >= quantity)
                 {
-                    // 1. خصم الكمية من عهدة الفني
                     techStock.Quantity -= quantity;
                     if (techStock.Quantity == 0)
                         _context.TechnicianStocks.Remove(techStock);
                     else
                         _context.Update(techStock);
 
-                    // 2. إضافة القطعة للطلب
                     var usedPart = new OrderSparePart
                     {
                         OrderId = orderId,
@@ -197,8 +241,9 @@ namespace KaberSystem.Controllers
                     };
                     _context.UsedSpareParts.Add(usedPart);
 
-                    // 3. تحديث السعر النهائي للطلب
-                    order.FinalPrice += (part.SellingPrice * quantity);
+                    // تحديث السعر النهائي للطلب
+                    decimal appliedFee = order.IsFeeApplied ? order.EstimatedPrice : 0;
+                    order.FinalPrice = appliedFee + (order.UsedSpareParts.Sum(p => p.QuantityUsed * p.SellingPriceAtTime)) + (part.SellingPrice * quantity) - order.AdvancePayment;
                     _context.Update(order);
 
                     await _context.SaveChangesAsync();
@@ -213,7 +258,6 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Details), new { id = orderId });
         }
 
-        // دالة عرض الفاتورة للعميل لطباعتها
         public async Task<IActionResult> PrintInvoice(int? id)
         {
             if (id == null) return NotFound();
@@ -228,6 +272,7 @@ namespace KaberSystem.Controllers
 
             return View(order);
         }
+
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Edit(int? id)
         {
@@ -251,6 +296,7 @@ namespace KaberSystem.Controllers
                 TempData["SuccessMessage"] = "تم تعديل بيانات الطلب بنجاح!";
                 return RedirectToAction(nameof(Index));
             }
+            ViewData["TechnicianId"] = new SelectList(await _context.Technicians.ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
             return View(order);
         }
 
@@ -267,5 +313,4 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
     }
-
 }

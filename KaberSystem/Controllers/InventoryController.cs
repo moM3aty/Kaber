@@ -1,13 +1,15 @@
-﻿using KaberSystem.Models;
-using Microsoft.AspNetCore.Authorization;
+﻿using System;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
-using System.Threading.Tasks;
+using KaberSystem.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace KaberSystem.Controllers
 {
+    [Authorize(Roles = "Admin,Store")] // 📌 السماح للأدمن وأمين المخزن بالوصول
     public class InventoryController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -32,7 +34,8 @@ namespace KaberSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("Name,PurchasePrice,SellingPrice,MainStockQuantity")] SparePart sparePart)
+        // 📌 تم إضافة حقول المورد هنا
+        public async Task<IActionResult> Create([Bind("Name,PurchasePrice,SellingPrice,MainStockQuantity,SupplierName,SupplierPhone,SupplierLocation")] SparePart sparePart)
         {
             if (ModelState.IsValid)
             {
@@ -46,7 +49,6 @@ namespace KaberSystem.Controllers
         }
 
         // 📌 شاشة تعديل الصنف
-        [Authorize(Roles = "Admin,Store")]
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -57,8 +59,8 @@ namespace KaberSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin,Store")]
-        public async Task<IActionResult> Edit(int id, [Bind("PartId,Name,PurchasePrice,SellingPrice,MainStockQuantity")] SparePart sparePart)
+        // 📌 تم إضافة حقول المورد هنا
+        public async Task<IActionResult> Edit(int id, [Bind("PartId,Name,PurchasePrice,SellingPrice,MainStockQuantity,SupplierName,SupplierPhone,SupplierLocation")] SparePart sparePart)
         {
             if (id != sparePart.PartId) return NotFound();
 
@@ -66,7 +68,27 @@ namespace KaberSystem.Controllers
             {
                 try
                 {
-                    _context.Update(sparePart);
+                    // جلب الصنف القديم من قاعدة البيانات لمنع التلاعب
+                    var existingPart = await _context.SpareParts.FindAsync(id);
+                    if (existingPart == null) return NotFound();
+
+                    // تحديث البيانات الأساسية (مسموح للكل: أدمن وأمين مخزن)
+                    existingPart.Name = sparePart.Name;
+                    existingPart.PurchasePrice = sparePart.PurchasePrice;
+                    existingPart.SellingPrice = sparePart.SellingPrice;
+
+                    // 📌 تحديث بيانات المورد
+                    existingPart.SupplierName = sparePart.SupplierName;
+                    existingPart.SupplierPhone = sparePart.SupplierPhone;
+                    existingPart.SupplierLocation = sparePart.SupplierLocation;
+
+                    // الحماية الأمنية (Backend): تعديل الكمية مسموح لمدير النظام (Admin) فقط
+                    if (User.IsInRole("Admin"))
+                    {
+                        existingPart.MainStockQuantity = sparePart.MainStockQuantity;
+                    }
+
+                    _context.Update(existingPart);
                     await _context.SaveChangesAsync();
                     TempData["SuccessMessage"] = "تم تحديث بيانات الصنف بنجاح!";
                 }
@@ -81,7 +103,6 @@ namespace KaberSystem.Controllers
         }
 
         // 📌 سجل التوالف
-        [Authorize(Roles = "Admin,Store")]
         public async Task<IActionResult> DamagedParts()
         {
             var damaged = await _context.DamagedParts
@@ -92,7 +113,6 @@ namespace KaberSystem.Controllers
         }
 
         // 📌 شاشة تسجيل تالف جديد
-        [Authorize(Roles = "Admin,Store")]
         public async Task<IActionResult> RecordDamage()
         {
             ViewData["PartId"] = new SelectList(await _context.SpareParts.Where(p => p.MainStockQuantity > 0).ToListAsync(), "PartId", "Name");
@@ -101,7 +121,6 @@ namespace KaberSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin,Store")]
         public async Task<IActionResult> RecordDamage([Bind("PartId,Quantity,Reason")] DamagedPart damagedPart)
         {
             var part = await _context.SpareParts.FindAsync(damagedPart.PartId);
@@ -123,6 +142,8 @@ namespace KaberSystem.Controllers
             ViewData["PartId"] = new SelectList(await _context.SpareParts.Where(p => p.MainStockQuantity > 0).ToListAsync(), "PartId", "Name", damagedPart.PartId);
             return View(damagedPart);
         }
+
+        // 📌 الحماية الأمنية: الحذف مسموح للأدمن فقط
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -135,6 +156,5 @@ namespace KaberSystem.Controllers
             }
             return RedirectToAction(nameof(Index));
         }
-
     }
 }

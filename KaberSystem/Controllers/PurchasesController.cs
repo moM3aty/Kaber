@@ -1,10 +1,10 @@
-﻿using KaberSystem.Models;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using System;
+﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using KaberSystem.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace KaberSystem.Controllers
 {
@@ -37,7 +37,8 @@ namespace KaberSystem.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,PurchasingRep")]
-        public async Task<IActionResult> Create([Bind("ItemName,Quantity,PurchasePrice")] PurchaseOrder purchaseOrder)
+        // 📌 تم ربط حقول المورد هنا
+        public async Task<IActionResult> Create([Bind("ItemName,Quantity,PurchasePrice,SupplierName,SupplierPhone,SupplierLocation")] PurchaseOrder purchaseOrder)
         {
             if (ModelState.IsValid)
             {
@@ -53,7 +54,7 @@ namespace KaberSystem.Controllers
             return View(purchaseOrder);
         }
 
-        // دالة للمخزن لتأكيد استلام البضاعة من مندوب المشتريات
+        // دالة للمخزن لتأكيد استلام البضاعة من مندوب المشتريات ونقل بيانات المورد
         [HttpPost]
         [Authorize(Roles = "Admin,Store")]
         public async Task<IActionResult> MarkAsReceived(int id)
@@ -63,24 +64,32 @@ namespace KaberSystem.Controllers
             {
                 purchase.IsReceivedByStore = true;
 
-                // هنا يتم إضافة الكمية إلى المخزون العام تلقائياً (SpareParts)
+                // إضافة الكمية إلى المخزون العام وتحديث المورد
                 var existingPart = await _context.SpareParts.FirstOrDefaultAsync(p => p.Name == purchase.ItemName);
                 if (existingPart != null)
                 {
                     existingPart.MainStockQuantity += purchase.Quantity;
-                    // تحديث سعر الشراء إذا لزم الأمر
                     existingPart.PurchasePrice = purchase.PurchasePrice;
+
+                    // 📌 تحديث بيانات المورد في المخزن
+                    if (!string.IsNullOrEmpty(purchase.SupplierName)) existingPart.SupplierName = purchase.SupplierName;
+                    if (!string.IsNullOrEmpty(purchase.SupplierPhone)) existingPart.SupplierPhone = purchase.SupplierPhone;
+                    if (!string.IsNullOrEmpty(purchase.SupplierLocation)) existingPart.SupplierLocation = purchase.SupplierLocation;
+
                     _context.Update(existingPart);
                 }
                 else
                 {
-                    // صنف جديد يضاف للمخزن
+                    // صنف جديد يضاف للمخزن مع بيانات المورد كاملة
                     var newPart = new SparePart
                     {
                         Name = purchase.ItemName,
                         PurchasePrice = purchase.PurchasePrice,
                         SellingPrice = purchase.PurchasePrice, // السعر المبدئي حتى يقوم مدير المشتريات بتسعيره
-                        MainStockQuantity = purchase.Quantity
+                        MainStockQuantity = purchase.Quantity,
+                        SupplierName = purchase.SupplierName,
+                        SupplierPhone = purchase.SupplierPhone,
+                        SupplierLocation = purchase.SupplierLocation
                     };
                     _context.SpareParts.Add(newPart);
                 }
@@ -93,7 +102,7 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // 📌 شاشة تسعير مدير المشتريات (تحديد سعر البيع وهامش الربح)
+        // شاشة تسعير مدير المشتريات
         [Authorize(Roles = "Admin,PurchasingManager")]
         public async Task<IActionResult> Pricing()
         {
@@ -125,6 +134,7 @@ namespace KaberSystem.Controllers
             }
             return RedirectToAction(nameof(Pricing));
         }
+
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {

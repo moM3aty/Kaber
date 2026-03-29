@@ -53,6 +53,26 @@
                         <small class="text-muted fw-bold mt-2 d-block"><i class="fa-solid fa-circle-info"></i> اتركها 0 إذا كنت ستعتمد على إدخالات المشتريات لزيادة الرصيد.</small>
                     </div>
 
+                    <!-- 📌 إضافة بيانات المورد -->
+                    <div class="col-12 border-top pt-3 mt-4">
+                        <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-truck-field me-2"></i> بيانات المورد (اختياري)</h5>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="SupplierName" class="form-label fw-bold text-dark">اسم المورد / الشركة</label>
+                        <input asp-for="SupplierName" class="form-control sys-input" placeholder="اسم مورد هذه القطعة" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="SupplierPhone" class="form-label fw-bold text-dark">رقم الجوال</label>
+                        <input asp-for="SupplierPhone" class="form-control sys-input" dir="ltr" placeholder="05XXXXXXXX" style="text-align: right;" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="SupplierLocation" class="form-label fw-bold text-dark">موقع المورد (العنوان)</label>
+                        <input asp-for="SupplierLocation" class="form-control sys-input" placeholder="المدينة، الشارع، أو رابط الخريطة" />
+                    </div>
+
                     <div class="col-12 mt-5 text-end border-top pt-4">
                         <button type="submit" class="sys-btn sys-btn-primary px-5 py-3 fs-5 shadow-sm">
                             <i class="fa-solid fa-save me-2"></i> حفظ واعتماد الصنف
