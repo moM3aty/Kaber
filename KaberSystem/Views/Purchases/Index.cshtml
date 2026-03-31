@@ -7,11 +7,16 @@
 <div class="sys-page-header">
     <div>
         <h1 class="sys-page-title">سجل المشتريات الواردة</h1>
-        <p class="sys-page-desc">تسجيل طلبات الشراء، واعتماد استلام المخزن للبضائع لتُضاف للرصيد تلقائياً</p>
+        <p class="sys-page-desc">تسجيل طلبات الشراء للمخزن واعتماد استلامها لتُضاف للرصيد</p>
     </div>
-    <a href="/Purchases/Create" class="sys-btn sys-btn-primary">
-        <i class="fa-solid fa-cart-plus"></i> تسجيل مشتريات جديدة
-    </a>
+    <div class="d-flex gap-2">
+        <a href="/Purchases/PartRequests" class="btn btn-warning fw-bold text-dark border-2 rounded-3 shadow-sm px-4">
+            <i class="fa-solid fa-list-check"></i> طلبات النواقص (من الفنيين)
+        </a>
+        <a href="/Purchases/Create" class="sys-btn sys-btn-primary">
+            <i class="fa-solid fa-cart-plus"></i> تسجيل مشتريات جديدة
+        </a>
+    </div>
 </div>
 
 <div class="sys-card">
@@ -79,13 +84,3 @@
         </script>
     }
 }
-
-<style>
-    .hover-elevate {
-        transition: transform 0.2s;
-    }
-
-        .hover-elevate:hover {
-            transform: translateY(-2px);
-        }
-</style>

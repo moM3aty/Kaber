@@ -2,12 +2,15 @@
 @{
     ViewData["Title"] = "تعديل صلاحيات المستخدم";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
+
+    // جلب الصلاحيات الحالية للمستخدم
+    var currentPermissions = Model.Permissions?.Split(',').ToList() ?? new List<string>();
 }
 
 <div class="sys-page-header">
     <div>
         <h1 class="sys-page-title text-primary">تعديل بيانات وصلاحيات المستخدم</h1>
-        <p class="sys-page-desc">تعديل معلومات حساب الدخول أو تغيير مستوى صلاحية الوصول للنظام</p>
+        <p class="sys-page-desc">تعديل معلومات حساب الدخول أو تغيير مستوى الصلاحية الدقيقة للنظام</p>
     </div>
     <a href="/Users/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
         <i class="fa-solid fa-arrow-right"></i> عودة للقائمة
@@ -15,7 +18,7 @@
 </div>
 
 <div class="row justify-content-center mt-3">
-    <div class="col-lg-6">
+    <div class="col-lg-8">
         <div class="sys-card border-top border-4 border-warning shadow-sm h-100">
 
             <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
@@ -27,9 +30,7 @@
 
             @if (ViewBag.Error != null)
             {
-                <div class="alert alert-danger fw-bold">
-                    <i class="fa-solid fa-triangle-exclamation me-2"></i> @ViewBag.Error
-                </div>
+                <div class="alert alert-danger fw-bold"><i class="fa-solid fa-triangle-exclamation me-2"></i> @ViewBag.Error</div>
             }
 
             <form asp-action="Edit" method="post">
@@ -37,20 +38,18 @@
                 <input type="hidden" asp-for="CreatedAt" />
 
                 <div class="row g-4">
-                    <div class="col-md-12">
-                        <label class="form-label fw-bold">اسم المستخدم (Login Name) <span class="text-danger">*</span></label>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">اسم المستخدم <span class="text-danger">*</span></label>
                         <input asp-for="Username" class="form-control sys-input" required />
-                        <span asp-validation-for="Username" class="text-danger small fw-bold"></span>
                     </div>
 
-                    <div class="col-md-12">
+                    <div class="col-md-6">
                         <label class="form-label fw-bold">كلمة المرور <span class="text-danger">*</span></label>
                         <input asp-for="Password" type="text" class="form-control sys-input" required />
-                        <span asp-validation-for="Password" class="text-danger small fw-bold"></span>
                     </div>
 
                     <div class="col-md-12">
-                        <label class="form-label fw-bold">صلاحية الوصول (Role) <span class="text-danger">*</span></label>
+                        <label class="form-label fw-bold">المنصب الأساسي (Role) <span class="text-danger">*</span></label>
                         <select asp-for="Role" class="form-select sys-input fw-bold bg-light" required>
                             <option value="">-- اختر الصلاحية --</option>
                             <option value="Admin">مدير النظام (Admin)</option>
@@ -61,7 +60,49 @@
                             <option value="PurchasingManager">مدير مشتريات</option>
                             <option value="PurchasingRep">مندوب مشتريات</option>
                         </select>
-                        <span asp-validation-for="Role" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <!-- 📌 نظام الصلاحيات المرنة المحددة مسبقاً -->
+                    <div class="col-12 mt-4">
+                        <h5 class="fw-bold border-bottom pb-2 text-dark"><i class="fa-solid fa-user-shield text-warning me-2"></i> الصلاحيات المخصصة (المرنة)</h5>
+                        <div class="row g-3 bg-light p-3 rounded-4 border mt-2">
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageOrders" id="pe1" @(currentPermissions.Contains("ManageOrders") ? "checked" : "")>
+                                    <label class="form-check-label fw-bold" for="pe1">إدارة طلبات الصيانة</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageInventory" id="pe2" @(currentPermissions.Contains("ManageInventory") ? "checked" : "")>
+                                    <label class="form-check-label fw-bold" for="pe2">إدارة المخزون والعهد</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManagePurchases" id="pe3" @(currentPermissions.Contains("ManagePurchases") ? "checked" : "")>
+                                    <label class="form-check-label fw-bold" for="pe3">دورة المشتريات والتسعير</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageInvoices" id="pe4" @(currentPermissions.Contains("ManageInvoices") ? "checked" : "")>
+                                    <label class="form-check-label fw-bold" for="pe4">الفواتير والحسابات</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageTechnicians" id="pe5" @(currentPermissions.Contains("ManageTechnicians") ? "checked" : "")>
+                                    <label class="form-check-label fw-bold" for="pe5">إدارة الفنيين</label>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ViewReports" id="pe6" @(currentPermissions.Contains("ViewReports") ? "checked" : "")>
+                                    <label class="form-check-label fw-bold text-primary" for="pe6">رؤية التقارير</label>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="col-12 mt-4 text-end border-top pt-4">
@@ -73,27 +114,6 @@
             </form>
         </div>
     </div>
-
-    <!-- قسم التعليمات الجانبي -->
-    <div class="col-lg-4">
-        <div class="sys-card bg-light border-0 h-100" style="border-right: 4px solid var(--sys-warning) !important;">
-            <h5 class="fw-bold mb-4 text-dark"><i class="fa-solid fa-circle-info text-warning me-2"></i> ملاحظات الإدارة</h5>
-            <ul class="list-unstyled lh-lg text-muted fw-bold">
-                <li class="mb-3 d-flex align-items-start">
-                    <i class="fa-solid fa-shield-halved text-warning ms-2 mt-1 fs-5"></i>
-                    <span>تغيير الصلاحية سيؤدي إلى تغيير الشاشات التي يمكن لهذا المستخدم الوصول إليها.</span>
-                </li>
-                <li class="mb-3 d-flex align-items-start">
-                    <i class="fa-solid fa-key text-warning ms-2 mt-1 fs-5"></i>
-                    <span>يمكنك رؤية كلمة المرور القديمة وتعديلها في حال فقدان الموظف لبياناته.</span>
-                </li>
-                <li class="mb-3 d-flex align-items-start">
-                    <i class="fa-solid fa-triangle-exclamation text-danger ms-2 mt-1 fs-5"></i>
-                    <span>لا تقم بتعديل صلاحية حساب (Admin) الأساسي لتجنب فقدان السيطرة.</span>
-                </li>
-            </ul>
-        </div>
-    </div>
 </div>
 
 <style>
@@ -102,7 +122,6 @@
         padding: 12px 18px;
         border-radius: 10px;
         font-weight: 600;
-        transition: all 0.3s;
         background-color: var(--sys-bg);
         color: var(--sys-text-main);
     }
@@ -113,4 +132,16 @@
             background-color: #fff;
             outline: none;
         }
+
+    .form-switch .form-check-input {
+        width: 2.5em;
+        height: 1.25em;
+        cursor: pointer;
+    }
+
+    .form-switch .form-check-label {
+        margin-right: 3em;
+        margin-top: 2px;
+        cursor: pointer;
+    }
 </style>

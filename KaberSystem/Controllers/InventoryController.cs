@@ -75,6 +75,10 @@ namespace KaberSystem.Controllers
         {
             if (id != sparePart.PartId) return NotFound();
 
+            // تجاوز التحقق من الحقول التي قد تكون مغلقة في الشاشة (Disabled)
+            ModelState.Remove("PartCode");
+            ModelState.Remove("Name");
+
             if (ModelState.IsValid)
             {
                 try
@@ -83,15 +87,16 @@ namespace KaberSystem.Controllers
                     var existingPart = await _context.SpareParts.FindAsync(id);
                     if (existingPart == null) return NotFound();
 
-                    // تحديث البيانات الأساسية
-                    existingPart.PartCode = string.IsNullOrEmpty(sparePart.PartCode) ? existingPart.PartCode : sparePart.PartCode;
-                    existingPart.Name = sparePart.Name;
+                    // 📌 التعديل السحري: لا نحدث الاسم أو الكود إلا إذا جاءت بهم قيمة جديدة فعلاً
+                    if (!string.IsNullOrEmpty(sparePart.PartCode)) existingPart.PartCode = sparePart.PartCode;
+                    if (!string.IsNullOrEmpty(sparePart.Name)) existingPart.Name = sparePart.Name;
+
                     existingPart.IsCommon = sparePart.IsCommon;
                     existingPart.TargetModel = sparePart.IsCommon ? null : sparePart.TargetModel;
                     existingPart.PurchasePrice = sparePart.PurchasePrice;
                     existingPart.SellingPrice = sparePart.SellingPrice;
 
-                    // 📌 تحديث بيانات المورد
+                    // تحديث بيانات المورد
                     existingPart.SupplierName = sparePart.SupplierName;
                     existingPart.SupplierPhone = sparePart.SupplierPhone;
                     existingPart.SupplierLocation = sparePart.SupplierLocation;
@@ -132,7 +137,6 @@ namespace KaberSystem.Controllers
             ViewData["PartId"] = new SelectList(await _context.SpareParts.Where(p => p.MainStockQuantity > 0).ToListAsync(), "PartId", "Name");
             return View();
         }
-
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RecordDamage([Bind("PartId,Quantity,Reason")] DamagedPart damagedPart)
@@ -140,15 +144,22 @@ namespace KaberSystem.Controllers
             var part = await _context.SpareParts.FindAsync(damagedPart.PartId);
             if (part != null && part.MainStockQuantity >= damagedPart.Quantity && damagedPart.Quantity > 0)
             {
-                // خصم الكمية التالفة من المخزون الرئيسي
+                // خصم الكمية التالفة من المخزون
                 part.MainStockQuantity -= damagedPart.Quantity;
                 _context.Update(part);
 
                 damagedPart.Date = DateTime.Now;
+
+                // 📌 التحديث المالي: حساب الخسارة (الكمية × سعر شراء القطعة)
+                damagedPart.TotalLoss = damagedPart.Quantity * part.PurchasePrice;
+
                 _context.DamagedParts.Add(damagedPart);
 
+                // تسجيل الحركة في الـ Logs
+                _context.SystemLogs.Add(new SystemLog { ActionType = "تسجيل تالف", Details = $"إتلاف {damagedPart.Quantity} من {part.Name} بخسارة مالية قدرها {damagedPart.TotalLoss} ريال. السبب: {damagedPart.Reason}", Username = User.Identity?.Name });
+
                 await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم تسجيل التالف وخصمه من المخزون بنجاح!";
+                TempData["SuccessMessage"] = $"تم خصم الكمية وتسجيل الخسارة المالية ({damagedPart.TotalLoss} ريال) بنجاح!";
                 return RedirectToAction(nameof(DamagedParts));
             }
 

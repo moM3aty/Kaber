@@ -1,282 +1,498 @@
 ﻿@{
-    ViewData["Title"] = "صيانة وتنظيف المكيفات";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+
+    // 📌 قراءة نوع الخدمة من الرابط بطريقة آمنة تمنع الخطأ البرمجي
+    string type = Context.Request.Query["type"];
+    if (string.IsNullOrEmpty(type)) type = "AC"; // القيمة الافتراضية
+
+    string pageTitle = "";
+    string heroSubtitle = "";
+    string heroDesc = "";
+    string benefitsTitle = "";
+    string detailsTitle = "";
+    string detailsSubtitle = "";
+    string icon = "";
+    string colorClass = "primary";
+
+    // استخدام C# Tuples لتخزين الفوائد والتفاصيل بشكل ديناميكي لكل خدمة
+    List<(string Icon, string Title, string Desc)> benefits = new();
+    List<(string Icon, string Title, string Desc)> details = new();
+
+    // 📌 المحتوى الديناميكي بناءً على نوع الخدمة
+    switch (type)
+    {
+        case "HomeAppliances":
+            pageTitle = "صيانة الأجهزة المنزلية";
+            heroSubtitle = "راحة بالك تبدأ من أجهزة تعمل بكفاءة في منزلك!";
+            heroDesc = "نقدم خدمات صيانة شاملة لجميع الأجهزة المنزلية بقطع غيار أصلية وفريق فني متخصص لضمان عودة أجهزتك للعمل كأنها جديدة.";
+            benefitsTitle = "لماذا تعتمد علينا في صيانة أجهزتك المنزلية؟";
+            icon = "fa-house-chimney";
+            colorClass = "success";
+            benefits = new() {
+                ("fa-shield-halved", "حماية الأجهزة", "الصيانة المبكرة تحمي أجهزتك من التلف الكامل والمفاجئ."),
+                ("fa-bolt", "توفير الطاقة", "الأجهزة التي تعمل بكفاءة تستهلك كهرباء أقل بكثير."),
+                ("fa-money-bill-wave", "توفير المال", "إصلاح العطل البسيط يوفر عليك تكلفة شراء جهاز جديد."),
+                ("fa-clock", "سرعة الإنجاز", "نقدر وقتك ونحرص على إتمام الصيانة في نفس الزيارة."),
+                ("fa-gears", "قطع معتمدة", "استخدام قطع غيار أصلية يطيل العمر الافتراضي لأجهزتك.")
+            };
+            detailsTitle = "ما تشمله خدمة صيانة الأجهزة المنزلية؟";
+            detailsSubtitle = "تغطية شاملة ومتكاملة لجميع الأجهزة الأساسية في منزلك";
+            details = new() {
+                ("fa-blender", "الأجهزة الصغيرة للمطبخ", "إصلاح الخلاطات، محضرات الطعام، والميكروويف بكفاءة."),
+                ("fa-tv", "الشاشات والتلفزيونات", "إصلاح مشاكل الصورة والصوت وتغيير ليدات الإضاءة."),
+                ("fa-temperature-arrow-up", "سخانات المياه", "تنظيف السخانات، تغيير الشمعات، وإصلاح تسريب المياه."),
+                ("fa-wind", "الشفاطات وأنظمة التهوية", "تنظيف وإصلاح شفاطات المطابخ والمراوح المنزلية."),
+                ("fa-plug", "التوصيلات الكهربائية", "فحص وتغيير الكابلات التالفة لضمان أمان استخدام الأجهزة."),
+                ("fa-microchip", "اللوحات الإلكترونية", "صيانة الكروت الذكية ولوحات التحكم لمختلف الأجهزة.")
+            };
+            break;
+
+        case "AC":
+            pageTitle = "صيانة وتنظيف المكيفات";
+            heroSubtitle = "ننسيك طقس المملكة مع تحسين برودة وأداء مكيفك!";
+            heroDesc = "من خلال فحص وغسيل وصيانة دورية مع أمهر المهندسين وإصلاح فوري لأى عطل، تنظيف داخلي وخارجي، كلها بمكانك!";
+            benefitsTitle = "5 فوائد من فحص وغسيل المكيفات الدوري";
+            icon = "fa-snowflake";
+            colorClass = "primary";
+            benefits = new() {
+                ("fa-bolt", "توفير استهلاك الكهرباء", "يساعد تنظيف المكيف على تقليل استهلاك الطاقة."),
+                ("fa-wind", "هواء صحي", "تنظيف الفلاتر يمنع الروائح ويحسن جودة الهواء."),
+                ("fa-snowflake", "تبريد أفضل", "يحسن تدفق الهواء ويزيد كفاءة التبريد."),
+                ("fa-tools", "تقليل الأعطال", "الصيانة الدورية تقلل من الأعطال المفاجئة."),
+                ("fa-clock", "إطالة عمر المكيف", "الفحص المنتظم يحافظ على كفاءة الجهاز.")
+            };
+            detailsTitle = "ما الذي نقدمه في شركة صيانة وغسيل مكيفات؟";
+            detailsSubtitle = "خدمة صيانة وتنظيف المكيفات لدينا تغطي كل ما يحتاجه جهازك ليعمل بكفاءة تامة";
+            details = new() {
+                ("fa-magnifying-glass", "فحص شامل للمكيف", "فحص دورة التبريد، ضغط الغاز (الفريون)، الكومبروسر، ووحدة التحكم."),
+                ("fa-bolt", "تصليح الأعطال الكهربائية", "معالجة مشاكل الكارت الإلكتروني، مفاتيح التشغيل، والثرموستات."),
+                ("fa-gas-pump", "تعبئة غاز الفريون", "نستخدم فقط غازات تبريد معتمدة آمنة وصديقة للبيئة، تضمن ثبات البرودة."),
+                ("fa-check-double", "تجربة نهائية بعد الصيانة", "نقيس درجة حرارة الهواء الخارج، ونختبر المكيف أمام العميل قبل المغادرة."),
+                ("fa-spray-can", "تنظيف وغسيل احترافي", "إزالة الغبار من الفلاتر، المبخرات، والمكثفات، باستخدام أدوات معتمدة."),
+                ("fa-fan", "فحص المراوح", "اختبار الأداء، التوازن، وضبط السرعة لمنع الضوضاء ورفع الكفاءة.")
+            };
+            break;
+
+        case "Refrigerator":
+            pageTitle = "صيانة الثلاجات المنزلية";
+            heroSubtitle = "نحافظ على طعامك طازجاً باستعادة كفاءة تبريد ثلاجتك!";
+            heroDesc = "إصلاح فوري لجميع أعطال الثلاجات، سواء ضعف التبريد، تسريب المياه، أو أعطال الكمبروسر، بقطع غيار أصلية وضمان معتمد.";
+            benefitsTitle = "5 فوائد لصيانة ثلاجتك فوراً";
+            icon = "fa-temperature-low";
+            colorClass = "info";
+            benefits = new() {
+                ("fa-apple-whole", "حفظ الأطعمة", "يمنع تلف الأطعمة والمشروبات ويحافظ على قيمتها الغذائية."),
+                ("fa-bolt", "توفير الكهرباء", "الثلاجة المعطلة تستهلك طاقة مضاعفة لمحاولة التبريد."),
+                ("fa-droplet", "منع التسريبات", "الصيانة تمنع تساقط المياه وتلف أرضيات المطبخ."),
+                ("fa-volume-xmark", "هدوء التشغيل", "التخلص من الأصوات المزعجة الناتجة عن مروحة التبريد أو الكمبروسر."),
+                ("fa-clock", "إطالة عمر الثلاجة", "تغيير القطع التالفة مبكراً يحمي الموتور الأساسي من التلف.")
+            };
+            detailsTitle = "ما الذي نقدمه في صيانة الثلاجات؟";
+            detailsSubtitle = "خدمات متكاملة تضمن عودة ثلاجتك كالجديدة تماماً";
+            details = new() {
+                ("fa-temperature-arrow-down", "فحص دورة التبريد", "اختبار مستوى الفريون والتأكد من عدم وجود تسريبات في المواسير."),
+                ("fa-motorcycle", "تغيير الكمبروسر (الموتور)", "استبدال الموتور التالف بآخر أصلي مع شحن الغاز بكفاءة."),
+                ("fa-icicles", "إصلاح نظام الديفروست", "معالجة مشكلة تراكم الثلج وتغيير السخانات أو التايمر."),
+                ("fa-plug", "فحص اللوحة الإلكترونية", "إصلاح أو استبدال الكارتة المسؤولة عن تشغيل الثلاجة."),
+                ("fa-fan", "صيانة مراوح التبريد", "تغيير مروحة الفريزر أو مروحة المكثف لضمان توزيع الهواء."),
+                ("fa-door-closed", "تغيير كاوتش الأبواب", "استبدال الإطارات المطاطية المتهالكة لمنع تسرب البرودة للخارج.")
+            };
+            break;
+
+        case "WashingMachine":
+            pageTitle = "صيانة الغسالات الأوتوماتيكية";
+            heroSubtitle = "غسيل نظيف وعناية فائقة بملابسك دون أعطال مزعجة!";
+            heroDesc = "متخصصون في إصلاح جميع أنواع الغسالات (أمامية وعلوية)، معالجة مشاكل عدم سحب أو طرد الماء، وتصليح اللوحات الإلكترونية في منزلك.";
+            benefitsTitle = "5 فوائد لصيانة الغسالة بشكل دوري";
+            icon = "fa-shirt";
+            colorClass = "primary";
+            benefits = new() {
+                ("fa-shirt", "حماية الملابس", "الغسالة السليمة تحافظ على أنسجة الملابس من التلف أو التمزق."),
+                ("fa-water", "توفير المياه", "منع التسريبات يوقف الهدر غير المبرر للمياه."),
+                ("fa-bolt", "أمان كهربائي", "إصلاح التماسات الكهربائية يحميك ويحمي أسرتك من الخطر."),
+                ("fa-volume-low", "تشغيل هادئ", "تغيير الرولمان بلي (الرمان) يقضي على صوت الطقطقة العالي."),
+                ("fa-money-bill", "توفير التكاليف", "الإصلاح المبكر يغنيك عن شراء غسالة جديدة باهظة الثمن.")
+            };
+            detailsTitle = "ما الذي نقدمه في صيانة الغسالات؟";
+            detailsSubtitle = "حلول جذرية لجميع أعطال الغسالات بمختلف ماركاتها";
+            details = new() {
+                ("fa-arrow-down-up-water", "إصلاح نظام طرد وسحب الماء", "تنظيف وتغيير طلمبة الطرد وصمام سحب المياه الساخن والبارد."),
+                ("fa-microchip", "برمجة وصيانة اللوحة (البوردة)", "إصلاح أعطال اللوحة الإلكترونية التي تسبب توقف الغسالة فجأة."),
+                ("fa-cogs", "تغيير الرولمان بلي والمساعدين", "التخلص من الصوت المزعج والاهتزاز الشديد أثناء دورة العصر."),
+                ("fa-door-open", "إصلاح باب الغسالة واللوك", "تغيير مقبض الباب، المفصلات، أو القفل الإلكتروني (Door Lock)."),
+                ("fa-motorcycle", "صيانة وتغيير الموتور", "فحص الموتور، السير، الكابستور، واستبدال التالف منها."),
+                ("fa-broom", "تنظيف حوض الغسيل", "إزالة الترسبات الكلسية والروائح الكريهة من الحلة الداخلية.")
+            };
+            break;
+
+        case "ElectricOven":
+            pageTitle = "صيانة الأفران الكهربائية";
+            heroSubtitle = "استعد كفاءة الطهي بحرارة منتظمة وأمان تام!";
+            heroDesc = "خبراء في صيانة الأفران والبوتاجازات، تغيير الشمعات والسخانات، ومعالجة اللوحات الرقمية وأعطال الحرارة الضعيفة.";
+            benefitsTitle = "لماذا يجب صيانة الفرن فور تعطله؟";
+            icon = "fa-fire-burner";
+            colorClass = "danger";
+            benefits = new() {
+                ("fa-shield-heart", "الأمان أولاً", "تجنب أي التماسات أو مخاطر كهربائية في المطبخ."),
+                ("fa-fire", "حرارة موزعة بانتظام", "ضمان نضج الطعام بشكل مثالي وتجنب احتراقه من جهة واحدة."),
+                ("fa-stopwatch", "سرعة في الطهي", "عودة السخانات للعمل بكفاءتها توفر وقتك الثمين."),
+                ("fa-bolt", "توفير الكهرباء", "السخانات التالفة جزئياً تستهلك طاقة عالية جداً لتعويض الحرارة."),
+                ("fa-kitchen-set", "طول العمر الافتراضي", "الحفاظ على الهيكل الخارجي واللوحة الرقمية من التلف الكامل.")
+            };
+            detailsTitle = "خدمات صيانة الأفران الكهربائية";
+            detailsSubtitle = "نغطي جميع أعطال الأفران المدمجة (البيلت إن) والعادية";
+            details = new() {
+                ("fa-fire-burner", "تغيير الشمعات والسخانات", "استبدال سخانات الشواية أو السخانات السفلية بقطع أصلية."),
+                ("fa-temperature-half", "إصلاح الثرموستات", "معالجة مشكلة عدم فصل الفرن عند الوصول للحرارة المطلوبة."),
+                ("fa-fan", "تغيير مروحة التوزيع", "إصلاح مروحة الكونفكشن المسؤولة عن توزيع الحرارة داخل الفرن."),
+                ("fa-microchip", "صيانة اللوحة الرقمية (التاتش)", "إصلاح أزرار التحكم والشاشة الإلكترونية للفرن."),
+                ("fa-door-closed", "تغيير زجاج أو مفصلات الباب", "إحكام إغلاق الباب لمنع تسرب الحرارة للخارج واحتراق المقابض."),
+                ("fa-plug", "فحص وتغيير الأسلاك الداخلية", "تغيير التوصيلات المحترقة بأسلاك حرارية مقاومة لدرجات الحرارة العالية.")
+            };
+            break;
+
+        case "Freezer":
+            pageTitle = "صيانة الفريزرات (المجمدات)";
+            heroSubtitle = "تجميد مثالي وحماية لمخزونك من الأطعمة!";
+            heroDesc = "صيانة متكاملة للفريزر الأفقي والرأسي (الديب فريزر)، معالجة مشاكل تراكم الثلج الكثيف، أو ضعف التجميد، وإعادة شحن الفريون.";
+            benefitsTitle = "أهمية صيانة الفريزر فوراً";
+            icon = "fa-snowflake";
+            colorClass = "info";
+            benefits = new() {
+                ("fa-snowflake", "تجميد عميق ومستقر", "الحفاظ على اللحوم والمجمدات من الذوبان والفساد."),
+                ("fa-droplet-slash", "منع التسريب", "التخلص من مشكلة تجمع المياه تحت الفريزر."),
+                ("fa-bolt", "توفير الطاقة", "الفريزر الممتلئ بالثلج يستهلك طاقة هائلة للعمل."),
+                ("fa-ice-cream", "مساحة أكبر", "إصلاح نظام الديفروست يمنع تراكم الجليد الذي يأخذ مساحة التخزين."),
+                ("fa-coins", "حماية الاستثمار", "تكلفة الصيانة أقل بكثير من خسارة الأطعمة المخزنة بداخله.")
+            };
+            detailsTitle = "ما الذي نقدمه في صيانة الفريزر؟";
+            detailsSubtitle = "متخصصون في الفريزرات المنزلية والتجارية بكافة أحجامها";
+            details = new() {
+                ("fa-snowflake", "إصلاح نظام إزالة الثلج (No Frost)", "تغيير سخان الديفروست، التايمر، والثرموديسك."),
+                ("fa-gas-pump", "فحص وتسليك دائرة الغاز", "معالجة سدد المواسير وشحن غاز الفريون بالمعيار الدقيق."),
+                ("fa-motorcycle", "تغيير ضاغط الفريزر (الموتور)", "توفير وتركيب كمبروسر جديد أصلي في حال احتراق القديم."),
+                ("fa-door-closed", "تغيير الجوانات (الإطارات)", "تركيب إطارات مغناطيسية جديدة لإحكام الغلق ومنع تسرب التبريد."),
+                ("fa-fan", "صيانة مروحة التبريد", "تغيير المروحة الداخلية لضمان وصول الهواء البارد لكل الأدراج."),
+                ("fa-microchip", "إصلاح اللوحات والكروت", "برمجة أو استبدال اللوحة الإلكترونية للفريزرات الديجيتال.")
+            };
+            break;
+
+        case "Dishwasher":
+            pageTitle = "صيانة غسالات الصحون";
+            heroSubtitle = "أطباق لامعة ومعقمة دون عناء!";
+            heroDesc = "نعالج جميع أعطال الجلايات وغسالات الأطباق، مثل عدم سحب أو تصريف الماء، ضعف التنظيف، وتوقف التسخين.";
+            benefitsTitle = "فوائد صيانة غسالة الصحون";
+            icon = "fa-sparkles";
+            colorClass = "primary";
+            benefits = new() {
+                ("fa-sparkles", "نظافة مثالية", "استعادة قوة ضخ الماء لتنظيف الأطباق من أصعب الدهون."),
+                ("fa-shield-virus", "تعقيم كامل", "إصلاح نظام التسخين يضمن قتل البكتيريا والجراثيم بالماء الساخن."),
+                ("fa-water", "توفير استهلاك الماء", "منع التسريبات وإصلاح الصمامات يقلل هدر المياه."),
+                ("fa-ban", "منع الروائح الكريهة", "تنظيف الفلاتر ونظام الصرف يمنع تعفن بقايا الطعام."),
+                ("fa-hand-sparkles", "راحة البال", "توفير وقتك ومجهودك في غسيل الأطباق يدوياً.")
+            };
+            detailsTitle = "خدمات صيانة غسالات الصحون";
+            detailsSubtitle = "إصلاح دقيق يشمل جميع الأنظمة المائية والكهربائية";
+            details = new() {
+                ("fa-pump-soap", "إصلاح طلمبة الغسيل (الموتور)", "استبدال أو صيانة المضخة الرئيسية المسؤولة عن رش الماء."),
+                ("fa-arrow-down-water", "معالجة مشاكل الصرف", "تسليك الخراطيم وتغيير طلمبة طرد المياه التالفة."),
+                ("fa-temperature-arrow-up", "تغيير الهيتر (السخان)", "إصلاح مشكلة غسيل الأطباق بماء بارد وعدم ذوبان أقراص الصابون."),
+                ("fa-microchip", "صيانة اللوحة الإلكترونية", "معالجة توقف الغسالة وسط الدورة أو إعطاء أكواد خطأ (Error Codes)."),
+                ("fa-shower", "تنظيف وتغيير رشاشات الماء", "استبدال الأذرع المكسورة أو المسدودة لضمان توزيع الماء."),
+                ("fa-door-open", "إصلاح مفصلات وأقفال الباب", "تغيير سوستة الباب لمنع سقوطه فجأة ومعالجة قفل التشغيل.")
+            };
+            break;
+
+        case "Dryer":
+            pageTitle = "صيانة المجففات (النشافات)";
+            heroSubtitle = "ملابس جافة تماماً وناعمة في دقائق!";
+            heroDesc = "خدمة صيانة متخصصة لمجففات الملابس (النشافات الحرارية والمكثفة)، معالجة توقف الدوران، وانعدام الحرارة، والأصوات المزعجة.";
+            benefitsTitle = "أهمية صيانة مجفف الملابس";
+            icon = "fa-wind";
+            colorClass = "warning";
+            benefits = new() {
+                ("fa-temperature-arrow-up", "تجفيف سريع", "عودة السخان للعمل توفر ساعات من الانتظار لتجفيف الملابس."),
+                ("fa-shirt", "حماية الأنسجة", "ضبط الحساسات يمنع احتراق أو انكماش الملابس بسبب الحرارة الزائدة."),
+                ("fa-bolt", "منع التماسات الكهربائية", "المجفف يستهلك طاقة عالية وصيانته تحميك من مخاطر الحريق."),
+                ("fa-volume-xmark", "تشغيل هادئ", "تغيير البكر والسير يمنع صرير واحتكاك الحلة المزعج."),
+                ("fa-cloud", "تجنب الرطوبة والعفن", "التأكد من طرد البخار بشكل صحيح خارج المنزل أو في المكثف.")
+            };
+            detailsTitle = "أعطال المجففات التي نقوم بإصلاحها";
+            detailsSubtitle = "خبرة في كافة أنظمة المجففات (أمريكي، أوروبي، حراري، مكثف)";
+            details = new() {
+                ("fa-fire-burner", "تغيير هيتر التسخين", "استبدال السخان التالف عند دوران الحلة دون وجود حرارة."),
+                ("fa-rotate", "تغيير سير المجفف", "إصلاح مشكلة سماع صوت الموتور دون دوران الحلة الداخلية."),
+                ("fa-gear", "تغيير البكرات والرولمان بلي", "القضاء على صوت الاحتكاك أو الخبط العالي أثناء التشغيل."),
+                ("fa-thermometer", "إصلاح حساسات الحرارة (الثرموستات)", "معالجة توقف المجفف فجأة قبل جفاف الملابس بالكامل."),
+                ("fa-microchip", "صيانة الكارتة والتايمر", "إصلاح أزرار التشغيل، وتغيير التايمر الميكانيكي أو اللوحة الرقمية."),
+                ("fa-wind", "تنظيف دورة الهواء والمكثف", "إزالة الوبر المتراكم الذي يعيق خروج الهواء ويسبب ضعف التجفيف.")
+            };
+            break;
+
+        case "ColdRoom":
+            pageTitle = "صيانة وتجهيز غرف التبريد والتجميد";
+            heroSubtitle = "حماية مثالية لمخزونك التجاري من التلف!";
+            heroDesc = "نقدم حلولاً هندسية متكاملة للشركات والمطاعم والمصانع لصيانة وإنشاء غرف التبريد والتجميد المركزية بأعلى معايير الجودة المعتمدة.";
+            benefitsTitle = "لماذا تعتمد علينا في صيانة غرف التبريد؟";
+            icon = "fa-boxes-packing";
+            colorClass = "info";
+            benefits = new() {
+                ("fa-boxes-packing", "حماية البضائع", "نضمن استقرار درجة الحرارة لمنع تلف اللحوم والأدوية والمواد الغذائية."),
+                ("fa-bolt", "كفاءة الطاقة", "ضبط الوحدات يقلل من الفواتير التجارية الباهظة للكهرباء."),
+                ("fa-stopwatch", "استجابة سريعة للطوارئ", "ندرك أن الوقت يعني المال، لذا نوفر فرق طوارئ للتدخل السريع."),
+                ("fa-clipboard-check", "تقارير فنية دقيقة", "نزود الإدارة بتقارير حالة المعدات للامتثال لمتطلبات الصحة والسلامة."),
+                ("fa-handshake", "عقود صيانة دورية", "برامج صيانة وقائية تمنع حدوث الأعطال الكارثية المفاجئة.")
+            };
+            detailsTitle = "خدماتنا لغرف التبريد والتجميد التجارية";
+            detailsSubtitle = "فريق هندسي متخصص في التبريد التجاري والصناعي";
+            details = new() {
+                ("fa-snowflake", "صيانة وتغيير الضواغط (الكمبروسرات)", "استبدال وتعمير ضواغط التبريد الكبيرة (نصف مفتوح ومغلق)."),
+                ("fa-wind", "صيانة المبخرات (Evaporators)", "غسيل كويلات المبخرات، وتغيير المراوح التالفة لضمان توزيع البرودة."),
+                ("fa-gas-pump", "شحن الفريون ومعالجة التسريبات", "اختبار ضغط المواسير، لحام التسريبات، وشحن الغازات الصناعية المعتمدة."),
+                ("fa-microchip", "إصلاح لوحات التحكم الكنترول", "صيانة لوحات الكهرباء (الكونتاكتور، الأوفرلود، والريلاي) وحساسات الحرارة."),
+                ("fa-door-closed", "تغيير أبواب ومفصلات الغرف", "إصلاح أبواب السحب والمفصلات، وتغيير الكاوتش لمنع تسرب البرودة."),
+                ("fa-icicles", "معالجة تراكم الجليد", "صيانة سخانات الإذابة (الديفروست) ومواسير الصرف لمنع تجمد المبخر.")
+            };
+            break;
+
+        case "RestaurantEquipment":
+            pageTitle = "صيانة معدات المطاعم والمقاهي";
+            heroSubtitle = "شريكك الاستراتيجي لضمان استمرارية عمل مطعمك!";
+            heroDesc = "صيانة احترافية وفورية لجميع الأجهزة التجارية (ثلاجات العرض، الأفران الصناعية، صانعات الثلج، وقلايات البطاطس) لضمان عدم توقف عملياتك.";
+            benefitsTitle = "فوائد عقود الصيانة لمعدات المطاعم";
+            icon = "fa-utensils";
+            colorClass = "danger";
+            benefits = new() {
+                ("fa-clock", "عدم تعطل العمل", "الصيانة الفورية تمنع توقف المطبخ وتأخير طلبات الزبائن."),
+                ("fa-shield", "الامتثال لمعايير البلدية", "أجهزة نظيفة وتعمل بكفاءة تحميك من المخالفات الصحية."),
+                ("fa-money-bill-trend-up", "إطالة عمر المعدات", "المعدات التجارية باهظة الثمن، وصيانتها تحمي استثمارك."),
+                ("fa-fire-extinguisher", "السلامة المهنية", "منع تسربات الغاز أو الالتماسات الكهربائية في بيئة المطبخ المزدحمة."),
+                ("fa-hand-holding-dollar", "توفير تكاليف التشغيل", "الأجهزة المصانة تستهلك طاقة أقل وتعمل بكفاءة إنتاجية أعلى.")
+            };
+            detailsTitle = "المعدات التجارية التي نقوم بصيانتها";
+            detailsSubtitle = "تغطية شاملة لخطوط الطهي الساخنة ومعدات التبريد والمشروبات";
+            details = new() {
+                ("fa-temperature-low", "ثلاجات وفريزرات العرض والتخزين", "صيانة ثلاجات الأندر كونتر (Under-counter) وثلاجات المشروبات الرأسية."),
+                ("fa-fire-burner", "الأفران والقلايات الصناعية", "صيانة قلايات الديب فراير، أفران البيتزا، والجريلات (كهرباء وغاز)."),
+                ("fa-cubes", "صانعات الثلج (Ice Makers)", "غسيل وصيانة ماكينات الثلج، تغيير الفلاتر، وإصلاح مضخات الماء."),
+                ("fa-mug-hot", "ماكينات القهوة والإسبريسو", "تنظيف دورة البخار، معالجة مشاكل الضغط، وتغيير السخانات."),
+                ("fa-wind", "شفاطات وأنظمة التهوية", "تنظيف وصيانة مواتير الشفط المركزية لمطابخ المطاعم الكبرى."),
+                ("fa-sink", "غسالات الأطباق التجارية", "صيانة غسالات الهود تايب، ومضخات الصابون والحرارة لضمان التعقيم السريع.")
+            };
+            break;
+    }
+
+    ViewData["Title"] = pageTitle;
 }
 
-<div class="header pt-5 hero min-vh-100">
-    <div class="container pt-5">
-        <h1 class="blog-title">صيانة وتنظيف المكيفات</h1>
-        <p class="fw-bold text-white">ننسيك طقس المملكة مع تحسين برودة وأداء مكيفك!</p>
-        <p class="text-white">من خلال فحص وغسيل وصيانة دورية مع أمهر المهندسين وإصلاح فوري لأى عطل، تنظيف داخلي وخارجي، كلها بمكانك!</p>
-        <div>
-            <span><a href="/">الرئيسية</a></span> <span>/</span> <span>صيانة وتنظيف المكيفات</span>
-        </div>
-        <div class="d-flex gap-3 flex-wrap justify-content-center mt-3">
-            <a href="tel:0541683466" class="primary-btn">
-                <i class="fa-solid fa-phone"></i> احجز الآن 0541683466
+<!-- Hero Section (القسم العلوي المتغير ديناميكياً) -->
+<div class="header pt-5 hero min-vh-100" style="background-image: linear-gradient(rgba(17, 22, 30, .8), rgba(17, 22, 30, .9)), url('/images/header.jpg'); background-position: center; background-size: cover;">
+    <div class="container pt-5 mt-5 text-center" data-aos="fade-in">
+        <h1 class="display-3 fw-bold text-white mb-4"><i class="fa-solid @(icon) text-@(colorClass) me-3"></i>@pageTitle</h1>
+        <p class="fs-4 fw-bold text-@(colorClass) mb-3">@heroSubtitle</p>
+        <p class="text-white-50 fs-5 mb-4 mx-auto" style="max-width: 800px; line-height: 1.8;">@heroDesc</p>
+
+        <div class="d-flex gap-3 flex-wrap justify-content-center mt-4">
+            <a href="tel:0541683466" class="primary-btn fs-5 shadow-lg">
+                <i class="fa-solid fa-phone me-2"></i> احجز صيانة الآن 0541683466
+            </a>
+            <a href="#details-section" class="secondary-btn fs-5">
+                اكتشف التفاصيل
             </a>
         </div>
     </div>
 </div>
 
-<section class="benefits-section">
+<!-- Benefits Section (قسم الفوائد الخمسة) -->
+<section class="benefits-section py-5 bg-light">
     <div class="container" data-aos="fade-up" data-aos-delay="100">
-        <div class="text-center mb-5">
-            <h2 class="section-title">5 فوائد من فحص وغسيل المكيفات الدوري</h2>
+        <div class="text-center mb-5 mt-4">
+            <h2 class="fw-bold display-6 text-dark">@benefitsTitle</h2>
+            <div class="divider bg-@(colorClass) mx-auto mt-3" style="width: 80px; height: 4px; border-radius: 2px;"></div>
         </div>
-        <div class="row g-4">
-            <div class="col-md-6 col-lg-4">
-                <div class="benefit-card">
-                    <div class="icon"><i class="fas fa-bolt"></i></div>
-                    <h4>توفير استهلاك الكهرباء</h4>
-                    <p>يساعد تنظيف المكيف على تقليل استهلاك الطاقة.</p>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="benefit-card">
-                    <div class="icon"><i class="fas fa-wind"></i></div>
-                    <h4>هواء صحي</h4>
-                    <p>تنظيف الفلاتر يمنع الروائح ويحسن جودة الهواء.</p>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="benefit-card">
-                    <div class="icon"><i class="fas fa-snowflake"></i></div>
-                    <h4>تبريد أفضل</h4>
-                    <p>يحسن تدفق الهواء ويزيد كفاءة التبريد.</p>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="benefit-card">
-                    <div class="icon"><i class="fas fa-tools"></i></div>
-                    <h4>تقليل الأعطال</h4>
-                    <p>الصيانة الدورية تقلل من الأعطال المفاجئة.</p>
-                </div>
-            </div>
-            <div class="col-md-6 col-lg-4">
-                <div class="benefit-card">
-                    <div class="icon"><i class="fas fa-clock"></i></div>
-                    <h4>إطالة عمر المكيف</h4>
-                    <p>الفحص المنتظم يحافظ على كفاءة الجهاز.</p>
-                </div>
-            </div>
-        </div>
-        <div class="text-center mt-5">
-            <a href="tel:0541683466" class="primary-btn"><i class="fas fa-phone"></i> اطلب فحص المكيفات</a>
-        </div>
-    </div>
-</section>
 
-<section class="services-details-section">
-    <div class="container" data-aos="fade-up" data-aos-delay="100">
-        <div class="section-title text-center">
-            <h2>ما الذي نقدمه في شركة صيانة وغسيل مكيفات؟</h2>
-            <p>خدمة صيانة وتنظيف المكيفات لدينا تغطي كل ما يحتاجه جهازك ليعمل بكفاءة تامة</p>
-        </div>
-        <div class="row g-4 ">
-            <div class="col-lg-4 col-md-6">
-                <div class="service-details-card">
-                    <div class="icon"><i class="fas fa-magnifying-glass"></i></div>
-                    <h4>فحص شامل للمكيف</h4>
-                    <p>فحص دورة التبريد، ضغط الغاز (الفريون)، الكومبروسر، ووحدة التحكم.</p>
-                </div>
-            </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="service-details-card">
-                    <div class="icon"><i class="fas fa-bolt"></i></div>
-                    <h4>تصليح الأعطال الكهربائية</h4>
-                    <p>معالجة مشاكل الكارت الإلكتروني، مفاتيح التشغيل، والثرموستات.</p>
-                </div>
-            </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="service-details-card">
-                    <div class="icon"><i class="fas fa-gas-pump"></i></div>
-                    <h4>تعبئة غاز الفريون</h4>
-                    <p>نستخدم فقط غازات تبريد معتمدة آمنة وصديقة للبيئة، تضمن ثبات درجة البرودة لأطول فترة ممكنة.</p>
-                </div>
-            </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="service-details-card">
-                    <div class="icon"><i class="fas fa-check-double"></i></div>
-                    <h4>تجربة نهائية بعد الصيانة:</h4>
-                    <p>نقيس درجة حرارة الهواء الخارج، ونختبر المكيف أمام العميل قبل مغادرة المكان.</p>
-                </div>
-            </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="service-details-card">
-                    <div class="icon"><i class="fas fa-spray-can"></i></div>
-                    <h4>تنظيف وغسيل احترافي داخلي وخارجي:</h4>
-                    <p>إزالة الغبار من الفلاتر، المبخرات، والمكثفات، باستخدام أدوات معتمدة.</p>
-                </div>
-            </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="service-details-card">
-                    <div class="icon"><i class="fas fa-fan"></i></div>
-                    <h4>فحص المراوح</h4>
-                    <p>اختبار الأداء، التوازن، وضبط السرعة لمنع الضوضاء ورفع الكفاءة.</p>
-                </div>
-            </div>
-        </div>
-        <div class="d-flex flex-column gap-3 mt-4 justify-content-center align-items-center">
-            <p class="text-muted fw-bold">خدمة واحدة تغنيك عن البحث بين عشر جهات مختلفة</p>
-            <a href="tel:0541683466" class="primary-btn"><i class="fa-solid fa-phone"></i> احجز الآن</a>
-        </div>
-    </div>
-</section>
-
-<section class="guarantees-section py-5" dir="rtl">
-    <div class="container" data-aos="fade-up" data-aos-delay="100">
-        <div class="text-center mb-5">
-            <h2 class="section-title text-white">ضمانات على الخدمة</h2>
-            <p class="section-subtitle">نقدم لك أفضل خدمة مع ضمان كامل للجودة</p>
-        </div>
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="guarantee-card">
-                    <div class="icon"><i class="fa-solid fa-shield-halved"></i></div>
-                    <h3>ضمان على التصليح</h3>
-                    <p>نضمن جودة التصليح مع متابعة شهر لضمان رضا العميل.</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="guarantee-card">
-                    <div class="icon"><i class="fa-solid fa-gears"></i></div>
-                    <h3>ضمان قطع الغيار</h3>
-                    <p>نستخدم قطع غيار أصلية مع ضمان على الأداء والجودة.</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="guarantee-card">
-                    <div class="icon"><i class="fa-solid fa-user-check"></i></div>
-                    <h3>متابعة بعد الخدمة</h3>
-                    <p>فريق الدعم يتابع معك بعد انتهاء الخدمة للتأكد من رضاك.</p>
-                </div>
-            </div>
-        </div>
-        <div class="d-flex gap-3 flex-wrap justify-content-center mt-3">
-            <a href="tel:0541683466" class="primary-btn"><i class="fa-solid fa-phone"></i> استمتع بهواء بارد وراحة لا تنقطع</a>
-        </div>
-    </div>
-</section>
-
-<section class="service-types py-5">
-    <div class="container" data-aos="fade-up" data-aos-delay="100">
-        <div class="section-title text-center mb-5">
-            <h2>نخدم المنازل والشركات والمؤسسات</h2>
-            <p>نقدم خدمات صيانة وتنظيف المكيفات بجودة عالية وسرعة في التنفيذ</p>
-        </div>
-        <div class="row align-items-center">
-            <div class="col-lg-6 company-side">
-                <h4 class="title">للشركات والمؤسسات</h4>
-                <ul class="service-list">
-                    <li>غسيل المكيفات بأنواعها بشكل مستمر</li>
-                    <li>جداول متابعة دورية</li>
-                    <li>زيارات طارئة عند الحاجة</li>
-                    <li>تقارير فنية لكل جهاز</li>
-                    <li>خصومات خاصة للعقود الطويلة</li>
-                </ul>
-                <p class="desc">نوفر خطط غسيل وتنظيف وصيانة شهرية وسنوية للمكاتب والفنادق والمصانع لضمان أفضل أداء للمكيفات.</p>
-            </div>
-            <div class="col-lg-6 home-side">
-                <h4 class="title">للمنازل</h4>
-                <p class="desc">نعلم أن المكيف جزء مهم من يومك، لذلك نقدم زيارات سريعة ومواعيد مرنة مع فنيين محترفين يهتمون بالنظافة وجودة الخدمة.</p>
-                <ul class="service-list">
-                    <li>تنظيف شامل للمكيف</li>
-                    <li>فحص كامل للجهاز</li>
-                    <li>إزالة الروائح والغبار</li>
-                    <li>ضمان كفاءة التبريد</li>
-                </ul>
-            </div>
-        </div>
-        <div class="d-flex gap-3 flex-wrap justify-content-center mt-3">
-            <a href="tel:0541683466" class="primary-btn"><i class="fa-solid fa-phone"></i> احجز الان</a>
-        </div>
-    </div>
-</section>
-
-<section class="ac-types-section">
-    <div class="container text-center" data-aos="fade-up" data-aos-delay="100">
-        <h2 class="section-title">فحص وغسيل فوري لكل أنواع المكيفات</h2>
-        <div class="row g-4">
-            <div class="col-md-6 col-lg-4 col-xl-3"><div class="ac-item"><i class="fas fa-snowflake"></i><span>مكيفات سبليت</span></div></div>
-            <div class="col-md-6 col-lg-4 col-xl-3"><div class="ac-item"><i class="fas fa-building"></i><span>مكيفات مركزية</span></div></div>
-            <div class="col-md-6 col-lg-4 col-xl-3"><div class="ac-item"><i class="fas fa-wind"></i><span>مكيفات كونسيلد</span></div></div>
-            <div class="col-md-6 col-lg-4 col-xl-3"><div class="ac-item"><i class="fas fa-fan"></i><span>مكيفات كاسيت</span></div></div>
-        </div>
-        <p class="ac-note">يصلك مهندس وفني متخصص بالنوع تحديدًا</p>
-    </div>
-</section>
-
-<section class="process-section section-padding">
-    <div class="container">
-        <div class="text-center mb-5">
-            <h2 class="process-title">خطوات تنفيذ مدروسة وسهلة</h2>
-            <p class="process-subtitle">خطوات بسيطة للحصول على خدمة الصيانة بسرعة</p>
-        </div>
-        <div class="row g-4">
-            <div class="col-lg-4 col-md-6">
-                <div class="process-card">
-                    <div class="step-number">01</div>
-                    <i class="fas fa-phone-alt process-icon"></i>
-                    <h3>طلب الخدمة</h3>
-                    <p>احجز بسهولة عبر الهاتف أو الواتساب أو الموقع.</p>
-                </div>
-            </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="process-card">
-                    <div class="step-number">02</div>
-                    <i class="fas fa-calendar-check process-icon"></i>
-                    <h3>تأكيد الحجز</h3>
-                    <p>تأكيد الموعد من خدمة العملاء خلال دقائق</p>
-                </div>
-            </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="process-card">
-                    <div class="step-number">03</div>
-                    <i class="fas fa-tools process-icon"></i>
-                    <h3>الفحص والتشخيص</h3>
-                    <p>زيارة الفني المختص للفحص والتشخيص.</p>
-                </div>
-            </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="process-card">
-                    <div class="step-number">04</div>
-                    <i class="fas fa-file-invoice-dollar process-icon"></i>
-                    <h3>تحديد التكلفة</h3>
-                    <p>تقديم عرض السعر والموافقة عليه.</p>
-                </div>
-            </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="process-card">
-                    <div class="step-number">05</div>
-                    <i class="fas fa-wrench process-icon"></i>
-                    <h3>تنفيذ الصيانة</h3>
-                    <p>التنفيذ الفوري للصيانة أو تحديد موعد لاحق إن لزم.</p>
-                </div>
-            </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="process-card">
-                    <div class="step-number">06</div>
-                    <i class="fas fa-headset process-icon"></i>
-                    <h3>خدمة ما بعد الصيانة</h3>
-                    <p>متابعة بعد الزيارة لضمان رضاك الكامل.</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<section class="coverage py-5">
-    <div class="container text-center" data-aos="fade-up" data-aos-delay="100">
-        <h2 class="coverage-title">نخدم عملاءنا في:</h2>
         <div class="row justify-content-center g-4">
-            <div class="col-6 col-md-3"><div class="city-item"><i class="fas fa-map-marker-alt"></i> <span>الدمام</span></div></div>
-            <div class="col-6 col-md-3"><div class="city-item"><i class="fas fa-map-marker-alt"></i> <span>الخبر</span></div></div>
-            <div class="col-6 col-md-3"><div class="city-item"><i class="fas fa-map-marker-alt"></i> <span>الظهران</span></div></div>
-            <div class="col-6 col-md-3"><div class="city-item"><i class="fas fa-map-marker-alt"></i> <span>رأس تنورة</span></div></div>
-            <div class="col-6 col-md-3"><div class="city-item"><i class="fas fa-map-marker-alt"></i> <span>القطيف</span></div></div>
-            <div class="col-6 col-md-3"><div class="city-item"><i class="fas fa-map-marker-alt"></i> <span>صفوه</span></div></div>
-            <div class="col-6 col-md-3"><div class="city-item"><i class="fas fa-map-marker-alt"></i> <span>الجبيل</span></div></div>
+            @foreach (var benefit in benefits)
+            {
+                <div class="col-md-6 col-lg-4">
+                    <div class="benefit-card bg-white p-4 rounded-4 shadow-sm h-100 text-center border-bottom border-4 border-@(colorClass) hover-elevate">
+                        <div class="icon-wrapper bg-@(colorClass) bg-opacity-10 text-@(colorClass) rounded-circle d-inline-flex align-items-center justify-content-center mb-4" style="width: 80px; height: 80px;">
+                            <i class="fa-solid @(benefit.Icon) fs-1"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3 text-dark">@benefit.Title</h4>
+                        <p class="text-muted mb-0">@benefit.Desc</p>
+                    </div>
+                </div>
+            }
         </div>
-        <p class="fw-bold text-muted mt-5">ونسعى للوصول لكل بيت في المملكة قريبًا بإذن الله.</p>
     </div>
 </section>
+
+<!-- Service Details Section (تفاصيل الصيانة) -->
+<section id="details-section" class="services-details-section py-5">
+    <div class="container mt-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold display-6 text-dark mb-3">@detailsTitle</h2>
+            <p class="text-muted fs-5">@detailsSubtitle</p>
+        </div>
+
+        <div class="row g-4">
+            @foreach (var item in details)
+            {
+                <div class="col-lg-4 col-md-6">
+                    <div class="service-details-card bg-white p-4 rounded-4 shadow-sm h-100 position-relative overflow-hidden hover-elevate" style="border: 1px solid var(--gray-200);">
+                        <div class="position-absolute top-0 end-0 bg-@(colorClass) text-white px-3 py-2" style="border-bottom-left-radius: 15px;">
+                            <i class="fa-solid @(item.Icon) fs-4"></i>
+                        </div>
+                        <h4 class="fw-bold text-dark mt-3 mb-3 pe-4">@item.Title</h4>
+                        <p class="text-muted mb-0 lh-lg">@item.Desc</p>
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="d-flex flex-column gap-3 mt-5 pt-3 justify-content-center align-items-center">
+            <p class="text-muted fw-bold fs-5">خدمة متكاملة تغنيك عن البحث بين عشرات الشركات بضمان معتمد</p>
+            <a href="tel:0541683466" class="btn btn-@(colorClass) text-white fs-5 px-5 py-3 rounded-pill fw-bold shadow-sm"><i class="fa-solid fa-headset me-2"></i> تواصل مع خدمة العملاء</a>
+        </div>
+    </div>
+</section>
+
+<!-- 📌 تم حل مشكلة الأيقونات بزيادة الـ Font Size بشكل سليم بدلاً من display-4 -->
+<section class="guarantees-section py-5 bg-dark text-white position-relative" dir="rtl" style="background: linear-gradient(135deg, #010217, #0c1170);">
+    <div class="container my-4" data-aos="fade-up" data-aos-delay="100">
+        <div class="text-center mb-5">
+            <h2 class="fw-bold display-6 text-white mb-3">ضماناتنا الذهبية للخدمة</h2>
+            <p class="text-white-50 fs-5">نقدم لك أفضل خدمة صيانة مع ضمان كامل واطمئنان تام</p>
+        </div>
+        <div class="row g-4 text-center">
+            <div class="col-md-4">
+                <div class="guarantee-card p-4 h-100 rounded-4" style="border: 1px solid var(--primary-color);">
+                    <i class="fa-solid fa-shield-halved mb-4" style="font-size: 3.5rem; color: #0d6efd;"></i>
+                    <h3 class="fw-bold h4 mb-3 text-white">ضمان على الإصلاح</h3>
+                    <p class="text-white-50">نضمن جودة التصليح وحل المشكلة من جذورها مع فترة ضمان تغطي العمل المنجز لضمان رضاك التام.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="guarantee-card p-4 h-100 rounded-4" style="border: 1px solid var(--primary-color);">
+                    <i class="fa-solid fa-gears mb-4" style="font-size: 3.5rem; color: #0d6efd;"></i>
+                    <h3 class="fw-bold h4 mb-3 text-white">قطع غيار أصلية</h3>
+                    <p class="text-white-50">نستخدم فقط قطع الغيار الأصلية والمعتمدة لضمان عودة جهازك للعمل بكفاءة المصنع وإطالة عمره الافتراضي.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="guarantee-card p-4 h-100 rounded-4" style="border: 1px solid var(--primary-color);">
+                    <i class="fa-solid fa-headset mb-4" style="font-size: 3.5rem; color: #0d6efd;"></i>
+                    <h3 class="fw-bold h4 mb-3 text-white">متابعة ما بعد الخدمة</h3>
+                    <p class="text-white-50">فريق الدعم الفني وخدمة العملاء يتابع معك هاتفياً بعد انتهاء الفني للتأكد من استقرار عمل الجهاز.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Process Section (خطوات العمل) -->
+<section class="process-section py-5 bg-light">
+    <div class="container my-4">
+        <div class="text-center mb-5" data-aos="fade-up">
+            <h2 class="text-primary fw-bold display-6">كيف تتم دورة الصيانة؟</h2>
+            <p class="text-muted fs-5 mt-2">خطوات عملية مدروسة للحصول على خدمة احترافية في أسرع وقت</p>
+        </div>
+
+        <div class="row g-4 text-center" data-aos="fade-up" data-aos-delay="100">
+            <div class="col-lg-2 col-md-4 col-sm-6">
+                <div class="process-card p-4 bg-white rounded-4 shadow-sm h-100 position-relative hover-elevate">
+                    <div class="step-number position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary fs-6">01</div>
+                    <i class="fa-solid fa-phone-flip text-primary fs-1 mb-3 mt-3"></i>
+                    <h5 class="fw-bold mb-2">طلب الخدمة</h5>
+                    <p class="text-muted small mb-0">تواصل معنا واحجز موعدك</p>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-sm-6">
+                <div class="process-card p-4 bg-white rounded-4 shadow-sm h-100 position-relative hover-elevate">
+                    <div class="step-number position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary fs-6">02</div>
+                    <i class="fa-solid fa-calendar-check text-primary fs-1 mb-3 mt-3"></i>
+                    <h5 class="fw-bold mb-2">تأكيد الموعد</h5>
+                    <p class="text-muted small mb-0">توجيه أقرب فني لموقعك</p>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-sm-6">
+                <div class="process-card p-4 bg-white rounded-4 shadow-sm h-100 position-relative hover-elevate">
+                    <div class="step-number position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary fs-6">03</div>
+                    <i class="fa-solid fa-magnifying-glass text-primary fs-1 mb-3 mt-3"></i>
+                    <h5 class="fw-bold mb-2">الفحص الفني</h5>
+                    <p class="text-muted small mb-0">معاينة الجهاز وتحديد العطل</p>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-sm-6">
+                <div class="process-card p-4 bg-white rounded-4 shadow-sm h-100 position-relative hover-elevate">
+                    <div class="step-number position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary fs-6">04</div>
+                    <i class="fa-solid fa-file-signature text-primary fs-1 mb-3 mt-3"></i>
+                    <h5 class="fw-bold mb-2">عرض السعر</h5>
+                    <p class="text-muted small mb-0">اعتماد التكلفة قبل البدء</p>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-sm-6">
+                <div class="process-card p-4 bg-white rounded-4 shadow-sm h-100 position-relative hover-elevate">
+                    <div class="step-number position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary fs-6">05</div>
+                    <i class="fa-solid fa-wrench text-primary fs-1 mb-3 mt-3"></i>
+                    <h5 class="fw-bold mb-2">الإصلاح</h5>
+                    <p class="text-muted small mb-0">تنفيذ الصيانة بقطع أصلية</p>
+                </div>
+            </div>
+            <div class="col-lg-2 col-md-4 col-sm-6">
+                <div class="process-card p-4 bg-white rounded-4 shadow-sm h-100 position-relative hover-elevate">
+                    <div class="step-number position-absolute top-0 start-50 translate-middle badge rounded-pill bg-primary fs-6">06</div>
+                    <i class="fa-solid fa-file-invoice-dollar text-primary fs-1 mb-3 mt-3"></i>
+                    <h5 class="fw-bold mb-2">التسليم</h5>
+                    <p class="text-muted small mb-0">إصدار الفاتورة والضمان</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Coverage Section -->
+<section class="coverage py-5 bg-white">
+    <div class="container text-center my-4" data-aos="fade-up">
+        <h2 class="fw-bold display-6 text-dark mb-5">نغطي كافة أحياء ومدن المنطقة الشرقية</h2>
+        <div class="row justify-content-center g-3">
+            @foreach (var city in new[] { "الدمام", "الخبر", "الظهران", "رأس تنورة", "القطيف", "صفوى", "الجبيل", "سيهات" })
+            {
+                <div class="col-6 col-md-3">
+                    <div class="p-3 border rounded-pill shadow-sm hover-elevate text-dark fw-bold">
+                        <i class="fa-solid fa-map-marker-alt text-primary me-2"></i> @city
+                    </div>
+                </div>
+            }
+        </div>
+        <p class="fw-bold text-muted mt-5 fs-5">ونسعى للوصول لكل مدينة في المملكة قريباً بإذن الله.</p>
+    </div>
+</section>
+
+<style>
+    .hover-elevate {
+        transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1) !important;
+        }
+
+    .benefit-card i {
+        transition: transform 0.3s;
+    }
+
+    .benefit-card:hover i {
+        transform: scale(1.2);
+    }
+
+    .guarantee-card {
+        transition: transform 0.3s;
+    }
+
+        .guarantee-card:hover {
+            transform: translateY(-5px);
+        }
+</style>

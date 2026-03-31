@@ -21,15 +21,19 @@ namespace KaberSystem.Models
         public DbSet<DamagedPart> DamagedParts { get; set; }
         public DbSet<SystemUser> SystemUsers { get; set; }
 
-        // 📌 جدول طلبات قطع الغيار (نواقص الفنيين للدورة المستندية)
+        public DbSet<SafeTransaction> SafeTransactions { get; set; }
         public DbSet<OrderPartRequest> OrderPartRequests { get; set; }
 
-        // 📌 الحل الجذري لتصليح جميع تحذيرات الـ decimal دفعة واحدة
+        public DbSet<SystemLog> SystemLogs { get; set; }
+        public DbSet<LeaveRequest> LeaveRequests { get; set; }
+        public DbSet<PayrollSchedule> PayrollSchedules { get; set; }
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
             configurationBuilder.Properties<decimal>().HaveColumnType("decimal(18,2)");
         }
     }
+    public enum PaymentMethod { None, Cash, BankTransfer, Prepaid, POS }
+    public enum SafeTransactionType { Income, DepositToBank }
 
     public class SystemUser
     {
@@ -41,7 +45,20 @@ namespace KaberSystem.Models
         public string Password { get; set; }
         [Required(ErrorMessage = "الصلاحية مطلوبة")]
         public string Role { get; set; }
+
+        public string? Permissions { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.Now;
+    }
+
+    public class SystemLog
+    {
+        [Key]
+        public int Id { get; set; }
+        public string Username { get; set; } // من قام بالعملية
+        public string ActionType { get; set; } // نوع العملية (إضافة، تعديل، حذف)
+        public string Details { get; set; } // التفاصيل
+        public DateTime Timestamp { get; set; } = DateTime.Now;
     }
 
     public class Order
@@ -72,11 +89,26 @@ namespace KaberSystem.Models
         public decimal FinalPrice { get; set; }
         public ICollection<Invoice>? Invoices { get; set; }
         public ICollection<OrderSparePart>? UsedSpareParts { get; set; }
+        public bool IsPaid { get; set; } = false;
+        public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.None;
+        public string? PaymentReceiptPath { get; set; }
+
     }
 
-    public enum OrderType { Maintenance, NewInstallation, Warranty }
-    public enum OrderStatus { New, Assigned, Confirmed, InProgress, Completed, Cancelled }
+    public enum OrderType { Maintenance, NewInstallation, Warranty, ACWashing }
+    public enum OrderStatus { New, Assigned, Confirmed, InProgress, Completed, Approved, Returned, Cancelled }
+    public class SafeTransaction
+    {
+        [Key] public int Id { get; set; }
+        public decimal Amount { get; set; }
+        public SafeTransactionType Type { get; set; } 
+        public DateTime Date { get; set; } = DateTime.Now;
+        public string Description { get; set; }
+        public string RecordedBy { get; set; }
 
+        public int? OrderId { get; set; } 
+        [ForeignKey("OrderId")] public Order? Order { get; set; }
+    }
     public class Invoice
     {
         [Key]
@@ -152,8 +184,35 @@ namespace KaberSystem.Models
         public int Quantity { get; set; }
         public PartRequestStatus Status { get; set; }
         public DateTime RequestDate { get; set; } = DateTime.Now;
+
+    }
+    public enum LeaveType { Annual, Sick, Emergency, Unpaid }
+    public enum LeaveStatus { Pending, Approved, Rejected }
+
+    public class LeaveRequest
+    {
+        [Key] public int Id { get; set; }
+        public int UserId { get; set; } // الموظف طالب الإجازة
+        [ForeignKey("UserId")] public SystemUser? User { get; set; }
+
+        public LeaveType Type { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
+        public string Reason { get; set; }
+        public LeaveStatus Status { get; set; } = LeaveStatus.Pending;
+        public DateTime RequestDate { get; set; } = DateTime.Now;
+        public string? AdminNote { get; set; }
     }
 
+    public class PayrollSchedule
+    {
+        [Key] public int Id { get; set; }
+        public int Month { get; set; }
+        public int Year { get; set; }
+        public DateTime ScheduledDate { get; set; } // موعد نزول الراتب
+        public bool IsProcessed { get; set; } = false; // هل تم الصرف فعلاً؟
+        public string Note { get; set; }
+    }
     public enum PartRequestStatus { PendingWarehouse, PendingPurchasing, PurchasedWaitingStore, ReadyForInstallation, Installed, Rejected }
     public enum PartRequestType { FromWarehouse, PurchaseNew }
 
@@ -196,6 +255,8 @@ namespace KaberSystem.Models
         public string? Barcode { get; set; }
     }
 
+    public enum DeductionSource { Company, Technician }
+
     public class Expense
     {
         [Key] public int Id { get; set; }
@@ -203,6 +264,9 @@ namespace KaberSystem.Models
         public decimal Amount { get; set; }
         public DateTime Date { get; set; } = DateTime.Now;
         public string? RecordedBy { get; set; }
+
+        public DeductionSource DeductionFrom { get; set; } = DeductionSource.Company;
+
         public int? TechnicianId { get; set; }
         [ForeignKey("TechnicianId")] public Technician? Technician { get; set; }
     }
@@ -215,5 +279,7 @@ namespace KaberSystem.Models
         public int Quantity { get; set; }
         [Required] public string Reason { get; set; }
         public DateTime Date { get; set; } = DateTime.Now;
+
+        public decimal TotalLoss { get; set; }
     }
 }

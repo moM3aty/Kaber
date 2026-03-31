@@ -79,22 +79,41 @@
                     <li class="nav-item"><a class="nav-link active" href="/">الرئيسية</a></li>
                     <li class="nav-item"><a class="nav-link" href="/Home/About">من نحن</a></li>
                     <li class="nav-item dropdown services-dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">خدماتنا</a>
-                        <ul class="dropdown-menu">
+                        <a class="nav-link dropdown-toggle fw-bold" href="#" data-bs-toggle="dropdown">خدماتنا</a>
+                        <ul class="dropdown-menu shadow border-0 rounded-3">
+
+                            <!-- 📌 القائمة المتفرعة للأجهزة المنزلية -->
                             <li class="dropdown-submenu">
-                                <a class="dropdown-item dropdown-toggle" href="#">صيانة الأجهزة المنزلية</a>
-                                <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="/Home/ServiceDetails">ثلاجات</a></li>
-                                    <li><a class="dropdown-item" href="/Home/ServiceDetails">غسالات</a></li>
-                                    <li><a class="dropdown-item" href="/Home/ServiceDetails">افران كهرباء</a></li>
-                                    <li><a class="dropdown-item" href="/Home/ServiceDetails">فريزرات</a></li>
-                                    <li><a class="dropdown-item" href="/Home/ServiceDetails">غسالات صحون</a></li>
-                                    <li><a class="dropdown-item" href="/Home/ServiceDetails">مجففات</a></li>
-                                    <li><a class="dropdown-item" href="/Home/ServiceDetails">مكيفات</a></li>
+                                <a class="dropdown-item fw-bold d-flex justify-content-between align-items-center" href="/Home/ServiceDetails?type=HomeAppliances">
+                                    <span><i class="fa-solid fa-house-chimney text-primary me-2"></i> صيانة الأجهزة المنزلية</span>
+                                    <i class="fa-solid fa-chevron-left text-muted small"></i>
+                                </a>
+                                <ul class="dropdown-menu shadow border-0 rounded-3">
+                                    <li><a class="dropdown-item fw-bold text-primary" href="/Home/ServiceDetails?type=HomeAppliances">عرض كل الأجهزة المنزلية</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="/Home/ServiceDetails?type=Refrigerator">ثلاجات</a></li>
+                                    <li><a class="dropdown-item" href="/Home/ServiceDetails?type=WashingMachine">غسالات</a></li>
+                                    <li><a class="dropdown-item" href="/Home/ServiceDetails?type=ElectricOven">أفران كهرباء</a></li>
+                                    <li><a class="dropdown-item" href="/Home/ServiceDetails?type=Freezer">فريزرات</a></li>
+                                    <li><a class="dropdown-item" href="/Home/ServiceDetails?type=Dishwasher">غسالات صحون</a></li>
+                                    <li><a class="dropdown-item" href="/Home/ServiceDetails?type=Dryer">مجففات</a></li>
+                                    <li><a class="dropdown-item" href="/Home/ServiceDetails?type=AC">مكيفات</a></li>
                                 </ul>
                             </li>
-                            <li><a class="dropdown-item" href="/Home/ServiceDetails">صيانة غرف التبريد</a></li>
-                            <li><a class="dropdown-item" href="/Home/ServiceDetails">صيانة معدات المطاعم</a></li>
+
+                            <li><hr class="dropdown-divider"></li>
+
+                            <!-- 📌 الخدمات التجارية (روابط مباشرة) -->
+                            <li>
+                                <a class="dropdown-item fw-bold" href="/Home/ServiceDetails?type=ColdRoom">
+                                    <i class="fa-solid fa-boxes-packing text-info me-2"></i> صيانة غرف التبريد
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item fw-bold" href="/Home/ServiceDetails?type=RestaurantEquipment">
+                                    <i class="fa-solid fa-utensils text-danger me-2"></i> صيانة معدات المطاعم
+                                </a>
+                            </li>
                         </ul>
                     </li>
                     <li class="nav-item"><a class="nav-link" href="/Home/Blog">المدونة</a></li>

@@ -45,7 +45,7 @@ body {
     overflow-x: hidden;
 }
 .input-group {
-    direction: ltr;
+    direction: rtl !important;
 }
 /* Custom Scrollbar */
 ::-webkit-scrollbar {

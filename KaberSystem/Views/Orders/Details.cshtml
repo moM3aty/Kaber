@@ -3,53 +3,10 @@
     ViewData["Title"] = "تفاصيل الطلب #" + Model.OrderId;
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 
-    // تجهيز رسالة الواتساب المنسقة
     string phone = Model.PhoneNumber.StartsWith("0") ? Model.PhoneNumber.Substring(1) : Model.PhoneNumber;
     string waNumber = "966" + phone;
     decimal partsTotal = Model.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
-
-    // حساب الرسوم المطبقة بناء على اختيار الفني
     decimal appliedFee = Model.IsFeeApplied ? Model.EstimatedPrice : 0;
-
-    // 📌 رسالة الفاتورة النهائية
-    string waMessage = $"مرحباً *{Model.CustomerName}*،\n\n" +
-                       $"إليك تفاصيل فاتورة الصيانة الخاصة بك من *(شركة كابر)*:\n" +
-                       $"▫️ *رقم الطلب:* #{Model.OrderId}\n" +
-                       $"▫️ *المنتج:* {Model.DeviceName}\n";
-
-    if (Model.IsFeeApplied)
-    {
-        waMessage += $"▫️ *رسوم الفحص:* {Model.EstimatedPrice} ريال\n";
-    }
-    else
-    {
-        waMessage += $"▫️ *رسوم الفحص:* مجاناً (تم إسقاطها)\n";
-    }
-
-    waMessage += $"▫️ *إجمالي قطع الغيار (شامل الضريبة):* {partsTotal} ريال\n";
-
-    if (Model.AdvancePayment > 0)
-    {
-        waMessage += $"▫️ *الدفعة المقدمة:* -{Model.AdvancePayment} ريال\n";
-    }
-
-    waMessage += $"\n💰 *المبلغ النهائي المستحق:* {Model.FinalPrice} ريال\n\n" +
-                 $"شكراً لثقتكم بخدماتنا! 🛠️";
-
-    string encodedMessage = Uri.EscapeDataString(waMessage);
-
-    // 📌 رسالة عرض السعر (Quotation)
-    decimal qtLabor = Model.IsFeeApplied ? Model.EstimatedPrice : 0;
-    decimal qtTotal = partsTotal + qtLabor;
-    string waQuoteMessage = $"مرحباً *{Model.CustomerName}*،\n\n" +
-                            $"بناءً على طلبكم، إليك تفاصيل عرض السعر المبدئي لصيانة: *( {Model.DeviceName} )*\n\n" +
-                            $"▫️ رسوم الفحص/العمل: {qtLabor} ريال\n" +
-                            $"▫️ إجمالي قطع الغيار: {partsTotal} ريال\n" +
-                            $"➖➖➖➖➖➖\n" +
-                            $"💰 *الإجمالي المقدر: {qtTotal} ريال*\n\n" +
-                            $"للاطلاع على عرض السعر الرسمي بالتفصيل وتأكيد الموافقة يرجى زيارتنا أو طلب نسخة PDF.\n" +
-                            $"نحن في خدمتك! 🛠️";
-    string encodedQuote = Uri.EscapeDataString(waQuoteMessage);
 
     // جلب طلبات قطع الغيار النواقص من الـ ViewBag
     var partRequests = ViewBag.PartRequests as IEnumerable<KaberSystem.Models.OrderPartRequest>;
@@ -58,68 +15,36 @@
 <div class="sys-page-header d-print-none">
     <div>
         <h1 class="sys-page-title">متابعة الطلب #@Model.OrderId</h1>
-        <p class="sys-page-desc">إدارة تفاصيل الزيارة، الميزانية، وطلب نواقص قطع الغيار (عامة أو لموديل محدد)</p>
+        <p class="sys-page-desc">إدارة تفاصيل الزيارة، الميزانية، والاعتماد النهائي</p>
     </div>
     <div class="d-flex gap-2">
         <a href="/Orders/Index" class="btn btn-outline-secondary fw-bold px-4 border-2 rounded-3">
             <i class="fa-solid fa-arrow-right"></i> عودة
         </a>
-        <a href="/Orders/Quotation/@Model.OrderId" target="_blank" class="sys-btn btn-warning text-dark fw-bold">
-            <i class="fa-solid fa-file-signature"></i> إنشاء عرض سعر
-        </a>
         <a href="/Orders/PrintInvoice/@Model.OrderId" target="_blank" class="sys-btn sys-btn-primary">
-            <i class="fa-solid fa-file-invoice"></i> عرض الفاتورة النهائية
+            <i class="fa-solid fa-file-invoice"></i> عرض الفاتورة
         </a>
     </div>
 </div>
 
-<!-- Timeline لحالة الطلب -->
-<div class="sys-card mb-4 d-print-none text-center py-4">
-    <h5 class="fw-bold mb-4 text-secondary">مسار وتتبع الطلب</h5>
-    <div class="d-flex justify-content-between align-items-center position-relative w-75 mx-auto">
-        <div class="position-absolute w-100" style="height: 4px; background: var(--sys-border); top: 50%; transform: translateY(-50%); z-index: 1;"></div>
-        @{
-            int progress = Model.Status switch { KaberSystem.Models.OrderStatus.New => 0, KaberSystem.Models.OrderStatus.Assigned => 25, KaberSystem.Models.OrderStatus.Confirmed => 50, KaberSystem.Models.OrderStatus.InProgress => 75, KaberSystem.Models.OrderStatus.Completed => 100, _ => 0 };
-        }
-        <div class="position-absolute" style="height: 4px; background: var(--sys-primary); top: 50%; transform: translateY(-50%); z-index: 2; width: @progress%; transition: 1s ease;"></div>
-
-        <div class="position-relative z-3 bg-white rounded-circle p-1 @(progress >= 0 ? "text-primary" : "text-muted")">
-            <i class="fa-solid fa-circle-dot fs-3"></i>
-            <div class="position-absolute top-100 start-50 translate-middle-x mt-2 fw-bold small">جديد</div>
-        </div>
-        <div class="position-relative z-3 bg-white rounded-circle p-1 @(progress >= 25 ? "text-primary" : "text-muted")">
-            <i class="fa-solid fa-circle-dot fs-3"></i>
-            <div class="position-absolute top-100 start-50 translate-middle-x mt-2 fw-bold small">معين</div>
-        </div>
-        <div class="position-relative z-3 bg-white rounded-circle p-1 @(progress >= 50 ? "text-primary" : "text-muted")">
-            <i class="fa-solid fa-circle-dot fs-3"></i>
-            <div class="position-absolute top-100 start-50 translate-middle-x mt-2 fw-bold small">مؤكد</div>
-        </div>
-        <div class="position-relative z-3 bg-white rounded-circle p-1 @(progress >= 75 ? "text-primary" : "text-muted")">
-            <i class="fa-solid fa-circle-dot fs-3"></i>
-            <div class="position-absolute top-100 start-50 translate-middle-x mt-2 fw-bold small">قيد التنفيذ</div>
-        </div>
-        <div class="position-relative z-3 bg-white rounded-circle p-1 @(progress >= 100 ? "text-success" : "text-muted")">
-            <i class="fa-solid fa-circle-check fs-3"></i>
-            <div class="position-absolute top-100 start-50 translate-middle-x mt-2 fw-bold small">مكتمل</div>
+@if (Model.Status == KaberSystem.Models.OrderStatus.Completed && User.IsInRole("Admin"))
+{
+    <!-- 📌 تنبيه للإدارة بضرورة مراجعة الطلب -->
+    <div class="alert alert-dark border-0 border-start border-4 border-warning shadow-sm mb-4 d-flex align-items-center">
+        <i class="fa-solid fa-clipboard-check fs-2 text-warning me-3"></i>
+        <div>
+            <h5 class="fw-bold text-dark mb-1">الطلب بانتظار المراجعة والاعتماد!</h5>
+            <p class="mb-0 text-muted fw-bold">قام الفني بإنهاء العمل. يرجى مراجعة قطع الغيار والرسوم، ثم تغيير الحالة إلى (معتمد نهائي) لترحيل الفاتورة، أو (إرجاع) للفني.</p>
         </div>
     </div>
-</div>
-
-@if (ViewBag.HasWarranty != null && (bool)ViewBag.HasWarranty)
+}
+else if (Model.Status == KaberSystem.Models.OrderStatus.Returned && User.IsInRole("Technician"))
 {
-    <!-- 📌 تنبيه ذكي: العميل تحت الضمان -->
-    <div class="alert alert-success border-2 border-success d-flex align-items-center mb-4 shadow-sm" role="alert">
-        <div class="bg-success bg-opacity-10 p-3 rounded-circle me-3">
-            <i class="fa-solid fa-shield-halved fs-2 text-success"></i>
-        </div>
+    <div class="alert alert-danger border-0 border-start border-4 border-danger shadow-sm mb-4 d-flex align-items-center">
+        <i class="fa-solid fa-rotate-left fs-2 text-danger me-3"></i>
         <div>
-            <h5 class="fw-bold text-success mb-1">تنبيه: العميل مشمول بالضمان!</h5>
-            <p class="mb-0 fw-bold text-dark">
-                هذا الجوال لديه طلب صيانة سابق رقم
-                <a href="/Orders/Details/@ViewBag.PreviousOrderId" target="_blank" class="text-decoration-underline text-success fw-bolder">#@ViewBag.PreviousOrderId</a>
-                مكتمل حديثاً، وتبقى في فترة الضمان <span class="badge bg-danger fs-6 mx-1">@ViewBag.WarrantyDaysLeft يوم</span>. يرجى مراجعة الصنف السابق وعدم تحصيل رسوم فحص.
-            </p>
+            <h5 class="fw-bold text-danger mb-1">تم إرجاع الطلب من قبل الإدارة!</h5>
+            <p class="mb-0 text-dark fw-bold">الرجاء قراءة ملاحظات الإدارة بالأسفل، تعديل المطلوب، ثم إعادة تسليم الطلب (مكتمل).</p>
         </div>
     </div>
 }
@@ -161,27 +86,41 @@
             @if (!string.IsNullOrEmpty(Model.TechnicianNotes))
             {
                 <div class="p-4 bg-success bg-opacity-10 rounded-4 border-start border-4 border-success">
-                    <h6 class="fw-bold text-success mb-2">التقرير الفني (ما تم إنجازه):</h6>
+                    <h6 class="fw-bold text-success mb-2">التقرير الفني وملاحظات الإدارة:</h6>
                     <p class="mb-0 fw-bold text-dark fs-6 lh-lg">@Model.TechnicianNotes</p>
                 </div>
             }
         </div>
     </div>
 
-    <!-- حالة الطلب والفني -->
+    <!-- التحكم بالحالة -->
     <div class="col-lg-4">
         <div class="sys-card h-100 d-print-none text-center">
-            <h4 class="fw-bold mb-4 text-primary border-bottom pb-3"><i class="fa-solid fa-bars-progress me-2"></i> التحكم بالحالة</h4>
+            <h4 class="fw-bold mb-4 text-primary border-bottom pb-3"><i class="fa-solid fa-bars-progress me-2"></i> التحكم بالحالة والمراجعة</h4>
+
             <form asp-action="UpdateStatus" method="post" class="mb-4 bg-light p-3 rounded-3 border text-start">
                 <input type="hidden" name="id" value="@Model.OrderId" />
+
                 <div class="mb-3">
                     <label class="fw-bold mb-2 text-dark small">تحديث حالة الطلب:</label>
                     <select name="newStatus" class="form-select fw-bold border-secondary text-primary">
-                        <option value="InProgress" selected="@(Model.Status == KaberSystem.Models.OrderStatus.InProgress)">قيد التنفيذ / بانتظار القطع</option>
-                        <option value="Completed" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Completed)">مكتمل (ترحيل للحسابات)</option>
-                        <option value="Cancelled" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Cancelled)">ملغي</option>
+                        @if (User.IsInRole("Technician"))
+                        {
+                            <option value="InProgress" selected="@(Model.Status == KaberSystem.Models.OrderStatus.InProgress || Model.Status == KaberSystem.Models.OrderStatus.Returned)">قيد التنفيذ / تعديل الملاحظات</option>
+                            <option value="Completed" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Completed)">مكتمل (تسليم للإدارة)</option>
+                        }
+                        else
+                        {
+                            <!-- خيارات الإدارة والكول سنتر -->
+                            <option value="InProgress" selected="@(Model.Status == KaberSystem.Models.OrderStatus.InProgress)">قيد التنفيذ</option>
+                            <option value="Completed" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Completed)">بانتظار المراجعة (من الفني)</option>
+                            <option value="Approved" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Approved)" class="text-success fw-bold">اعتماد نهائي (ترحيل الفاتورة)</option>
+                            <option value="Returned" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Returned)" class="text-danger fw-bold">إرجاع للفني لتصحيح الأخطاء</option>
+                            <option value="Cancelled" selected="@(Model.Status == KaberSystem.Models.OrderStatus.Cancelled)">إلغاء الطلب</option>
+                        }
                     </select>
                 </div>
+
                 <div class="mb-3">
                     <label class="fw-bold mb-2 text-dark small">تطبيق رسوم الفحص:</label>
                     <select name="isFeeApplied" class="form-select fw-bold border-secondary">
@@ -189,11 +128,13 @@
                         <option value="0" selected="@(!Model.IsFeeApplied)">لا (إعفاء ضريبي/ضمان)</option>
                     </select>
                 </div>
+
                 <div class="mb-3">
-                    <label class="fw-bold mb-2 text-dark small">تقرير الفني النهائي:</label>
-                    <textarea name="technicianNotes" class="form-control fw-bold border-secondary" rows="2">@Model.TechnicianNotes</textarea>
+                    <label class="fw-bold mb-2 text-dark small">ملاحظات العمل / سبب الإرجاع:</label>
+                    <textarea name="technicianNotes" class="form-control fw-bold border-secondary" rows="3" placeholder="اكتب الملاحظات هنا...">@Model.TechnicianNotes</textarea>
                 </div>
-                <button type="submit" class="btn btn-primary fw-bold w-100 py-2"><i class="fa-solid fa-save"></i> حفظ وتحديث الطلب</button>
+
+                <button type="submit" class="btn btn-primary fw-bold w-100 py-2"><i class="fa-solid fa-save"></i> حفظ وتحديث المسار</button>
             </form>
 
             <h6 class="fw-bold text-muted mb-3">الفني المختص:</h6>
@@ -210,19 +151,23 @@
         </div>
     </div>
 
-    <!-- 📌 القسم الجديد: طلبات توفير قطع الغيار (النواقص والدورة المستندية) -->
+    <!-- 📌 القسم الذي كان ناقصاً: طلبات توفير قطع الغيار (النواقص والدورة المستندية) -->
     <div class="col-12 d-print-none">
         <div class="sys-card bg-primary bg-opacity-10 border border-primary">
             <div class="d-flex justify-content-between align-items-center mb-4 border-bottom border-primary pb-3">
                 <h4 class="fw-bold text-primary m-0"><i class="fa-solid fa-boxes-packing me-2"></i> طلبات توفير قطع الغيار (Workflow)</h4>
-                <div class="d-flex gap-2">
-                    <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#requestWarehouseModal">
-                        <i class="fa-solid fa-warehouse"></i> طلب حجز من المخزن
-                    </button>
-                    <button class="btn btn-dark fw-bold" data-bs-toggle="modal" data-bs-target="#requestPurchaseModal">
-                        <i class="fa-solid fa-cart-plus"></i> طلب شراء (غير متوفرة)
-                    </button>
-                </div>
+
+                @if ((Model.Status != KaberSystem.Models.OrderStatus.Completed && Model.Status != KaberSystem.Models.OrderStatus.Approved) || User.IsInRole("Admin"))
+                {
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary fw-bold" data-bs-toggle="modal" data-bs-target="#requestWarehouseModal">
+                            <i class="fa-solid fa-warehouse"></i> طلب حجز من المخزن
+                        </button>
+                        <button class="btn btn-dark fw-bold" data-bs-toggle="modal" data-bs-target="#requestPurchaseModal">
+                            <i class="fa-solid fa-cart-plus"></i> طلب شراء (غير متوفرة)
+                        </button>
+                    </div>
+                }
             </div>
 
             @if (partRequests != null && partRequests.Any())
@@ -301,7 +246,9 @@
                 <div class="col-md-8 print-col-full">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h6 class="fw-bold text-dark m-0">قطع الغيار المستخدمة (من عهدة الفني)</h6>
-                        @if (Model.Status != KaberSystem.Models.OrderStatus.Completed || User.IsInRole("Admin"))
+
+                        <!-- 📌 زر الإضافة يختفي إذا كان الطلب بانتظار المراجعة أو معتمد (إلا للإدارة) -->
+                        @if ((Model.Status != KaberSystem.Models.OrderStatus.Completed && Model.Status != KaberSystem.Models.OrderStatus.Approved) || User.IsInRole("Admin"))
                         {
                             <button type="button" class="btn btn-sm btn-outline-primary fw-bold d-print-none" data-bs-toggle="modal" data-bs-target="#addPartModal">
                                 <i class="fa-solid fa-plus"></i> تركيب من العهدة
@@ -332,9 +279,9 @@
                                             <td class="fw-bold text-success">@((part.QuantityUsed * part.SellingPriceAtTime).ToString("N2")) ريال</td>
                                             <td class="d-print-none">
                                                 <div class="d-flex gap-1 justify-content-center">
-                                                    <!-- زر طباعة ملصق القطعة -->
-                                                    <button class="btn btn-sm btn-light border" onclick="printPartLabel('@part.SparePart.PartCode', '@part.SparePart.Name')" title="طباعة ملصق"><i class="fa-solid fa-barcode"></i></button>
-                                                    @if (Model.Status != KaberSystem.Models.OrderStatus.Completed || User.IsInRole("Admin"))
+                                                    <button type="button" class="btn btn-sm btn-light border fw-bold px-2" onclick="printPartLabel('@part.SparePart.PartCode', '@part.SparePart.Name')"><i class="fa-solid fa-barcode text-dark"></i></button>
+
+                                                    @if ((Model.Status != KaberSystem.Models.OrderStatus.Completed && Model.Status != KaberSystem.Models.OrderStatus.Approved) || User.IsInRole("Admin"))
                                                     {
                                                         <form asp-action="RemoveUsedPart" method="post">
                                                             <input type="hidden" name="orderId" value="@Model.OrderId" /><input type="hidden" name="recordId" value="@part.Id" />
@@ -357,10 +304,6 @@
                         <div class="d-flex justify-content-between mb-3 border-bottom pb-3"><span class="fw-bold text-muted">رسوم الفحص:</span><span class="fw-bold text-dark fs-5">@appliedFee.ToString("N2") ريال</span></div>
                         <div class="d-flex justify-content-between mb-3 border-bottom pb-3"><span class="fw-bold text-muted">قطع الغيار:</span><span class="fw-bold text-dark fs-5">@partsTotal.ToString("N2") ريال</span></div>
                         <div class="d-flex justify-content-between align-items-center mt-4"><span class="fw-bold text-dark fs-4">المستحق:</span><span class="fw-bold text-success fs-3 border border-success px-3 py-1 rounded-3">@Model.FinalPrice.ToString("N2") ريال</span></div>
-                        <div class="text-center mt-4 d-print-none d-flex flex-column gap-2">
-                            <a href="https://wa.me/@waNumber?text=@encodedQuote" target="_blank" class="btn btn-warning text-dark fw-bold w-100 py-3 rounded-pill shadow-sm"><i class="fa-brands fa-whatsapp me-1"></i> إرسال عرض السعر</a>
-                            <a href="https://wa.me/@waNumber?text=@encodedMessage" target="_blank" class="btn btn-success fw-bold w-100 py-3 rounded-pill text-white shadow-sm"><i class="fa-brands fa-whatsapp me-1"></i> إرسال الفاتورة</a>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -457,7 +400,7 @@
     </div>
 </div>
 
-<!-- (نفس الـ Modal الأصلي الخاص بإضافة قطعة من عهدة الفني) -->
+<!-- Modal إضافة قطعة غيار من العهدة -->
 <div class="modal fade d-print-none" id="addPartModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 rounded-4 shadow-lg">
@@ -519,11 +462,11 @@
 
         @if (TempData["SuccessMessage"] != null)
         {
-                <text>Swal.fire({ icon: 'success', title: 'تم التحديث', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#f1950b' });</text>
+                <text>Swal.fire({ icon: 'success', title: 'تم التحديث', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonText: 'حسناً', confirmButtonColor: '#f1950b' });</text>
         }
         @if (TempData["ErrorMessage"] != null)
         {
-                <text>Swal.fire({ icon: 'error', title: 'خطأ', text: '@Html.Raw(TempData["ErrorMessage"])', confirmButtonColor: '#ee5d50' });</text>
+                <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: '@Html.Raw(TempData["ErrorMessage"])', confirmButtonColor: '#ee5d50' });</text>
         }
     </script>
 }

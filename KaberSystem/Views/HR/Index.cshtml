@@ -1,0 +1,110 @@
+﻿<!-- مسار الملف: Views/HR/Index.cshtml -->
+@model IEnumerable<KaberSystem.Models.SystemUser>
+@{
+    ViewData["Title"] = "إدارة الموظفين";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="d-flex justify-content-between align-items-end mb-4">
+    <div>
+        <h2 class="fw-bolder text-dark mb-1" style="letter-spacing: -1px;"><i class="fa-solid fa-id-card text-primary me-2"></i> الموارد البشرية (HR)</h2>
+        <p class="text-muted fw-bold mb-0">متابعة شؤون الموظفين، الحالات التشغيلية، وهيكل المؤسسة</p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/HR/Leaves" class="btn btn-warning fw-bold rounded-pill px-4 shadow-sm text-dark"><i class="fa-solid fa-umbrella-beach me-2"></i> الإجازات</a>
+        <a href="/HR/Payroll" class="btn btn-success fw-bold rounded-pill px-4 shadow-sm"><i class="fa-solid fa-calendar-check me-2"></i> مواعيد الرواتب</a>
+    </div>
+</div>
+
+<!-- 📌 ملخص سريع للـ HR -->
+<div class="row g-4 mb-5">
+    <div class="col-md-4">
+        <div class="card border-0 rounded-4 shadow-sm bg-primary text-white p-4">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <p class="mb-0 opacity-75 fw-bold small text-uppercase">إجمالي الكادر</p>
+                    <h2 class="fw-bolder mb-0">@ViewBag.TotalEmployees موظف</h2>
+                </div>
+                <i class="fa-solid fa-users-gear fs-1 opacity-25"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 rounded-4 shadow-sm bg-white p-4 border-start border-4 border-warning">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <p class="mb-0 text-muted fw-bold small text-uppercase">موظفون في إجازة</p>
+                    <h2 class="fw-bolder mb-0 text-dark">@ViewBag.ActiveLeaves</h2>
+                </div>
+                <i class="fa-solid fa-plane-departure fs-1 text-warning opacity-50"></i>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card border-0 rounded-4 shadow-sm bg-white p-4 border-start border-4 border-danger">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <p class="mb-0 text-muted fw-bold small text-uppercase">طلبات إجازة معلقة</p>
+                    <h2 class="fw-bolder mb-0 text-danger">@ViewBag.PendingLeaves</h2>
+                </div>
+                <i class="fa-solid fa-clock-rotate-left fs-1 text-danger opacity-50"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 📌 قائمة الموظفين -->
+<div class="card border-0 rounded-4 shadow-sm overflow-hidden">
+    <div class="card-header bg-white border-0 pt-4 px-4">
+        <h5 class="fw-bolder text-dark mb-0">هيكل الفريق وحالة الحضور</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-borderless table-hover align-middle text-center mb-0 w-100">
+                <thead class="bg-light text-muted small fw-bold">
+                    <tr>
+                        <th class="py-3 text-start ps-4">الموظف</th>
+                        <th class="py-3">المنصب / الصلاحية</th>
+                        <th class="py-3">تاريخ الانضمام</th>
+                        <th class="py-3">الحالة التشغيلية</th>
+                        <th class="py-3 pe-4">ملف الموظف</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var emp in Model)
+                    {
+                        <tr style="border-bottom: 1px solid #f8f9fa;">
+                            <td class="text-start ps-4 py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-light text-primary rounded-circle me-3 d-flex justify-content-center align-items-center fw-bold border">
+                                        @emp.Username.Substring(0, 1)
+                                    </div>
+                                    <span class="fw-bolder text-dark">@emp.Username</span>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark border rounded-pill px-3 py-1">@emp.Role</span>
+                            </td>
+                            <td class="text-muted fw-bold small">@emp.CreatedAt.ToString("yyyy-MM-dd")</td>
+                            <td>
+                                <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-bold">
+                                    <i class="fa-solid fa-circle me-1 small"></i> متصل / متاح
+                                </span>
+                            </td>
+                            <td class="pe-4">
+                                <a href="/Users/Edit/@emp.UserId" class="btn btn-sm btn-light border rounded-pill px-3 fw-bold">تعديل البيانات</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    .avatar-sm {
+        width: 40px;
+        height: 40px;
+    }
+</style>

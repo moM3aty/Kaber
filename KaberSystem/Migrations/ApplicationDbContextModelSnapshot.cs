@@ -43,6 +43,9 @@ namespace KaberSystem.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal>("TotalLoss")
+                        .HasColumnType("decimal(18,2)");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PartId");
@@ -63,6 +66,9 @@ namespace KaberSystem.Migrations
 
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("DeductionFrom")
+                        .HasColumnType("int");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -111,6 +117,46 @@ namespace KaberSystem.Migrations
                     b.ToTable("Invoices");
                 });
 
+            modelBuilder.Entity("KaberSystem.Models.LeaveRequest", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("AdminNote")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("RequestDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("LeaveRequests");
+                });
+
             modelBuilder.Entity("KaberSystem.Models.Order", b =>
                 {
                     b.Property<int>("OrderId")
@@ -146,7 +192,16 @@ namespace KaberSystem.Migrations
                     b.Property<bool>("IsFeeApplied")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsPaid")
+                        .HasColumnType("bit");
+
                     b.Property<string>("LocationMapUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("PaymentMethod")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PaymentReceiptPath")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PhoneNumber")
@@ -255,6 +310,35 @@ namespace KaberSystem.Migrations
                     b.ToTable("UsedSpareParts");
                 });
 
+            modelBuilder.Entity("KaberSystem.Models.PayrollSchedule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsProcessed")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Month")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ScheduledDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("PayrollSchedules");
+                });
+
             modelBuilder.Entity("KaberSystem.Models.PurchaseOrder", b =>
                 {
                     b.Property<int>("PurchaseId")
@@ -297,6 +381,41 @@ namespace KaberSystem.Migrations
                     b.HasKey("PurchaseId");
 
                     b.ToTable("PurchaseOrders");
+                });
+
+            modelBuilder.Entity("KaberSystem.Models.SafeTransaction", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<DateTime>("Date")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("OrderId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RecordedBy")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OrderId");
+
+                    b.ToTable("SafeTransactions");
                 });
 
             modelBuilder.Entity("KaberSystem.Models.SparePart", b =>
@@ -347,6 +466,34 @@ namespace KaberSystem.Migrations
                     b.ToTable("SpareParts");
                 });
 
+            modelBuilder.Entity("KaberSystem.Models.SystemLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActionType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SystemLogs");
+                });
+
             modelBuilder.Entity("KaberSystem.Models.SystemUser", b =>
                 {
                     b.Property<int>("UserId")
@@ -360,6 +507,9 @@ namespace KaberSystem.Migrations
 
                     b.Property<string>("Password")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Permissions")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Role")
@@ -459,6 +609,17 @@ namespace KaberSystem.Migrations
                     b.Navigation("Order");
                 });
 
+            modelBuilder.Entity("KaberSystem.Models.LeaveRequest", b =>
+                {
+                    b.HasOne("KaberSystem.Models.SystemUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("KaberSystem.Models.Order", b =>
                 {
                     b.HasOne("KaberSystem.Models.Technician", "Technician")
@@ -502,6 +663,15 @@ namespace KaberSystem.Migrations
                     b.Navigation("Order");
 
                     b.Navigation("SparePart");
+                });
+
+            modelBuilder.Entity("KaberSystem.Models.SafeTransaction", b =>
+                {
+                    b.HasOne("KaberSystem.Models.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId");
+
+                    b.Navigation("Order");
                 });
 
             modelBuilder.Entity("KaberSystem.Models.TechnicianStock", b =>

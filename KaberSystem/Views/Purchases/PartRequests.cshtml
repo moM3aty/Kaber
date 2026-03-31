@@ -1,0 +1,191 @@
+﻿<!-- مسار الملف: Views/Purchases/PartRequests.cshtml -->
+@model IEnumerable<KaberSystem.Models.OrderPartRequest>
+@{
+    ViewData["Title"] = "طلبات نواقص الفنيين";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title text-dark"><i class="fa-solid fa-screwdriver-wrench text-warning me-2"></i> طلبات النواقص من الفنيين</h1>
+        <p class="sys-page-desc">متابعة قطع الغيار غير المتوفرة المطلوبة من الفنيين لإتمام أوامر الصيانة</p>
+    </div>
+    <a href="/Purchases/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
+        <i class="fa-solid fa-arrow-right"></i> عودة للمشتريات العامة
+    </a>
+</div>
+
+<!-- لوحة المؤشرات العلوية -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="sys-card bg-warning bg-opacity-10 border-0 h-100 d-flex align-items-center p-4">
+            <div class="bg-warning text-dark rounded-circle d-flex justify-content-center align-items-center me-3 shadow-sm" style="width: 60px; height: 60px;">
+                <i class="fa-solid fa-clock-rotate-left fs-3"></i>
+            </div>
+            <div>
+                <p class="text-muted fw-bold mb-1">بانتظار الشراء</p>
+                <h3 class="fw-bold text-dark m-0">@ViewBag.PendingCount <span class="fs-6">طلب معلق</span></h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="sys-card bg-success bg-opacity-10 border-0 h-100 d-flex align-items-center p-4">
+            <div class="bg-success text-white rounded-circle d-flex justify-content-center align-items-center me-3 shadow-sm" style="width: 60px; height: 60px;">
+                <i class="fa-solid fa-check-double fs-3"></i>
+            </div>
+            <div>
+                <p class="text-muted fw-bold mb-1">تم التوفير (جاهزة للتركيب)</p>
+                <h3 class="fw-bold text-dark m-0">@ViewBag.CompletedCount <span class="fs-6">طلب منجز</span></h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="sys-card border-top border-4 border-warning">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle text-center sys-table w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>رقم الطلب الأصلي</th>
+                    <th>القطعة المطلوبة / الموديل</th>
+                    <th>صورة التالف</th>
+                    <th>الكمية</th>
+                    <th>الفني الطالب</th>
+                    <th>حالة الشراء</th>
+                    <th>إجراءات مندوب المشتريات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr>
+                        <td>
+                            <a href="/Orders/Details/@item.OrderId" class="badge bg-dark text-white text-decoration-none px-3 py-2 fs-6 shadow-sm">
+                                ORD-#@item.OrderId
+                            </a>
+                            <div class="text-muted small mt-1 fw-bold" dir="ltr">@item.RequestDate.ToString("MM/dd HH:mm")</div>
+                        </td>
+                        <td class="fw-bold text-dark text-start">
+                            @item.NewPartName
+                            <div class="small mt-1">
+                                @if(item.IsCommonRequest) { <span class="badge bg-info text-dark">قطعة عامة</span> }
+                                else { <span class="badge bg-secondary">موديل: @item.DeviceModel</span> }
+                            </div>
+                        </td>
+                        <td>
+                            @if (!string.IsNullOrEmpty(item.ImagePath))
+                            {
+                                <a href="@item.ImagePath" target="_blank" class="btn btn-sm btn-outline-primary fw-bold px-2 rounded-3">
+                                    <i class="fa-solid fa-image"></i> عرض
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted small">-</span>
+                            }
+                        </td>
+                        <td class="fw-bold fs-5 text-primary">@item.Quantity</td>
+                        <td class="fw-bold text-muted">@(item.Order?.Technician?.Name ?? "غير محدد")</td>
+                        <td>
+                            @switch (item.Status)
+                            {
+                                case KaberSystem.Models.PartRequestStatus.PendingPurchasing: <span class="badge bg-warning text-dark px-3 py-2 rounded-pill"><i class="fa-solid fa-hourglass-half"></i> جاري الشراء</span> break;
+                                case KaberSystem.Models.PartRequestStatus.ReadyForInstallation: <span class="badge bg-success px-3 py-2 rounded-pill"><i class="fa-solid fa-box-check"></i> جاهزة / متوفرة</span> break;
+                                case KaberSystem.Models.PartRequestStatus.Rejected: <span class="badge bg-danger px-3 py-2 rounded-pill"><i class="fa-solid fa-ban"></i> مرفوض</span> break;
+                                default: <span class="badge bg-secondary px-3 py-2 rounded-pill">تم التركيب</span> break;
+                            }
+                        </td>
+                        <td>
+                            @if (item.Status == KaberSystem.Models.PartRequestStatus.PendingPurchasing)
+                            {
+                                <div class="d-flex gap-2 justify-content-center">
+                                    <button type="button" class="btn btn-sm btn-success fw-bold px-3 rounded-3" data-bs-toggle="modal" data-bs-target="#buyModal_@item.Id">
+                                        <i class="fa-solid fa-cart-shopping me-1"></i> شراء وتكويد
+                                    </button>
+                                    
+                                    <form asp-action="RejectPurchase" method="post" onsubmit="return confirm('هل أنت متأكد من الرفض لعدم التوفر؟');">
+                                        <input type="hidden" name="requestId" value="@item.Id" />
+                                        <input type="hidden" name="reason" value="غير متوفرة بالسوق المحلي" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger fw-bold px-2 rounded-3" title="القطعة غير متوفرة">
+                                            <i class="fa-solid fa-xmark"></i>
+                                        </button>
+                                    </form>
+                                </div>
+
+                                <!-- Modal: تأكيد الشراء -->
+                                <div class="modal fade" id="buyModal_@item.Id" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content border-0 rounded-4 shadow-lg">
+                                            <div class="modal-header border-bottom-0 pb-0">
+                                                <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-money-check-dollar me-2"></i> تأكيد شراء وتكويد القطعة</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <form asp-action="ConfirmPurchase" method="post">
+                                                <div class="modal-body py-4 text-start">
+                                                    <input type="hidden" name="requestId" value="@item.Id" />
+                                                    
+                                                    <div class="alert alert-success py-2 small fw-bold">
+                                                        شراء: <b>@item.NewPartName</b> (الكمية: @item.Quantity)<br />
+                                                        سيتم تكويد القطعة وتضاف للطلب فوراً لتجهيز التركيب.
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">سعر الشراء (التكلفة الفعلية) <span class="text-danger">*</span></label>
+                                                        <div class="input-group">
+                                                            <input type="number" step="0.01" name="purchasePrice" class="form-control fw-bold text-danger border-success" required />
+                                                            <span class="input-group-text bg-light fw-bold">ريال</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">سعر البيع (للعميل) <span class="text-danger">*</span></label>
+                                                        <div class="input-group">
+                                                            <input type="number" step="0.01" name="sellingPrice" class="form-control fw-bold text-success border-success" required />
+                                                            <span class="input-group-text bg-light fw-bold">ريال</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">اسم المورد (اختياري)</label>
+                                                        <input type="text" name="supplierName" class="form-control fw-bold bg-light" placeholder="من أين تم الشراء؟" />
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer border-top-0 pt-0">
+                                                    <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">إلغاء</button>
+                                                    <button type="submit" class="btn btn-success fw-bold px-4"><i class="fa-solid fa-check"></i> حفظ وتكويد الصنف</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                            else if(item.Status == KaberSystem.Models.PartRequestStatus.ReadyForInstallation)
+                            {
+                                <span class="text-success fw-bold small"><i class="fa-solid fa-check-circle"></i> تم الشراء والتكويد</span>
+                            }
+                            else if(item.Status == KaberSystem.Models.PartRequestStatus.Rejected)
+                            {
+                                <span class="text-danger fw-bold small"><i class="fa-solid fa-xmark-circle"></i> مرفوض</span>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr><td colspan="7" class="text-center py-5 text-muted fw-bold">لا توجد أي طلبات نواقص حالياً من الفنيين.</td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <script>Swal.fire({ icon: 'success', title: 'نجاح', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#198754' });</script>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <script>Swal.fire({ icon: 'error', title: 'تنبيه', text: '@Html.Raw(TempData["ErrorMessage"])', confirmButtonColor: '#dc3545' });</script>
+    }
+}

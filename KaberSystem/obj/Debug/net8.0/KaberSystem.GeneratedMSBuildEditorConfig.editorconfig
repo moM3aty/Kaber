@@ -20,12 +20,28 @@ build_property._RazorSourceGeneratorDebug =
 build_property.EffectiveAnalysisLevelStyle = 8.0
 build_property.EnableCodeStyleSeverity = 
 
+[D:/Dev/Kaber/KaberSystem/Views/Accounting/Expenses.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudGluZ1xFeHBlbnNlcy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/Dev/Kaber/KaberSystem/Views/Accounting/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudGluZ1xJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
+[D:/Dev/Kaber/KaberSystem/Views/Accounting/Invoices.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudGluZ1xJbnZvaWNlcy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/Dev/Kaber/KaberSystem/Views/Account/Login.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudFxMb2dpbi5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Dev/Kaber/KaberSystem/Views/Customers/Details.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ3VzdG9tZXJzXERldGFpbHMuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Dev/Kaber/KaberSystem/Views/Customers/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQ3VzdG9tZXJzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/Dev/Kaber/KaberSystem/Views/Dashboard/Index.cshtml]
@@ -58,6 +74,18 @@ build_metadata.AdditionalFiles.CssScope =
 
 [D:/Dev/Kaber/KaberSystem/Views/Home/ServiceDetails.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSG9tZVxTZXJ2aWNlRGV0YWlscy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Dev/Kaber/KaberSystem/Views/HR/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSFJcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Dev/Kaber/KaberSystem/Views/HR/Leaves.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSFJcTGVhdmVzLmNzaHRtbA==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Dev/Kaber/KaberSystem/Views/HR/Payroll.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcSFJcUGF5cm9sbC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/Dev/Kaber/KaberSystem/Views/Inventory/Create.cshtml]
@@ -120,8 +148,16 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VzXEluZGV4LmNzaHRtbA==
 build_metadata.AdditionalFiles.CssScope = 
 
+[D:/Dev/Kaber/KaberSystem/Views/Purchases/PartRequests.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VzXFBhcnRSZXF1ZXN0cy5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/Dev/Kaber/KaberSystem/Views/Purchases/Pricing.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcUHVyY2hhc2VzXFByaWNpbmcuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Dev/Kaber/KaberSystem/Views/Safe/Index.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcU2FmZVxJbmRleC5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/Dev/Kaber/KaberSystem/Views/Shared/Error.cshtml]
@@ -166,6 +202,10 @@ build_metadata.AdditionalFiles.CssScope =
 
 [D:/Dev/Kaber/KaberSystem/Views/Users/Index.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlcnNcSW5kZXguY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/Dev/Kaber/KaberSystem/Views/Users/SystemLogs.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcVXNlcnNcU3lzdGVtTG9ncy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
 [D:/Dev/Kaber/KaberSystem/Views/_ViewImports.cshtml]

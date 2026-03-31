@@ -1,0 +1,126 @@
+﻿<!-- مسار الملف: Views/HR/Leaves.cshtml -->
+@model IEnumerable<KaberSystem.Models.LeaveRequest>
+@{
+    ViewData["Title"] = "إدارة الإجازات";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="d-flex justify-content-between align-items-end mb-4">
+    <div>
+        <h2 class="fw-bolder text-dark mb-1"><i class="fa-solid fa-umbrella-beach text-warning me-2"></i> سجل الإجازات والغياب</h2>
+        <p class="text-muted fw-bold mb-0">متابعة طلبات الموظفين واعتماد أيام الراحة</p>
+    </div>
+    <button class="btn btn-primary fw-bold rounded-pill px-4 shadow-sm" data-bs-toggle="modal" data-bs-target="#requestLeaveModal">
+        <i class="fa-solid fa-plus me-1"></i> تقديم طلب إجازة
+    </button>
+</div>
+
+<div class="card border-0 rounded-4 shadow-sm overflow-hidden">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-borderless table-hover align-middle text-center mb-0 w-100">
+                <thead class="bg-light text-muted small fw-bold text-uppercase">
+                    <tr>
+                        <th class="py-3 text-start ps-4">الموظف</th>
+                        <th class="py-3">نوع الإجازة</th>
+                        <th class="py-3">من - إلى</th>
+                        <th class="py-3">السبب</th>
+                        <th class="py-3">الحالة</th>
+                        <th class="py-3 pe-4">الإجراء</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var l in Model)
+                    {
+                        <tr style="border-bottom: 1px solid #f8f9fa;">
+                            <td class="text-start ps-4 py-3 fw-bold text-dark">@l.User?.Username</td>
+                            <td>
+                                <span class="badge bg-info bg-opacity-10 text-dark border border-info rounded-pill px-3">@l.Type</span>
+                            </td>
+                            <td dir="ltr" class="small fw-bold text-muted">
+                                @l.StartDate.ToString("MM/dd") - @l.EndDate.ToString("MM/dd")
+                            </td>
+                            <td class="text-muted small">@l.Reason</td>
+                            <td>
+                                @if (l.Status == KaberSystem.Models.LeaveStatus.Approved)
+                                {
+                                    <span class="badge bg-success px-3 py-2 rounded-pill"><i class="fa-solid fa-check me-1"></i> مقبولة</span>
+                                }
+                                else if (l.Status == KaberSystem.Models.LeaveStatus.Rejected)
+                                {
+
+                                    <span class="badge bg-danger px-3 py-2 rounded-pill"><i class="fa-solid fa-xmark me-1"></i> مرفوضة</span>
+                                }
+                                else
+                                {
+
+                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold border border-warning"><i class="fa-solid fa-clock me-1"></i> قيد المراجعة</span>
+                                }
+                            </td>
+                            <td class="pe-4">
+                                @if (l.Status == KaberSystem.Models.LeaveStatus.Pending && User.IsInRole("Admin"))
+                                {
+                                    <div class="btn-group">
+                                        <form asp-action="UpdateLeaveStatus" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="status" value="Approved" />
+                                            <button type="submit" class="btn btn-sm btn-success rounded-end px-3"><i class="fa-solid fa-check"></i></button>
+                                        </form>
+                                        <form asp-action="UpdateLeaveStatus" method="post" class="d-inline">
+                                            <input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="status" value="Rejected" />
+                                            <button type="submit" class="btn btn-sm btn-danger rounded-start px-3"><i class="fa-solid fa-xmark"></i></button>
+                                        </form>
+                                    </div>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: تقديم إجازة -->
+<div class="modal fade" id="requestLeaveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold"><i class="fa-solid fa-paper-plane text-primary me-2"></i> طلب إجازة جديد</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="RequestLeave" method="post">
+                <div class="modal-body py-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">الموظف</label>
+                        <select name="UserId" class="form-select fw-bold border-2" asp-items="ViewBag.UserId" required></select>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-bold text-muted small">تاريخ البدء</label>
+                            <input type="date" name="StartDate" class="form-control fw-bold" required />
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label fw-bold text-muted small">تاريخ الانتهاء</label>
+                            <input type="date" name="EndDate" class="form-control fw-bold" required />
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-muted small">نوع الإجازة</label>
+                        <select name="Type" class="form-select fw-bold">
+                            <option value="Annual">سنوية</option>
+                            <option value="Sick">مرضية</option>
+                            <option value="Emergency">اضطرارية</option>
+                        </select>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-bold text-muted small">السبب</label>
+                        <textarea name="Reason" class="form-control fw-bold" rows="2" placeholder="اكتب تفاصيل إضافية..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="submit" class="btn btn-primary fw-bold w-100 py-3 rounded-pill">تقديم الطلب للمراجعة</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

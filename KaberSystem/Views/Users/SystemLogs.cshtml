@@ -1,0 +1,127 @@
+﻿@model IEnumerable<KaberSystem.Models.SystemLog>
+@{
+    ViewData["Title"] = "سجل عمليات النظام";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header d-print-none">
+    <div>
+        <h1 class="sys-page-title text-primary"><i class="fa-solid fa-clock-rotate-left me-2"></i> سجل العمليات (Audit Logs)</h1>
+        <p class="sys-page-desc">مراقبة شاملة لجميع الحركات والتعديلات التي تمت داخل النظام من قبل المستخدمين</p>
+    </div>
+    <div class="d-flex gap-2">
+        <button class="btn btn-outline-dark fw-bold px-4 border-2 rounded-3 bg-white text-dark" onclick="window.print()">
+            <i class="fa-solid fa-print"></i> طباعة السجل
+        </button>
+        <a href="/Users/Index" class="btn btn-outline-secondary fw-bold px-4 border-2 rounded-3">
+            <i class="fa-solid fa-arrow-right"></i> عودة للمستخدمين
+        </a>
+    </div>
+</div>
+
+<div class="sys-card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle text-center sys-table w-100">
+            <thead class="table-light">
+                <tr>
+                    <th style="width: 50px;">#</th>
+                    <th style="width: 150px;">المستخدم</th>
+                    <th style="width: 150px;">نوع العملية</th>
+                    <th>التفاصيل (ماذا حدث؟)</th>
+                    <th style="width: 180px;">التاريخ والوقت</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (Model != null && Model.Any())
+                {
+                    int i = 1;
+                    foreach (var log in Model)
+                    {
+                        <tr>
+                            <td class="text-muted fw-bold">@i</td>
+                            <td class="fw-bold text-dark">
+                                <i class="fa-solid fa-user-shield text-muted me-1 small"></i> @log.Username
+                            </td>
+                            <td>
+                                @{
+                                    string badgeClass = "bg-secondary";
+                                    string icon = "fa-circle-info";
+
+                                    if (log.ActionType.Contains("إضافة") || log.ActionType.Contains("إنشاء"))
+                                    {
+                                        badgeClass = "bg-success";
+                                        icon = "fa-plus-circle";
+                                    }
+                                    else if (log.ActionType.Contains("تعديل") || log.ActionType.Contains("تحديث"))
+                                    {
+                                        badgeClass = "bg-warning text-dark";
+                                        icon = "fa-pen-to-square";
+                                    }
+                                    else if (log.ActionType.Contains("حذف") || log.ActionType.Contains("مرفوضة"))
+                                    {
+                                        badgeClass = "bg-danger";
+                                        icon = "fa-trash";
+                                    }
+                                    else if (log.ActionType.Contains("تسجيل الدخول"))
+                                    {
+                                        badgeClass = "bg-primary";
+                                        icon = "fa-right-to-bracket";
+                                    }
+                                }
+                                <span class="badge @badgeClass px-3 py-2 rounded-pill shadow-sm fw-bold">
+                                    <i class="fa-solid @icon me-1"></i> @log.ActionType
+                                </span>
+                            </td>
+                            <td class="text-start fw-bold text-muted lh-lg" style="max-width: 300px; white-space: normal;">
+                                @log.Details
+                            </td>
+                            <td dir="ltr" class="text-muted fw-bold small">
+                                <span class="d-block text-dark mb-1">@log.Timestamp.ToString("yyyy/MM/dd")</span>
+                                <span class="badge bg-light text-muted border">@log.Timestamp.ToString("hh:mm:ss tt")</span>
+                            </td>
+                        </tr>
+                        i++;
+                    }
+                }
+                else
+                {
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted fw-bold">
+                            <i class="fa-solid fa-box-open fs-1 mb-3 d-block opacity-25"></i>
+                            لا توجد أي عمليات مسجلة في النظام حتى الآن.
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    /* تنسيقات الطباعة */
+    @@media print {
+        body {
+            background: white !important;
+        }
+
+        .sys-sidebar, .sys-header, .d-print-none {
+            display: none !important;
+        }
+
+        .sys-main {
+            margin: 0 !important;
+            padding: 15px !important;
+            width: 100% !important;
+        }
+
+        .sys-card {
+            box-shadow: none !important;
+            border: 1px solid #000 !important;
+        }
+
+        * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+    }
+</style>

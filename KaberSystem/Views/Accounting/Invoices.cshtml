@@ -1,0 +1,114 @@
+﻿@model IEnumerable<KaberSystem.Models.Invoice>
+@{
+    ViewData["Title"] = "إدارة الفواتير";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="d-flex justify-content-between align-items-end mb-4">
+    <div>
+        <h2 class="fw-bolder text-dark mb-2" style="letter-spacing: -0.5px;"><i class="fa-solid fa-file-invoice text-primary me-2"></i> إدارة الفواتير (الفحص والنهائية)</h2>
+        <p class="text-muted fw-bold mb-0">تأكيد تحصيل الفواتير، مراجعتها، أو إلغاؤها من قبل قسم المحاسبة</p>
+    </div>
+</div>
+
+<div class="card border-0 rounded-4 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-borderless table-hover align-middle text-center custom-table mb-0 w-100">
+                <thead class="bg-light text-muted small fw-bold text-uppercase">
+                    <tr>
+                        <th class="py-3 text-start ps-4">رقم الفاتورة / الطلب</th>
+                        <th class="py-3">نوع الفاتورة</th>
+                        <th class="py-3">الفني المختص</th>
+                        <th class="py-3">المبلغ</th>
+                        <th class="py-3">تاريخ الإصدار</th>
+                        <th class="py-3">حالة الدفع</th>
+                        <th class="py-3 pe-4">القرار (تأكيد / إلغاء)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr style="border-bottom: 1px solid #f8f9fa;">
+                            <td class="text-start ps-4 py-3">
+                                <span class="fw-bolder text-dark d-block">INV-#@item.InvoiceId</span>
+                                <a href="/Orders/Details/@item.OrderId" class="text-decoration-none small text-primary fw-bold">طلب #@item.OrderId <i class="fa-solid fa-link ms-1"></i></a>
+                            </td>
+                            <td>
+                                @if (item.Type == KaberSystem.Models.InvoiceType.Advance)
+                                {
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary border px-2 py-1 rounded-pill">فاتورة فحص/مقدم</span>
+                                }
+                                else
+                                {
+
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border px-2 py-1 rounded-pill">فاتورة نهائية</span>
+                                }
+                            </td>
+                            <td class="text-muted fw-bold small">@(item.Order?.Technician?.Name ?? "غير محدد")</td>
+                            <td class="fw-bolder text-dark fs-6">@item.Amount.ToString("N2") <span class="text-muted small">ر.س</span></td>
+                            <td dir="ltr" class="text-muted fw-bold small">@item.IssuedAt.ToString("yyyy-MM-dd")</td>
+                            <td>
+                                @switch (item.Status)
+                                {
+                                    case KaberSystem.Models.InvoiceStatus.Paid:
+                                        <span class="badge bg-success px-3 py-2 rounded-pill"><i class="fa-solid fa-check-double me-1"></i> مدفوعة</span>
+                                        break;
+                                    case KaberSystem.Models.InvoiceStatus.Rejected:
+
+                                        <span class="badge bg-danger px-3 py-2 rounded-pill"><i class="fa-solid fa-xmark me-1"></i> ملغاة/مرفوضة</span>
+                                        break;
+                                    case KaberSystem.Models.InvoiceStatus.NotReceived:
+
+                                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill"><i class="fa-solid fa-clock me-1"></i> بانتظار التحصيل</span>
+                                        break;
+                                }
+                            </td>
+                            <td class="pe-4">
+                                @if (item.Status == KaberSystem.Models.InvoiceStatus.NotReceived)
+                                {
+                                    <div class="btn-group shadow-sm" role="group">
+                                        <form asp-action="UpdateInvoiceStatus" method="post" class="d-inline">
+                                            <input type="hidden" name="invoiceId" value="@item.InvoiceId" />
+                                            <input type="hidden" name="newStatus" value="Paid" />
+                                            <button type="submit" class="btn btn-sm btn-success fw-bold px-3" style="border-radius: 0 20px 20px 0;" title="تأكيد التحصيل"><i class="fa-solid fa-check"></i></button>
+                                        </form>
+                                        <form asp-action="UpdateInvoiceStatus" method="post" class="d-inline">
+                                            <input type="hidden" name="invoiceId" value="@item.InvoiceId" />
+                                            <input type="hidden" name="newStatus" value="Rejected" />
+                                            <button type="submit" class="btn btn-sm btn-danger fw-bold px-3" style="border-radius: 20px 0 0 20px;" title="إلغاء الفاتورة"><i class="fa-solid fa-xmark"></i></button>
+                                        </form>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small fw-bold"><i class="fa-solid fa-lock me-1"></i> مقفلة</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <script>Swal.fire({ icon: 'success', title: 'نجاح', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#198754' });</script>
+    }
+}
+<style>
+    .custom-table th {
+        font-size: 0.85rem;
+    }
+
+    .custom-table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+        .custom-table tbody tr:hover {
+            background-color: #fcfcfd !important;
+        }
+</style>

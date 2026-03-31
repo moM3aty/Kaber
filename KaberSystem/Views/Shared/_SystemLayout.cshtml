@@ -1,9 +1,20 @@
-﻿<!DOCTYPE html>
+﻿<!-- مسار الملف: Views/Shared/_SystemLayout.cshtml -->
+@{
+    // تحديد الصفحة الحالية لتفعيل الـ Active Link في القائمة
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+    var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
+    var userName = User.Identity?.Name ?? "الموظف";
+    var userRole = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "Guest";
+}
+
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewData["Title"] - لوحة تحكم كابر</title>
+
+    <!-- الخطوط والأيقونات -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="~/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -27,7 +38,7 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            flex-wrap: wrap; /* 💡 التعديل هنا: السماح بنزول الأيقونات لسطر جديد في الشاشات الصغيرة بدلاً من إخفاء القوائم المنسدلة */
+            flex-wrap: wrap;
             padding: 5px 10px;
         }
 
@@ -37,7 +48,7 @@
             align-items: center;
             justify-content: center;
             width: 75px;
-            height: 70px;
+            height: 75px;
             border-radius: 14px;
             color: var(--sys-text-muted);
             text-decoration: none;
@@ -45,6 +56,7 @@
             background: transparent;
             border: 1px solid transparent;
             cursor: pointer;
+            position: relative;
         }
 
             .nav-app-icon i {
@@ -54,7 +66,7 @@
             }
 
             .nav-app-icon span {
-                font-size: 11.5px;
+                font-size: 11px;
                 font-weight: 800;
                 white-space: nowrap;
             }
@@ -78,6 +90,19 @@
                 box-shadow: inset 0 0 0 1px rgba(241, 149, 11, 0.1);
             }
 
+        /* شارة إشعارات الأيقونات */
+        .sys-badge-count {
+            position: absolute;
+            top: 5px;
+            left: 10px;
+            background: var(--sys-danger);
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            border: 2px solid white;
+        }
+
         /* Dropdown styling */
         .dropdown-menu {
             border: 1px solid var(--sys-border);
@@ -86,7 +111,7 @@
             padding: 10px;
             min-width: 220px;
             margin-top: 10px !important;
-            z-index: 1050; /* 💡 التعديل هنا: التأكد من ظهور القائمة فوق جميع العناصر الأخرى */
+            z-index: 1050;
         }
 
         .dropdown-item {
@@ -95,59 +120,68 @@
             font-weight: 700;
             color: var(--sys-text-main);
             transition: 0.2s;
+            text-align: start;
         }
 
             .dropdown-item:hover {
                 background-color: var(--sys-primary-light);
                 color: var(--sys-primary);
             }
+
+        /* تحسين مظهر الهيدر */
+        .sys-header {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+        }
     </style>
 </head>
 <body>
-    @{
-        var currentController = ViewContext.RouteData.Values["Controller"]?.ToString();
-    }
 
     <div class="sys-wrapper">
-        <!-- Main Content -->
         <main class="sys-main expanded" id="mainContent">
 
-            <!-- 📌 الشريط العلوي الجديد (يحتوي على الأيقونات المنفصلة) -->
-            <header class="sys-header shadow-sm" style="height: auto; min-height: 90px; padding: 10px 30px;">
+            <!-- 📌 الشريط العلوي الموحد (Navigation Header) -->
+            <header class="sys-header shadow-sm border-bottom" style="height: auto; min-height: 95px; padding: 10px 30px;">
 
-                <!-- لوجو النظام -->
-                <a href="/" class="text-decoration-none d-flex align-items-center me-3 d-none d-xl-flex">
-                    <img src="~/images/logo.png" width="100" style="border-radius: 12px; object-fit: cover;" alt="Kaber" />
+                <!-- لوجو المؤسسة -->
+                <a href="/" class="text-decoration-none d-flex align-items-center me-4 d-none d-xl-flex">
+                    <img src="~/images/logo.png" width="90" style="border-radius: 10px; object-fit: cover;" alt="Kaber" />
                 </a>
 
-                <!-- 📌 الأيقونات المنفصلة (App Icons) -->
+                <!-- 📌 منطقة الأيقونات المنفصلة حسب الصلاحية -->
                 <div class="top-icon-nav flex-grow-1 justify-content-start justify-content-lg-center">
 
-                    @if (User.IsInRole("Admin"))
+                    <!-- 1. الرئيسية (Dashboard) -->
+                    @if (userRole == "Admin" || userRole == "Accounting")
                     {
                         <a href="/Dashboard" class="nav-app-icon @(currentController == "Dashboard" ? "active" : "")">
                             <i class="fa-solid fa-chart-pie"></i><span>الرئيسية</span>
                         </a>
                     }
 
-                    @if (User.IsInRole("Admin") || User.IsInRole("CallCenter") || User.IsInRole("Technician"))
-                    {
-                        <a href="/Orders" class="nav-app-icon @(currentController == "Orders" ? "active" : "")">
-                            <i class="fa-solid fa-headset"></i><span>الطلبات</span>
-                        </a>
-                    }
+                    <!-- 2. الطلبات (Orders) -->
+                    <a href="/Orders" class="nav-app-icon @(currentController == "Orders" ? "active" : "")">
+                        <i class="fa-solid fa-headset"></i><span>الطلبات</span>
+                        @if (ViewBag.NewOrdersCount != null && (int)ViewBag.NewOrdersCount > 0)
+                        {
+                            <span class="sys-badge-count">@ViewBag.NewOrdersCount</span>
+                        }
+                    </a>
 
-                    @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
+                    <!-- 3. الفنيين (Technicians) -->
+                    @if (userRole == "Admin" || userRole == "CallCenter")
                     {
                         <a href="/Technicians" class="nav-app-icon @(currentController == "Technicians" ? "active" : "")">
                             <i class="fa-solid fa-users-gear"></i><span>الفنيين</span>
                         </a>
                     }
 
-                    @if (User.IsInRole("Admin") || User.IsInRole("Store"))
+                    <!-- 4. المخزون والتوالف (Inventory) -->
+                    @if (userRole == "Admin" || userRole == "Store")
                     {
                         <div class="dropdown">
-                            <a href="#" class="nav-app-icon @(currentController == "Inventory" ? "active" : "")" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a href="#" class="nav-app-icon @(currentController == "Inventory" ? "active" : "")" data-bs-toggle="dropdown">
                                 <i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span>
                             </a>
                             <ul class="dropdown-menu text-end">
@@ -157,15 +191,17 @@
                         </div>
                     }
 
-                    @if (User.IsInRole("Admin") || User.IsInRole("PurchasingManager") || User.IsInRole("PurchasingRep") || User.IsInRole("Store"))
+                    <!-- 5. المشتريات والتسعير (Purchases) -->
+                    @if (userRole == "Admin" || userRole.Contains("Purchasing") || userRole == "Store")
                     {
                         <div class="dropdown">
-                            <a href="#" class="nav-app-icon @(currentController == "Purchases" ? "active" : "")" data-bs-toggle="dropdown" aria-expanded="false">
+                            <a href="#" class="nav-app-icon @(currentController == "Purchases" ? "active" : "")" data-bs-toggle="dropdown">
                                 <i class="fa-solid fa-cart-shopping"></i><span>المشتريات</span>
                             </a>
                             <ul class="dropdown-menu text-end">
                                 <li><a class="dropdown-item" href="/Purchases"><i class="fa-solid fa-truck-fast text-primary me-2"></i> سجل المشتريات</a></li>
-                                @if (User.IsInRole("Admin") || User.IsInRole("PurchasingManager"))
+                                <li><a class="dropdown-item" href="/Purchases/PartRequests"><i class="fa-solid fa-screwdriver-wrench text-warning me-2"></i> نواقص الفنيين</a></li>
+                                @if (userRole == "Admin" || userRole == "PurchasingManager")
                                 {
                                     <li><a class="dropdown-item" href="/Purchases/Pricing"><i class="fa-solid fa-tags text-success me-2"></i> تسعير المنتجات</a></li>
                                 }
@@ -173,50 +209,87 @@
                         </div>
                     }
 
-                    @if (User.IsInRole("Admin") || User.IsInRole("Accounting"))
+                    <!-- 6. المالية والحسابات (Accounting) -->
+                    @if (userRole == "Admin" || userRole == "Accounting")
                     {
                         <div class="dropdown">
-                            <a href="#" class="nav-app-icon @(currentController == "Accounting" || currentController == "Expenses" ? "active" : "")" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fa-solid fa-file-invoice-dollar"></i><span>المالية</span>
+                            <a href="#" class="nav-app-icon @(currentController == "Accounting" || currentController == "Safe" ? "active" : "")" data-bs-toggle="dropdown">
+                                <i class="fa-solid fa-calculator"></i><span>الحسابات</span>
                             </a>
-                            <ul class="dropdown-menu text-end">
-                                <li><a class="dropdown-item" href="/Accounting"><i class="fa-solid fa-vault text-success me-2"></i> الحسابات والفواتير</a></li>
-                                <li><a class="dropdown-item" href="/Expenses"><i class="fa-solid fa-hand-holding-dollar text-danger me-2"></i> المصروفات والتوالف</a></li>
-                                <li><a class="dropdown-item" href="/Technicians/IncomeReport"><i class="fa-solid fa-sack-dollar text-primary me-2"></i> أرباح الفنيين</a></li>
+                            <ul class="dropdown-menu text-end shadow-lg border-0">
+                                <li><a class="dropdown-item fw-bold" href="/Accounting/Index"><i class="fa-solid fa-chart-line text-success me-2"></i> تقارير الأرباح</a></li>
+                                <li><a class="dropdown-item fw-bold" href="/Accounting/Invoices"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i> إدارة الفواتير</a></li>
+                                <li><a class="dropdown-item fw-bold" href="/Accounting/Expenses"><i class="fa-solid fa-money-bill-transfer text-danger me-2"></i> الرواتب والمصروفات</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item fw-bold" href="/Safe"><i class="fa-solid fa-vault text-warning me-2"></i> الخزنة النقدية</a></li>
                             </ul>
                         </div>
                     }
 
-                    @if (User.IsInRole("Admin"))
+                    <!-- 7. الموارد البشرية (HR) -->
+                    @if (userRole == "Admin" || userRole == "HR")
                     {
-                        <a href="/Users" class="nav-app-icon @(currentController == "Users" ? "active" : "")">
-                            <i class="fa-solid fa-user-shield"></i><span>الصلاحيات</span>
+                        <div class="dropdown">
+                            <a href="#" class="nav-app-icon @(currentController == "HR" ? "active" : "")" data-bs-toggle="dropdown">
+                                <i class="fa-solid fa-id-card"></i><span>HR</span>
+                            </a>
+                            <ul class="dropdown-menu text-end">
+                                <li><a class="dropdown-item" href="/HR"><i class="fa-solid fa-users text-primary me-2"></i> سجل الموظفين</a></li>
+                                <li><a class="dropdown-item" href="/HR/Leaves"><i class="fa-solid fa-umbrella-beach text-warning me-2"></i> الإجازات والغياب</a></li>
+                                <li><a class="dropdown-item" href="/HR/Payroll"><i class="fa-solid fa-calendar-check text-success me-2"></i> جدول الرواتب</a></li>
+                            </ul>
+                        </div>
+                    }
+
+                    <!-- 8. العملاء (CRM) -->
+                    @if (userRole == "Admin" || userRole == "CallCenter")
+                    {
+                        <a href="/Customers" class="nav-app-icon @(currentController == "Customers" ? "active" : "")">
+                            <i class="fa-solid fa-users-viewfinder"></i><span>العملاء</span>
                         </a>
                     }
+
+                    <!-- 9. الصلاحيات واللوج (Users/Admin) -->
+                    @if (userRole == "Admin")
+                    {
+                        <div class="dropdown">
+                            <a href="#" class="nav-app-icon @(currentController == "Users" ? "active" : "")" data-bs-toggle="dropdown">
+                                <i class="fa-solid fa-shield-halved"></i><span>الإدارة</span>
+                            </a>
+                            <ul class="dropdown-menu text-end">
+                                <li><a class="dropdown-item" href="/Users"><i class="fa-solid fa-user-shield text-primary me-2"></i> إدارة المستخدمين</a></li>
+                                <li><a class="dropdown-item" href="/Users/SystemLogs"><i class="fa-solid fa-clock-rotate-left text-muted me-2"></i> سجل العمليات</a></li>
+                            </ul>
+                        </div>
+                    }
+
                 </div>
 
-                <!-- بيانات المستخدم وتسجيل الخروج -->
-                <div class="sys-user-area ms-3 ms-lg-4 d-flex align-items-center gap-2 border-start pe-3">
+                <!-- 📌 منطقة الملف الشخصي وتسجيل الخروج -->
+                <div class="sys-user-area ms-3 ms-lg-4 d-flex align-items-center gap-2 border-start ps-3">
                     <div class="sys-profile border-0 pe-0 m-0">
                         <div class="sys-profile-info text-end d-none d-md-block pe-2">
-                            <h4 class="fs-6">@User.Identity.Name</h4>
-                            <span class="badge bg-primary mt-1">@User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value</span>
+                            <h4 class="fs-6 m-0">@userName</h4>
+                            <span class="badge bg-primary bg-opacity-10 text-primary mt-1 border">@userRole</span>
                         </div>
-                        <img src="https://ui-avatars.com/api/?name=@User.Identity.Name&background=f1950b&color=fff" alt="User">
+                        <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(userName)&background=f1950b&color=fff&bold=true" alt="User" class="rounded-circle shadow-sm">
                     </div>
                     <a href="/Account/Logout" class="nav-app-icon text-danger ms-2" style="width: 45px; height: 45px; border: 1px solid var(--sys-danger-light);" title="تسجيل الخروج">
                         <i class="fa-solid fa-arrow-right-from-bracket m-0 fs-5"></i>
                     </a>
                 </div>
+
             </header>
 
-            <div class="sys-content">
+            <!-- 📌 منطقة عرض المحتوى (Page Content) -->
+            <div class="sys-content" style="padding: 40px;">
                 @RenderBody()
             </div>
+
         </main>
     </div>
 
-    <!-- استدعاء المكتبات الأساسية أولاً -->
+    <!-- المكتبات الأساسية -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="~/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
@@ -224,18 +297,19 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="~/js/dashboard-app.js"></script>
 
-    <!-- دالة الحذف (يجب أن تكون بعد مكتبة SweetAlert) -->
+    <!-- دالة الحذف الموحدة للإدارة (SweetAlert2) -->
     <script>
         function confirmAdminDelete(deleteUrl, itemName) {
             Swal.fire({
-                title: 'تأكيد الحذف النهائي',
-                text: `هل أنت متأكد من رغبتك في حذف (${itemName})؟ هذه العملية لا يمكن التراجع عنها وسيتم مسح كافة السجلات المرتبطة.`,
+                title: 'تأكيد الحذف النهائي؟',
+                html: `أنت على وشك حذف <b>(${itemName})</b> نهائياً من النظام.<br>هذا الإجراء لا يمكن التراجع عنه وقد يؤثر على الحسابات!`,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonColor: '#ee5d50',
                 cancelButtonColor: '#a3aed1',
                 confirmButtonText: '<i class="fa-solid fa-trash-can"></i> نعم، قم بالحذف!',
-                cancelButtonText: 'إلغاء'
+                cancelButtonText: 'إلغاء',
+                customClass: { popup: 'rounded-4' }
             }).then((result) => {
                 if (result.isConfirmed) {
                     window.location.href = deleteUrl;

@@ -1,0 +1,150 @@
+﻿@model IEnumerable<dynamic>
+@{
+    ViewData["Title"] = "إدارة العملاء";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<!-- 📌 رأس الصفحة (Header) بتصميم عصري -->
+<div class="d-flex justify-content-between align-items-end mb-4">
+    <div>
+        <h2 class="fw-bolder text-dark mb-2" style="letter-spacing: -0.5px;"><i class="fa-solid fa-users text-primary me-2"></i> قاعدة بيانات العملاء</h2>
+        <p class="text-muted fw-bold mb-0">نظام إدارة علاقات العملاء (CRM) لمتابعة العملاء الدائمين والمميزين</p>
+    </div>
+</div>
+
+<!-- 📌 شريط البحث الفخم (Modern Search Bar) -->
+<div class="card border-0 rounded-4 shadow-sm mb-4 overflow-hidden">
+    <div class="card-body p-2">
+        <form method="get" asp-action="Index" class="d-flex align-items-center">
+            <div class="input-group input-group-lg border-0">
+                <span class="input-group-text bg-transparent border-0 text-muted ps-4"><i class="fa-solid fa-magnifying-glass"></i></span>
+                <input type="text" name="searchQuery" value="@ViewData["CurrentSearch"]" class="form-control border-0 fw-bold shadow-none text-dark" placeholder="ابحث باسم العميل أو رقم الجوال..." style="background: transparent;" />
+                <button type="submit" class="btn btn-primary fw-bold rounded-pill px-5 mx-2 my-1 shadow-sm">بحث سریع</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- 📌 جدول العملاء النظيف (Clean Table) -->
+<div class="card border-0 rounded-4 shadow-sm">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-borderless table-hover align-middle text-center custom-table mb-0 w-100">
+                <thead class="bg-light text-muted small fw-bold text-uppercase" style="letter-spacing: 0.5px;">
+                    <tr>
+                        <th class="py-3 text-start ps-4">العميل</th>
+                        <th class="py-3">رقم الاتصال</th>
+                        <th class="py-3">المنطقة</th>
+                        <th class="py-3">الطلبات</th>
+                        <th class="py-3">إجمالي المدفوعات</th>
+                        <th class="py-3">آخر زيارة</th>
+                        <th class="py-3 pe-4">الإجراءات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr style="border-bottom: 1px solid #f8f9fa;">
+                            <td class="text-start ps-4 py-3">
+                                <div class="d-flex align-items-center">
+                                    <!-- صورة العميل بتصميم ناعم -->
+                                    <div class="avatar-circle bg-primary bg-opacity-10 text-primary fw-bold me-3 shadow-sm d-flex justify-content-center align-items-center">
+                                        @item.Name.Substring(0, 1)
+                                    </div>
+                                    <div>
+                                        <h6 class="fw-bolder text-dark mb-0">@item.Name</h6>
+                                        @if (item.TotalOrders >= 3)
+                                        {
+                                            <span class="badge bg-warning bg-opacity-25 text-warning-dark px-2 mt-1 rounded-pill small fw-bold"><i class="fa-solid fa-crown me-1"></i> VIP</span>
+                                        }
+                                    </div>
+                                </div>
+                            </td>
+                            <td dir="ltr" class="fw-bold">
+                                <a href="https://wa.me/966@(item.Phone.ToString().StartsWith("0") ? item.Phone.ToString().Substring(1) : item.Phone)" target="_blank" class="text-decoration-none phone-link">
+                                    <div class="d-inline-flex align-items-center bg-light rounded-pill px-3 py-1">
+                                        <i class="fa-brands fa-whatsapp text-success me-2 fs-5"></i> <span class="text-dark">@item.Phone</span>
+                                    </div>
+                                </a>
+                            </td>
+                            <td class="text-muted fw-bold small">
+                                <i class="fa-solid fa-location-dot text-danger opacity-50 me-1"></i> @item.Address
+                            </td>
+                            <td>
+                                <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2 fw-bold">@item.TotalOrders طلبات</span>
+                            </td>
+                            <td>
+                                <span class="fw-bolder text-success fs-6">@item.TotalSpent.ToString("N2") <span class="text-muted small fw-normal">ر.س</span></span>
+                            </td>
+                            <td dir="ltr" class="text-muted fw-bold small">
+                                @item.LastOrderDate.ToString("MMM dd, yyyy")
+                            </td>
+                            <td class="pe-4">
+                                <a href="/Customers/Details?phone=@item.Phone" class="btn btn-sm btn-light fw-bold px-3 rounded-pill text-primary hover-primary">
+                                    عرض الملف <i class="fa-solid fa-arrow-left ms-1 small"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted fw-bold">
+                                <div class="bg-light rounded-circle d-inline-flex justify-content-center align-items-center mb-3" style="width: 80px; height: 80px;">
+                                    <i class="fa-solid fa-users-slash fs-2 opacity-50"></i>
+                                </div>
+                                <p class="mb-0 fs-5">لا يوجد عملاء مسجلين حتى الآن.</p>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* CSS مخصص للتصميم الفخم (Premium UI) */
+    .avatar-circle {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        font-size: 1.2rem;
+    }
+
+    .custom-table th {
+        font-size: 0.85rem;
+    }
+
+    .custom-table tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+        .custom-table tbody tr:hover {
+            background-color: #fcfcfd !important;
+        }
+
+    .text-warning-dark {
+        color: #d39e00 !important;
+    }
+
+    .phone-link {
+        transition: transform 0.2s ease;
+        display: inline-block;
+    }
+
+        .phone-link:hover {
+            transform: translateY(-2px);
+        }
+
+    .hover-primary {
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+    }
+
+        .hover-primary:hover {
+            background-color: var(--sys-primary) !important;
+            color: white !important;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+</style>

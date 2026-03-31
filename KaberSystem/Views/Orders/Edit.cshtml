@@ -44,6 +44,8 @@
                         <label asp-for="Type" class="form-label fw-bold">نوع الطلب</label>
                         <select asp-for="Type" class="form-select sys-input fw-bold bg-light">
                             <option value="Maintenance">صيانة وإصلاح</option>
+                            <!-- 📌 إضافة غسيل مكيفات هنا -->
+                            <option value="ACWashing">غسيل مكيفات</option>
                             <option value="NewInstallation">تركيب جديد</option>
                             <option value="Warranty">ضمان (بدون رسوم)</option>
                         </select>

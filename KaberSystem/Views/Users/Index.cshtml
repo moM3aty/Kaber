@@ -7,11 +7,17 @@
 <div class="sys-page-header">
     <div>
         <h1 class="sys-page-title">إدارة مستخدمي النظام</h1>
-        <p class="sys-page-desc">التحكم في حسابات الموظفين وتعديل صلاحيات الوصول لكل قسم</p>
+        <p class="sys-page-desc">التحكم في حسابات الموظفين وتعديل صلاحيات الوصول المخصصة لكل موظف</p>
     </div>
-    <a href="/Users/Create" class="sys-btn sys-btn-primary">
-        <i class="fa-solid fa-user-plus"></i> إضافة موظف جديد
-    </a>
+    <div class="d-flex gap-2">
+        <!-- 📌 زر جديد لعرض سجل العمليات (Logs) -->
+        <a href="/Users/SystemLogs" class="btn btn-outline-dark fw-bold px-4 border-2 rounded-3 bg-white text-dark">
+            <i class="fa-solid fa-clock-rotate-left text-warning"></i> سجل العمليات (Logs)
+        </a>
+        <a href="/Users/Create" class="sys-btn sys-btn-primary">
+            <i class="fa-solid fa-user-plus"></i> إضافة موظف جديد
+        </a>
+    </div>
 </div>
 
 <div class="sys-card">
@@ -20,8 +26,9 @@
             <thead class="table-light">
                 <tr>
                     <th>الموظف</th>
-                    <th>اسم المستخدم (Login)</th>
-                    <th>الصلاحية</th>
+                    <th>اسم الدخول (Login)</th>
+                    <th>المنصب (Role)</th>
+                    <th>عدد الصلاحيات الخاصة</th>
                     <th>تاريخ الإنشاء</th>
                     <th>الإجراءات</th>
                 </tr>
@@ -48,6 +55,12 @@
                             }
                             <span class="badge @badgeClass px-3 py-2 rounded-pill shadow-sm">@item.Role</span>
                         </td>
+                        <td>
+                            @{
+                                int permCount = string.IsNullOrEmpty(item.Permissions) ? 0 : item.Permissions.Split(',').Length;
+                            }
+                            <span class="badge bg-light text-dark border px-2">@permCount صلاحية مرنة</span>
+                        </td>
                         <td dir="ltr" class="small text-muted fw-bold">@item.CreatedAt.ToString("yyyy/MM/dd")</td>
                         <td>
                             <div class="d-flex gap-2 justify-content-center">
@@ -72,10 +85,10 @@
 @section Scripts {
     @if (TempData["SuccessMessage"] != null)
     {
-        <script>Swal.fire({ icon: 'success', title: 'نجاح', text: '@TempData["SuccessMessage"]', confirmButtonColor: '#f1950b' });</script>
+        <script>Swal.fire({ icon: 'success', title: 'نجاح', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#f1950b' });</script>
     }
     @if (TempData["ErrorMessage"] != null)
     {
-        <script>Swal.fire({ icon: 'error', title: 'تنبيه', text: '@TempData["ErrorMessage"]', confirmButtonColor: '#ee5d50' });</script>
+        <script>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(TempData["ErrorMessage"])', confirmButtonColor: '#ee5d50' });</script>
     }
 }
