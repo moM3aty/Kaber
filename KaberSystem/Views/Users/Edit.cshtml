@@ -3,7 +3,6 @@
     ViewData["Title"] = "تعديل صلاحيات المستخدم";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 
-    // جلب الصلاحيات الحالية للمستخدم
     var currentPermissions = Model.Permissions?.Split(',').ToList() ?? new List<string>();
 }
 
@@ -57,12 +56,13 @@
                             <option value="Technician">فني صيانة (Technician)</option>
                             <option value="Accounting">محاسب (Accounting)</option>
                             <option value="Store">أمين مخزن (Store)</option>
+                            <option value="HR">موارد بشرية (HR)</option>
                             <option value="PurchasingManager">مدير مشتريات</option>
                             <option value="PurchasingRep">مندوب مشتريات</option>
                         </select>
                     </div>
 
-                    <!-- 📌 نظام الصلاحيات المرنة المحددة مسبقاً -->
+                    <!-- 📌 نظام الصلاحيات المرنة المحددة مسبقاً (تمت إضافة الـ HR) -->
                     <div class="col-12 mt-4">
                         <h5 class="fw-bold border-bottom pb-2 text-dark"><i class="fa-solid fa-user-shield text-warning me-2"></i> الصلاحيات المخصصة (المرنة)</h5>
                         <div class="row g-3 bg-light p-3 rounded-4 border mt-2">
@@ -94,6 +94,13 @@
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageTechnicians" id="pe5" @(currentPermissions.Contains("ManageTechnicians") ? "checked" : "")>
                                     <label class="form-check-label fw-bold" for="pe5">إدارة الفنيين</label>
+                                </div>
+                            </div>
+                            <!-- 📌 الصلاحية المرنة للـ HR -->
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageHR" id="pe7" @(currentPermissions.Contains("ManageHR") ? "checked" : "")>
+                                    <label class="form-check-label fw-bold text-success" for="pe7">إدارة الموارد البشرية والرواتب</label>
                                 </div>
                             </div>
                             <div class="col-md-4">

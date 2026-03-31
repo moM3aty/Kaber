@@ -21,7 +21,8 @@
 
 <div class="sys-card">
     <div class="table-responsive">
-        <table class="table table-hover align-middle text-center sys-table w-100">
+        <!-- 📌 حل المشكلة 2: تم تفعيل الداتا تيبلز هنا ليظهر بشكل أنيق ويمكن البحث فيه -->
+        <table class="table table-hover align-middle text-center sys-table w-100" id="logsTable">
             <thead class="table-light">
                 <tr>
                     <th style="width: 50px;">#</th>
@@ -47,22 +48,22 @@
                                     string badgeClass = "bg-secondary";
                                     string icon = "fa-circle-info";
 
-                                    if (log.ActionType.Contains("إضافة") || log.ActionType.Contains("إنشاء"))
+                                    if (log.ActionType.Contains("إضافة") || log.ActionType.Contains("إنشاء") || log.ActionType.Contains("تسجيل"))
                                     {
                                         badgeClass = "bg-success";
                                         icon = "fa-plus-circle";
                                     }
-                                    else if (log.ActionType.Contains("تعديل") || log.ActionType.Contains("تحديث"))
+                                    else if (log.ActionType.Contains("تعديل") || log.ActionType.Contains("تحديث") || log.ActionType.Contains("صرف") || log.ActionType.Contains("تحصيل"))
                                     {
                                         badgeClass = "bg-warning text-dark";
                                         icon = "fa-pen-to-square";
                                     }
-                                    else if (log.ActionType.Contains("حذف") || log.ActionType.Contains("مرفوضة"))
+                                    else if (log.ActionType.Contains("حذف") || log.ActionType.Contains("مرفوضة") || log.ActionType.Contains("تالف"))
                                     {
                                         badgeClass = "bg-danger";
                                         icon = "fa-trash";
                                     }
-                                    else if (log.ActionType.Contains("تسجيل الدخول"))
+                                    else if (log.ActionType.Contains("دخول"))
                                     {
                                         badgeClass = "bg-primary";
                                         icon = "fa-right-to-bracket";
@@ -72,7 +73,7 @@
                                     <i class="fa-solid @icon me-1"></i> @log.ActionType
                                 </span>
                             </td>
-                            <td class="text-start fw-bold text-muted lh-lg" style="max-width: 300px; white-space: normal;">
+                            <td class="text-start fw-bold text-muted lh-lg" style="white-space: normal;">
                                 @log.Details
                             </td>
                             <td dir="ltr" class="text-muted fw-bold small">
@@ -83,28 +84,18 @@
                         i++;
                     }
                 }
-                else
-                {
-                    <tr>
-                        <td colspan="5" class="text-center py-5 text-muted fw-bold">
-                            <i class="fa-solid fa-box-open fs-1 mb-3 d-block opacity-25"></i>
-                            لا توجد أي عمليات مسجلة في النظام حتى الآن.
-                        </td>
-                    </tr>
-                }
             </tbody>
         </table>
     </div>
 </div>
 
 <style>
-    /* تنسيقات الطباعة */
     @@media print {
         body {
             background: white !important;
         }
 
-        .sys-sidebar, .sys-header, .d-print-none {
+        .sys-sidebar, .sys-header, .d-print-none, .dataTables_filter, .dataTables_info, .dataTables_paginate, .dataTables_length {
             display: none !important;
         }
 
@@ -125,3 +116,17 @@
         }
     }
 </style>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('#logsTable').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/ar.json"
+                },
+                "pageLength": 25,
+                "ordering": false // ترك الترتيب الافتراضي من قاعدة البيانات
+            });
+        });
+    </script>
+}

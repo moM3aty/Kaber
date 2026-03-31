@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace KaberSystem.Controllers
 {
-    [Authorize(Roles = "Admin,Accounting")] // متاح للأدمن والمحاسبة فقط
+    [Authorize(Roles = "Admin,Accounting")]
     public class SafeController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -18,7 +18,21 @@ namespace KaberSystem.Controllers
             _context = context;
         }
 
-        // 📌 عرض الرصيد والحركات
+        // 📌 دالة مساعدة لتسجيل اللوج بأمان (مع تسجيل الصلاحية)
+        private void LogAction(string actionType, string details)
+        {
+            var username = User.Identity?.Name ?? "مستخدم غير معروف";
+            var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "صلاحية غير محددة";
+
+            _context.SystemLogs.Add(new SystemLog
+            {
+                ActionType = actionType,
+                Details = details,
+                Username = $"{username} - [{role}]",
+                Timestamp = DateTime.Now
+            });
+        }
+
         public async Task<IActionResult> Index()
         {
             var transactions = await _context.SafeTransactions
@@ -36,7 +50,6 @@ namespace KaberSystem.Controllers
             return View(transactions);
         }
 
-        // 📌 توريد أموال (سحب من الخزنة للبنك/المالك)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DepositMoney(decimal amount, string description)
@@ -47,7 +60,6 @@ namespace KaberSystem.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            // التأكد من وجود رصيد كافي في الخزنة
             var income = await _context.SafeTransactions.Where(t => t.Type == SafeTransactionType.Income).SumAsync(t => t.Amount);
             var deposits = await _context.SafeTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).SumAsync(t => t.Amount);
             decimal currentBalance = income - deposits;
@@ -69,8 +81,8 @@ namespace KaberSystem.Controllers
 
             _context.SafeTransactions.Add(transaction);
 
-            // تسجيل في الـ Logs
-            _context.SystemLogs.Add(new SystemLog { ActionType = "توريد أموال", Details = $"تم توريد مبلغ {amount} ريال من الخزنة. البيان: {description}", Username = User.Identity?.Name, Timestamp = DateTime.Now });
+            // 📌 تسجيل الحركة
+            LogAction("توريد أموال من الخزنة", $"تم توريد مبلغ {amount} ريال من الخزنة إلى البنك. البيان: {description}");
 
             await _context.SaveChangesAsync();
 

@@ -18,9 +18,20 @@ namespace KaberSystem.Controllers
             _context = context;
         }
 
-        // =========================================================================
-        // 📌 القسم الأول: إدارة المشتريات العامة (Purchase Orders) لتغذية المخزن
-        // =========================================================================
+        // 📌 دالة مساعدة لتسجيل اللوج بأمان (مع تسجيل الصلاحية)
+        private void LogAction(string actionType, string details)
+        {
+            var username = User.Identity?.Name ?? "مستخدم غير معروف";
+            var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "صلاحية غير محددة";
+
+            _context.SystemLogs.Add(new SystemLog
+            {
+                ActionType = actionType,
+                Details = details,
+                Username = $"{username} - [{role}]",
+                Timestamp = DateTime.Now
+            });
+        }
 
         [Authorize(Roles = "Admin,PurchasingManager,PurchasingRep,Store")]
         public async Task<IActionResult> Index()
@@ -49,11 +60,10 @@ namespace KaberSystem.Controllers
 
                 _context.Add(purchaseOrder);
 
-                // تسجيل في السجل (Logs)
-                _context.SystemLogs.Add(new SystemLog { ActionType = "إنشاء أمر شراء", Details = $"تم طلب شراء {purchaseOrder.Quantity} من {purchaseOrder.ItemName}", Username = User.Identity?.Name });
+                // 📌 تسجيل الحركة
+                LogAction("إنشاء أمر شراء", $"تم طلب شراء {purchaseOrder.Quantity} من {purchaseOrder.ItemName}");
 
                 await _context.SaveChangesAsync();
-
                 TempData["SuccessMessage"] = "تم تسجيل المشتريات بنجاح. بانتظار اعتماد أمين المخزن.";
                 return RedirectToAction(nameof(Index));
             }
@@ -80,12 +90,10 @@ namespace KaberSystem.Controllers
                     if (!string.IsNullOrEmpty(purchase.SupplierLocation)) existingPart.SupplierLocation = purchase.SupplierLocation;
 
                     purchase.Barcode = existingPart.PartCode;
-
                     _context.Update(existingPart);
                 }
                 else
                 {
-                    // توليد باركود فريد للصنف الجديد
                     string generatedBarcode = "KBR" + new Random().Next(1000000, 9999999).ToString();
 
                     var newPart = new SparePart
@@ -101,15 +109,15 @@ namespace KaberSystem.Controllers
                         Barcode = generatedBarcode
                     };
                     _context.SpareParts.Add(newPart);
-
                     purchase.Barcode = generatedBarcode;
                 }
 
                 _context.Update(purchase);
-                _context.SystemLogs.Add(new SystemLog { ActionType = "استلام مخزون", Details = $"تم استلام بضاعة: {purchase.ItemName} وإضافتها للمخزن", Username = User.Identity?.Name });
+
+                // 📌 تسجيل الحركة
+                LogAction("استلام بضاعة بالمخزن", $"تم استلام بضاعة: {purchase.ItemName} وإضافتها للمخزن الفعلي");
 
                 await _context.SaveChangesAsync();
-
                 TempData["SuccessMessage"] = "تم استلام البضاعة وإضافتها للمخزون العام بنجاح.";
             }
             return RedirectToAction(nameof(Index));
@@ -141,7 +149,9 @@ namespace KaberSystem.Controllers
                 }
 
                 _context.Update(purchase);
-                _context.SystemLogs.Add(new SystemLog { ActionType = "تسعير منتج", Details = $"تم تسعير المنتج {purchase.ItemName} بـ {sellingPrice} ريال", Username = User.Identity?.Name });
+
+                // 📌 تسجيل الحركة
+                LogAction("تسعير منتج", $"تم تسعير المنتج {purchase.ItemName} بـ {sellingPrice} ريال للعميل");
 
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "تم تسعير المنتج واعتماد هامش الربح بنجاح!";
@@ -156,18 +166,17 @@ namespace KaberSystem.Controllers
             if (purchase != null)
             {
                 _context.PurchaseOrders.Remove(purchase);
+
+                // 📌 تسجيل الحركة
+                LogAction("إلغاء فاتورة شراء", $"تم إلغاء فاتورة المشتريات الخاصة بالصنف {purchase.ItemName}");
+
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "تم حذف فاتورة المشتريات بنجاح.";
             }
             return RedirectToAction(nameof(Index));
         }
 
-
-        // =========================================================================
-        // 📌 القسم الثاني: طلبات النواقص من الفنيين (Order Part Requests)
-        // =========================================================================
-
-        [Authorize(Roles = "Admin,PurchasingManager,PurchasingRep")]
+        [Authorize(Roles = "Admin,PurchasingManager,PurchasingRep,Store")]
         public async Task<IActionResult> PartRequests()
         {
             var requests = await _context.OrderPartRequests
@@ -185,7 +194,7 @@ namespace KaberSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin,PurchasingManager,PurchasingRep")]
+        [Authorize(Roles = "Admin,PurchasingManager,PurchasingRep,Store")]
         public async Task<IActionResult> ConfirmPurchase(int requestId, decimal purchasePrice, decimal sellingPrice, string supplierName)
         {
             var request = await _context.OrderPartRequests.Include(r => r.Order).FirstOrDefaultAsync(r => r.Id == requestId);
@@ -196,7 +205,6 @@ namespace KaberSystem.Controllers
                 return RedirectToAction(nameof(PartRequests));
             }
 
-            // إنشاء صنف جديد في المخزن لتكويد قطعة الفني
             string generatedBarcode = "KBR" + new Random().Next(1000000, 9999999).ToString();
             var newPart = new SparePart
             {
@@ -225,7 +233,8 @@ namespace KaberSystem.Controllers
                 _context.Update(request.Order);
             }
 
-            _context.SystemLogs.Add(new SystemLog { ActionType = "شراء قطعة لفني", Details = $"تم شراء القطعة ({request.NewPartName}) للطلب #{request.OrderId}", Username = User.Identity?.Name });
+            // 📌 تسجيل الحركة
+            LogAction("توفير نواقص", $"تم إتمام شراء قطعة ناقصة ({request.NewPartName}) للطلب #{request.OrderId}");
             await _context.SaveChangesAsync();
 
             TempData["SuccessMessage"] = "تم الشراء والتكويد بنجاح! تم إشعار الكول سنتر لتحديد موعد التركيب.";
@@ -248,9 +257,11 @@ namespace KaberSystem.Controllers
                 }
 
                 _context.Update(request);
-                _context.SystemLogs.Add(new SystemLog { ActionType = "رفض طلب شراء", Details = $"تم رفض شراء القطعة ({request.NewPartName}) للطلب #{request.OrderId}. السبب: {reason}", Username = User.Identity?.Name });
-                await _context.SaveChangesAsync();
 
+                // 📌 تسجيل الحركة
+                LogAction("رفض توفير نواقص", $"تم رفض شراء القطعة ({request.NewPartName}) للطلب #{request.OrderId}. السبب: {reason}");
+
+                await _context.SaveChangesAsync();
                 TempData["ErrorMessage"] = "تم رفض الطلب وإبلاغ الفني/الإدارة.";
             }
             return RedirectToAction(nameof(PartRequests));

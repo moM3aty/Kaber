@@ -4,14 +4,14 @@
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 }
 
-<div class="d-flex justify-content-between align-items-end mb-4">
+<div class="sys-page-header">
     <div>
-        <h2 class="fw-bolder text-dark mb-2" style="letter-spacing: -0.5px;"><i class="fa-solid fa-file-invoice text-primary me-2"></i> إدارة الفواتير (الفحص والنهائية)</h2>
-        <p class="text-muted fw-bold mb-0">تأكيد تحصيل الفواتير، مراجعتها، أو إلغاؤها من قبل قسم المحاسبة</p>
+        <h1 class="sys-page-title fw-bolder text-dark mb-2" style="letter-spacing: -0.5px;"><i class="fa-solid fa-file-invoice text-primary me-2"></i> إدارة الفواتير والتحصيل</h1>
+        <p class="text-muted fw-bold mb-0">تأكيد تحصيل الفواتير، استرداد الفواتير الملغاة، ومراجعة المدفوعات</p>
     </div>
 </div>
 
-<div class="card border-0 rounded-4 shadow-sm">
+<div class="card border-0 rounded-4 shadow-sm mt-4">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-borderless table-hover align-middle text-center custom-table mb-0 w-100">
@@ -23,7 +23,7 @@
                         <th class="py-3">المبلغ</th>
                         <th class="py-3">تاريخ الإصدار</th>
                         <th class="py-3">حالة الدفع</th>
-                        <th class="py-3 pe-4">القرار (تأكيد / إلغاء)</th>
+                        <th class="py-3 pe-4">الإجراءات المحاسبية</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -41,25 +41,32 @@
                                 }
                                 else
                                 {
-
                                     <span class="badge bg-primary bg-opacity-10 text-primary border px-2 py-1 rounded-pill">فاتورة نهائية</span>
                                 }
                             </td>
-                            <td class="text-muted fw-bold small">@(item.Order?.Technician?.Name ?? "غير محدد")</td>
+                            <td class="text-muted fw-bold small">
+                                @if (item.Order?.Technician != null)
+                                {
+                                    <i class="fa-solid fa-user-gear me-1"></i> 
+                                    @item.Order.Technician.Name
+                                }
+                                else
+                                {
+                                    <span class="text-muted opacity-50">-</span>
+                                }
+                            </td>
                             <td class="fw-bolder text-dark fs-6">@item.Amount.ToString("N2") <span class="text-muted small">ر.س</span></td>
                             <td dir="ltr" class="text-muted fw-bold small">@item.IssuedAt.ToString("yyyy-MM-dd")</td>
                             <td>
                                 @switch (item.Status)
                                 {
                                     case KaberSystem.Models.InvoiceStatus.Paid:
-                                        <span class="badge bg-success px-3 py-2 rounded-pill"><i class="fa-solid fa-check-double me-1"></i> مدفوعة</span>
+                                        <span class="badge bg-success px-3 py-2 rounded-pill shadow-sm"><i class="fa-solid fa-check-double me-1"></i> مدفوعة (مؤكدة)</span>
                                         break;
                                     case KaberSystem.Models.InvoiceStatus.Rejected:
-
-                                        <span class="badge bg-danger px-3 py-2 rounded-pill"><i class="fa-solid fa-xmark me-1"></i> ملغاة/مرفوضة</span>
+                                        <span class="badge bg-danger px-3 py-2 rounded-pill"><i class="fa-solid fa-xmark me-1"></i> ملغاة / مستردة</span>
                                         break;
                                     case KaberSystem.Models.InvoiceStatus.NotReceived:
-
                                         <span class="badge bg-warning text-dark px-3 py-2 rounded-pill"><i class="fa-solid fa-clock me-1"></i> بانتظار التحصيل</span>
                                         break;
                                 }
@@ -71,19 +78,69 @@
                                         <form asp-action="UpdateInvoiceStatus" method="post" class="d-inline">
                                             <input type="hidden" name="invoiceId" value="@item.InvoiceId" />
                                             <input type="hidden" name="newStatus" value="Paid" />
-                                            <button type="submit" class="btn btn-sm btn-success fw-bold px-3" style="border-radius: 0 20px 20px 0;" title="تأكيد التحصيل"><i class="fa-solid fa-check"></i></button>
+                                            <button type="submit" class="btn btn-sm btn-success fw-bold px-3 hover-elevate" style="border-radius: 0 20px 20px 0;" title="تأكيد التحصيل"><i class="fa-solid fa-check"></i> تحصيل</button>
                                         </form>
                                         <form asp-action="UpdateInvoiceStatus" method="post" class="d-inline">
                                             <input type="hidden" name="invoiceId" value="@item.InvoiceId" />
                                             <input type="hidden" name="newStatus" value="Rejected" />
-                                            <button type="submit" class="btn btn-sm btn-danger fw-bold px-3" style="border-radius: 20px 0 0 20px;" title="إلغاء الفاتورة"><i class="fa-solid fa-xmark"></i></button>
+                                            <button type="submit" class="btn btn-sm btn-danger fw-bold px-3 hover-elevate" style="border-radius: 20px 0 0 20px;" title="إلغاء الفاتورة"><i class="fa-solid fa-xmark"></i></button>
                                         </form>
+                                    </div>
+                                }
+                                else if (item.Status == KaberSystem.Models.InvoiceStatus.Paid)
+                                {
+                                    <!-- 📌 الميزة الجديدة: زر إرجاع الفاتورة المدفوعة وخصمها من الخزنة -->
+                                    <button type="button" class="btn btn-sm btn-outline-danger fw-bold px-3 rounded-pill hover-elevate" data-bs-toggle="modal" data-bs-target="#refundModal_@item.InvoiceId">
+                                        <i class="fa-solid fa-rotate-left me-1"></i> استرداد (إلغاء الفاتورة)
+                                    </button>
+
+                                    <!-- 📌 نافذة الاسترداد -->
+                                    <div class="modal fade" id="refundModal_@item.InvoiceId" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog modal-dialog-centered">
+                                            <div class="modal-content border-0 rounded-4 shadow-lg">
+                                                <div class="modal-header border-bottom-0 pb-0">
+                                                    <h5 class="modal-title fw-bold text-danger"><i class="fa-solid fa-triangle-exclamation me-2"></i> استرداد فاتورة مؤكدة</h5>
+                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <form asp-action="RefundInvoice" method="post">
+                                                    <div class="modal-body py-4 text-start">
+                                                        <input type="hidden" name="invoiceId" value="@item.InvoiceId" />
+
+                                                        <div class="alert alert-danger py-2 small fw-bold lh-lg">
+                                                            أنت على وشك إلغاء الفاتورة رقم <b>#@item.InvoiceId</b> وقيمتها <b>@item.Amount.ToString("N2") ريال</b>.<br>
+                                                            <i class="fa-solid fa-info-circle"></i> سيتم عكس العملية وخصم هذا المبلغ من رصيد (الخزنة) إذا كانت الفاتورة كاش لضمان دقة الحسابات.
+                                                        </div>
+
+                                                        <div class="mb-3 mt-3">
+                                                            <label class="form-label fw-bold text-dark">سبب الإلغاء / الاسترداد <span class="text-danger">*</span></label>
+                                                            <input type="text" name="refundReason" class="form-control fw-bold border-danger bg-light" placeholder="مثال: إلغاء موعد العميل، خطأ في الحساب..." required />
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer border-top-0 pt-0">
+                                                        <button type="button" class="btn btn-light fw-bold px-4 rounded-3" data-bs-dismiss="modal">تراجع</button>
+                                                        <button type="submit" class="btn btn-danger fw-bold px-4 rounded-3"><i class="fa-solid fa-rotate-left me-1"></i> تأكيد الاسترداد والخصم</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
                                     </div>
                                 }
                                 else
                                 {
-                                    <span class="text-muted small fw-bold"><i class="fa-solid fa-lock me-1"></i> مقفلة</span>
+                                    <span class="text-muted small fw-bold"><i class="fa-solid fa-lock me-1 opacity-50"></i> مغلقة</span>
                                 }
+                            </td>
+                        </tr>
+                    }
+
+                    @if (!Model.Any())
+                    {
+                        <tr>
+                            <td colspan="7" class="py-5 text-center text-muted">
+                                <div class="bg-light rounded-circle d-inline-flex justify-content-center align-items-center mb-3" style="width: 70px; height: 70px;">
+                                    <i class="fa-solid fa-file-invoice-dollar fs-3 opacity-50"></i>
+                                </div>
+                                <h6 class="fw-bold">لا توجد فواتير مسجلة حالياً.</h6>
                             </td>
                         </tr>
                     }
@@ -96,12 +153,23 @@
 @section Scripts {
     @if (TempData["SuccessMessage"] != null)
     {
-        <script>Swal.fire({ icon: 'success', title: 'نجاح', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#198754' });</script>
+        <script>
+            var msg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString()));
+            Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: msg, confirmButtonColor: '#198754', customClass: { popup: 'rounded-4' } });
+        </script>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <script>
+            var errMsg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString()));
+            Swal.fire({ icon: 'error', title: 'خطأ', text: errMsg, confirmButtonColor: '#dc3545', customClass: { popup: 'rounded-4' } });
+        </script>
     }
 }
 <style>
     .custom-table th {
         font-size: 0.85rem;
+        letter-spacing: 0.5px;
     }
 
     .custom-table tbody tr {
@@ -110,5 +178,14 @@
 
         .custom-table tbody tr:hover {
             background-color: #fcfcfd !important;
+        }
+
+    .hover-elevate {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1) !important;
         }
 </style>

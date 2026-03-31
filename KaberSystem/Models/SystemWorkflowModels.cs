@@ -202,6 +202,8 @@ namespace KaberSystem.Models
         public LeaveStatus Status { get; set; } = LeaveStatus.Pending;
         public DateTime RequestDate { get; set; } = DateTime.Now;
         public string? AdminNote { get; set; }
+        public bool IsReturned { get; set; } = false; 
+        public DateTime? ActualReturnDate { get; set; }
     }
 
     public class PayrollSchedule

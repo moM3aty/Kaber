@@ -34,7 +34,6 @@ wwwroot\images\trust-us.jpg
 wwwroot\images\why-details.jpg
 wwwroot\images\why-us-bg.png
 wwwroot\js\bootstrap.bundle.min.js
-wwwroot\js\dashboard-app.js
 wwwroot\js\main.js
 wwwroot\lib\bootstrap\dist\css\bootstrap-grid.css
 wwwroot\lib\bootstrap\dist\css\bootstrap-grid.css.map
@@ -93,6 +92,8 @@ wwwroot\lib\jquery\dist\jquery.js
 wwwroot\lib\jquery\dist\jquery.min.js
 wwwroot\lib\jquery\dist\jquery.min.map
 wwwroot\lib\jquery\LICENSE.txt
+wwwroot\uploads\receipts\3647d045-d6d1-4036-bfea-59b6cb14c64b_528618683_2900083920186244_956370499369716946_n.jpg
+wwwroot\uploads\receipts\a49d6264-0f91-4260-a602-feaf2fbb5b26_1.jpg
 wwwroot\webfonts\fa-brands-400.ttf
 wwwroot\webfonts\fa-brands-400.woff2
 wwwroot\webfonts\fa-regular-400.ttf

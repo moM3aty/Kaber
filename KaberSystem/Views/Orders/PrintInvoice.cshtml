@@ -3,6 +3,42 @@
     Layout = null;
     decimal partsTotal = Model.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
     decimal totalAmount = Model.EstimatedPrice + partsTotal;
+
+    // 📌 1. تحديد اسم الخدمة ديناميكياً بناءً على نوع الطلب
+    string serviceName = "أجور اليد / تكلفة الفحص";
+    switch (Model.Type)
+    {
+        case KaberSystem.Models.OrderType.Maintenance:
+            serviceName = "أجور اليد / تكلفة الفحص والصيانة";
+            break;
+        case KaberSystem.Models.OrderType.NewInstallation:
+            serviceName = "أجور تأسيس وتركيب الجهاز";
+            break;
+        case KaberSystem.Models.OrderType.ACWashing:
+            serviceName = "تكلفة غسيل وتنظيف المكيفات";
+            break;
+        case KaberSystem.Models.OrderType.Warranty:
+            serviceName = "زيارة ضمان (مشمول بالضمان)";
+            break;
+    }
+
+    // 📌 2. تجهيز بيانات الـ QR Code (تشفير النص ليقرأه الجوال)
+    string qrRawData = $"شركة كابر للصيانة\nرقم الفاتورة: INV-{Model.OrderId}\nالعميل: {Model.CustomerName}\nالتاريخ: {DateTime.Now.ToString("yyyy-MM-dd")}\nالإجمالي: {Model.FinalPrice} ر.س";
+    string qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=130x130&data={Uri.EscapeDataString(qrRawData)}";
+
+    // 📌 3. تجهيز رسالة الواتساب
+    string phone = Model.PhoneNumber.StartsWith("0") ? Model.PhoneNumber.Substring(1) : Model.PhoneNumber;
+    string waNumber = "966" + phone;
+
+    string whatsappMessage = $"أهلاً بك عميلنا العزيز {Model.CustomerName}،\n\n" +
+                             $"نرفق لك تفاصيل الفاتورة الخاصة بك:\n" +
+                             $"🧾 رقم الفاتورة: INV-#{Model.OrderId}\n" +
+                             $"🔧 الخدمة المقدمة: {serviceName}\n" +
+                             $"👨‍🔧 الفني: {Model.Technician?.Name ?? "غير محدد"}\n" +
+                             $"💰 الإجمالي المطلوب: {Model.FinalPrice} ريال\n\n" +
+                             $"شكراً لثقتكم بخدمات شركة كابر للصيانة 🛠️";
+
+    string encodedMessage = Uri.EscapeDataString(whatsappMessage);
 }
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
@@ -10,8 +46,9 @@
     <meta charset="UTF-8">
     <title>فاتورة صيانة - كابر</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="~/css/bootstrap.min.css">
-    <link href="~/images/logo.png" type="image/x-icon" rel="icon" />
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="/images/logo.png" type="image/x-icon" rel="icon" />
     <style>
         body {
             font-family: 'Cairo', sans-serif;
@@ -20,30 +57,26 @@
         }
 
         .invoice-box {
-            max-width: 800px;
+            max-width: 850px;
             margin: auto;
             background: #fff;
-            padding: 40px;
+            padding: 45px;
             border-radius: 15px;
             box-shadow: 0 15px 35px rgba(0,0,0,0.1);
             border-top: 8px solid #f1950b;
         }
 
-        .brand-title {
-            color: #010217;
-            font-weight: 800;
-        }
-
         .invoice-title {
             color: #f1950b;
             font-weight: 800;
-            font-size: 32px;
+            font-size: 36px;
+            letter-spacing: -1px;
         }
 
         .info-box {
             background: #f8f9fa;
-            padding: 15px;
-            border-radius: 10px;
+            padding: 20px;
+            border-radius: 12px;
             margin-bottom: 20px;
             border: 1px solid #eee;
         }
@@ -51,135 +84,201 @@
         .table th {
             background-color: #010217 !important;
             color: white !important;
+            font-size: 15px;
+            padding: 12px;
+        }
+
+        .table td {
+            padding: 12px;
+            vertical-align: middle;
         }
 
         .totals-box {
             border: 2px solid #e9edf7;
-            padding: 20px;
-            border-radius: 10px;
+            padding: 25px;
+            border-radius: 12px;
             background: #fafbfc;
         }
 
         .btn-print {
-            background: #f1950b;
+            background: #010217;
             color: white;
             padding: 10px 30px;
             border-radius: 30px;
             font-weight: bold;
             border: none;
+            transition: 0.3s;
+        }
+
+            .btn-print:hover {
+                background: #1a1e3b;
+                color: white;
+            }
+
+        .btn-whatsapp {
+            background: #25D366;
+            color: white;
+            padding: 10px 30px;
+            border-radius: 30px;
+            font-weight: bold;
+            border: none;
+            text-decoration: none;
+            display: inline-block;
+            transition: 0.3s;
+        }
+
+            .btn-whatsapp:hover {
+                background: #1ebc5a;
+                color: white;
+            }
+
+        .qr-code-box {
+            border: 2px dashed #eee;
+            padding: 5px;
+            border-radius: 10px;
+            display: inline-block;
         }
 
         @@media print {
-            body {
-                background: #fff;
-                padding: 0;
-            }
+            body
 
-            .invoice-box {
-                box-shadow: none;
-                border: none;
-                padding: 0;
-            }
+        {
+            background: #fff;
+            padding: 0;
+        }
 
-            .d-print-none {
-                display: none !important;
-            }
+        .invoice-box {
+            box-shadow: none;
+            border: none;
+            padding: 0;
+        }
+
+        .d-print-none {
+            display: none !important;
+        }
+
         }
     </style>
 </head>
 <body>
-    <div class="text-center mb-4 d-print-none">
-        <button onclick="window.print()" class="btn-print">🖨️ طباعة الفاتورة للعميل</button>
+    <div class="text-center mb-4 d-print-none d-flex justify-content-center gap-3">
+        <button onclick="window.print()" class="btn-print"><i class="fa-solid fa-print me-2"></i> طباعة الفاتورة للعميل</button>
+        <a href="https://wa.me/@waNumber?text=@encodedMessage" target="_blank" class="btn-whatsapp"><i class="fa-brands fa-whatsapp fs-5 me-2"></i> إرسال للعميل (واتساب)</a>
     </div>
 
     <div class="invoice-box">
+        <!-- 📌 الترويسة مع الـ QR Code -->
         <div class="row border-bottom pb-4 mb-4 align-items-center">
-            <div class="col-6">
-                <img src="~/images/logo.png" width="150px" style="border-radius:25px;"/>
-                <p class="text-muted mb-0">المملكة العربية السعودية - الدمام</p>
-                <p class="text-muted mb-0">هاتف: 0541683466</p>
+            <div class="col-4">
+                <img src="/images/logo.png" width="160px" style="border-radius:15px;" alt="Logo" />
+                <p class="text-muted mb-0 fw-bold mt-3">المنطقة الشرقية - الدمام</p>
+                <p class="text-muted mb-0 fw-bold">هاتف: 0541683466</p>
             </div>
-            <div class="col-6 text-end">
-                <h1 class="invoice-title">فاتورة ضريبية</h1>
-                <h5 class="fw-bold text-secondary">INV-#@Model.OrderId</h5>
-                <p class="text-muted mb-0">تاريخ الإصدار: @DateTime.Now.ToString("yyyy-MM-dd")</p>
+            <div class="col-4 text-center">
+                <div class="qr-code-box">
+                    <img src="@qrUrl" alt="QR Code" width="110" height="110" />
+                </div>
+                <p class="small text-muted fw-bold mt-1 mb-0">امسح الرمز للتحقق</p>
+            </div>
+            <div class="col-4 text-end">
+                <h1 class="invoice-title mb-1">فاتورة ضريبية</h1>
+                <h4 class="fw-bold text-dark mb-3">INV-#@Model.OrderId</h4>
+                <span class="badge bg-light text-dark border px-3 py-2 fw-bold fs-6">تاريخ الإصدار: @DateTime.Now.ToString("yyyy-MM-dd")</span>
             </div>
         </div>
 
-        <div class="row mb-4">
+        <!-- 📌 معلومات العميل والخدمة -->
+        <div class="row mb-4 g-3">
             <div class="col-md-6">
-                <div class="info-box">
-                    <h6 class="fw-bold text-primary mb-3">بيانات العميل:</h6>
-                    <p class="mb-1 fw-bold">الاسم: @Model.CustomerName</p>
-                    <p class="mb-1 fw-bold">الجوال: <span dir="ltr">@Model.PhoneNumber</span></p>
-                    <p class="mb-0 fw-bold">العنوان: @Model.Address</p>
+                <div class="info-box h-100">
+                    <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-user-tag me-2"></i> بيانات العميل:</h6>
+                    <div class="d-flex justify-content-between mb-2"><span class="text-muted fw-bold">الاسم:</span> <span class="fw-bold text-dark">@Model.CustomerName</span></div>
+                    <div class="d-flex justify-content-between mb-2"><span class="text-muted fw-bold">الجوال:</span> <span class="fw-bold text-dark" dir="ltr">@Model.PhoneNumber</span></div>
+                    <div class="d-flex justify-content-between mb-0"><span class="text-muted fw-bold">العنوان:</span> <span class="fw-bold text-dark text-end" style="max-width: 65%;">@Model.Address</span></div>
                 </div>
             </div>
             <div class="col-md-6">
                 <div class="info-box h-100">
-                    <h6 class="fw-bold text-primary mb-3">تفاصيل الصيانة:</h6>
-                    <p class="mb-1 fw-bold">حالة الطلب: @(Model.Status == KaberSystem.Models.OrderStatus.Completed ? "مكتمل" : "قيد التنفيذ")</p>
-                    <p class="mb-0 fw-bold">المهندس/الفني: @(Model.Technician?.Name ?? "غير محدد")</p>
+                    <h6 class="fw-bold text-primary mb-3"><i class="fa-solid fa-screwdriver-wrench me-2"></i> تفاصيل الصيانة:</h6>
+                    <div class="d-flex justify-content-between mb-2"><span class="text-muted fw-bold">حالة الطلب:</span> <span class="fw-bold text-success">@(Model.Status == KaberSystem.Models.OrderStatus.Completed || Model.Status == KaberSystem.Models.OrderStatus.Approved ? "مكتمل / منجز" : "قيد التنفيذ")</span></div>
+                    <div class="d-flex justify-content-between mb-2"><span class="text-muted fw-bold">الجهاز:</span> <span class="fw-bold text-dark text-end" style="max-width: 65%;">@Model.DeviceName</span></div>
+                    <div class="d-flex justify-content-between mb-0"><span class="text-muted fw-bold">المهندس/الفني:</span> <span class="fw-bold text-dark">@(Model.Technician?.Name ?? "غير محدد")</span></div>
                 </div>
             </div>
         </div>
 
-        <table class="table table-bordered text-center align-middle mb-4">
+        <!-- 📌 جدول الخدمات والأسعار -->
+        <table class="table table-bordered text-center align-middle mb-4 border-light">
             <thead>
                 <tr>
-                    <th>البيان / الخدمة / القطعة</th>
-                    <th>الكمية</th>
-                    <th>سعر الوحدة</th>
-                    <th>الإجمالي</th>
+                    <th class="text-start ps-3">البيان / الخدمة / القطعة</th>
+                    <th width="15%">الكمية</th>
+                    <th width="20%">سعر الوحدة</th>
+                    <th width="20%">الإجمالي</th>
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td class="fw-bold text-start">أجور اليد / تكلفة الفحص والصيانة</td>
-                    <td>1</td>
-                    <td>@Model.EstimatedPrice ريال</td>
-                    <td class="fw-bold">@Model.EstimatedPrice ريال</td>
-                </tr>
-                @if (Model.UsedSpareParts != null)
+                @if (Model.IsFeeApplied)
+                {
+                    <tr>
+                        <!-- 📌 هنا يتم عرض اسم الخدمة الديناميكي الذي برمجناه -->
+                        <td class="fw-bold text-dark text-start ps-3">@serviceName</td>
+                        <td class="fw-bold text-muted">1</td>
+                        <td class="fw-bold text-muted">@Model.EstimatedPrice ريال</td>
+                        <td class="fw-bold text-dark">@Model.EstimatedPrice ريال</td>
+                    </tr>
+                }
+                else
+                {
+                    <tr>
+                        <td class="fw-bold text-success text-start ps-3">@serviceName</td>
+                        <td class="fw-bold text-muted">1</td>
+                        <td class="fw-bold text-muted">0.00 ريال</td>
+                        <td class="fw-bold text-success">مشمول بالضمان</td>
+                    </tr>
+                }
+
+                @if (Model.UsedSpareParts != null && Model.UsedSpareParts.Any())
                 {
                     foreach (var part in Model.UsedSpareParts)
                     {
                         <tr>
-                            <td class="fw-bold text-start">@part.SparePart?.Name</td>
-                            <td>@part.QuantityUsed</td>
-                            <td>@part.SellingPriceAtTime ريال</td>
-                            <td class="fw-bold">@(part.QuantityUsed* part.SellingPriceAtTime) ريال</td>
+                            <td class="fw-bold text-dark text-start ps-3">@part.SparePart?.Name</td>
+                            <td class="fw-bold text-muted">@part.QuantityUsed</td>
+                            <td class="fw-bold text-muted">@part.SellingPriceAtTime ريال</td>
+                            <td class="fw-bold text-dark">@(part.QuantityUsed* part.SellingPriceAtTime) ريال</td>
                         </tr>
                     }
                 }
             </tbody>
         </table>
 
-        <div class="row justify-content-end">
-            <div class="col-md-6">
-                <div class="totals-box">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span class="fw-bold text-muted">إجمالي الفاتورة:</span>
-                        <span class="fw-bold fs-5">@totalAmount ريال</span>
+        <!-- 📌 الإجماليات -->
+        <div class="row justify-content-end mt-4">
+            <div class="col-md-7">
+                <div class="totals-box shadow-sm">
+                    <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
+                        <span class="fw-bold text-muted">المجموع الفرعي (قبل الخصم):</span>
+                        <span class="fw-bold fs-5 text-dark">@totalAmount ريال</span>
                     </div>
                     @if (Model.AdvancePayment > 0)
                     {
-                        <div class="d-flex justify-content-between mb-2 text-danger border-bottom pb-2">
-                            <span class="fw-bold">تم دفع مقدم:</span>
+                        <div class="d-flex justify-content-between mb-3 text-danger border-bottom pb-2">
+                            <span class="fw-bold">المدفوع مقدماً (عربون):</span>
                             <span class="fw-bold fs-5">- @Model.AdvancePayment ريال</span>
                         </div>
                     }
-                    <div class="d-flex justify-content-between mt-3">
-                        <span class="fw-bold fs-4" style="color: #010217;">المبلغ المطلوب سداده:</span>
-                        <span class="fw-bold fs-3 text-success">@Model.FinalPrice ريال</span>
+                    <div class="d-flex justify-content-between mt-4 align-items-center">
+                        <span class="fw-bold fs-4 text-primary">المبلغ الصافي المستحق:</span>
+                        <span class="fw-bold fs-2 text-success bg-success bg-opacity-10 px-3 py-1 rounded-3">@Model.FinalPrice ريال</span>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="text-center mt-5 pt-4 border-top">
-            <p class="fw-bold text-secondary mb-1">شكراً لثقتكم بخدمات شركة كابر للصيانة.</p>
-            <p class="text-muted small">هذه الفاتورة معتمدة إلكترونياً ولا تحتاج إلى توقيع.</p>
+            <p class="fw-bold text-dark mb-1 fs-5">شكراً لثقتكم بخدمات شركة كابر للصيانة والتكييف.</p>
+            <p class="text-muted small fw-bold">هذه الفاتورة معتمدة إلكترونياً من النظام ولا تحتاج إلى توقيع أو ختم.</p>
         </div>
     </div>
 </body>

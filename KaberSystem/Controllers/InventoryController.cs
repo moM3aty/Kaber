@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace KaberSystem.Controllers
 {
-    [Authorize(Roles = "Admin,Store")] // 📌 السماح للأدمن وأمين المخزن بالوصول
+    [Authorize(Roles = "Admin,Store")]
     public class InventoryController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -19,14 +19,41 @@ namespace KaberSystem.Controllers
             _context = context;
         }
 
-        // عرض المخزون العام لكل قطع الغيار
-        public async Task<IActionResult> Index()
+        private void LogAction(string actionType, string details)
         {
-            var parts = await _context.SpareParts.OrderByDescending(p => p.PartId).ToListAsync();
+            var username = User.Identity?.Name ?? "مستخدم غير معروف";
+            var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "صلاحية غير محددة";
+
+            _context.SystemLogs.Add(new SystemLog
+            {
+                ActionType = actionType,
+                Details = details,
+                Username = $"{username} - [{role}]",
+                Timestamp = DateTime.Now
+            });
+        }
+
+        // 📌 التحديث هنا: إضافة خاصية البحث الشامل في المخزون
+        public async Task<IActionResult> Index(string searchQuery)
+        {
+            ViewData["CurrentSearch"] = searchQuery;
+
+            var query = _context.SpareParts.AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchQuery))
+            {
+                query = query.Where(p =>
+                    p.Name.Contains(searchQuery) ||
+                    (p.PartCode != null && p.PartCode.Contains(searchQuery)) ||
+                    (p.TargetModel != null && p.TargetModel.Contains(searchQuery)) ||
+                    (p.SupplierName != null && p.SupplierName.Contains(searchQuery))
+                );
+            }
+
+            var parts = await query.OrderByDescending(p => p.PartId).ToListAsync();
             return View(parts);
         }
 
-        // شاشة إضافة صنف جديد للمخزن
         public IActionResult Create()
         {
             return View();
@@ -34,16 +61,13 @@ namespace KaberSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        // 📌 تم إضافة حقول التكويد والتصنيف والمورد
         public async Task<IActionResult> Create([Bind("PartCode,Name,IsCommon,TargetModel,PurchasePrice,SellingPrice,MainStockQuantity,SupplierName,SupplierPhone,SupplierLocation")] SparePart sparePart)
         {
-            // توليد كود تلقائي إذا تركه المستخدم فارغاً
             if (string.IsNullOrEmpty(sparePart.PartCode))
             {
                 sparePart.PartCode = "KBR-" + new Random().Next(100000, 999999).ToString();
             }
 
-            // تنظيف الموديل المستهدف إذا كانت القطعة عامة
             if (sparePart.IsCommon)
             {
                 sparePart.TargetModel = null;
@@ -52,15 +76,15 @@ namespace KaberSystem.Controllers
             if (ModelState.IsValid)
             {
                 _context.Add(sparePart);
-                await _context.SaveChangesAsync();
+                LogAction("إضافة صنف", $"تم تعريف صنف جديد بالمخزن: {sparePart.Name} بكمية {sparePart.MainStockQuantity}");
 
+                await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "تم إضافة الصنف وتكويده في المخزون بنجاح!";
                 return RedirectToAction(nameof(Index));
             }
             return View(sparePart);
         }
 
-        // 📌 شاشة تعديل الصنف
         public async Task<IActionResult> Edit(int? id)
         {
             if (id == null) return NotFound();
@@ -75,7 +99,6 @@ namespace KaberSystem.Controllers
         {
             if (id != sparePart.PartId) return NotFound();
 
-            // تجاوز التحقق من الحقول التي قد تكون مغلقة في الشاشة (Disabled)
             ModelState.Remove("PartCode");
             ModelState.Remove("Name");
 
@@ -83,11 +106,9 @@ namespace KaberSystem.Controllers
             {
                 try
                 {
-                    // جلب الصنف القديم من قاعدة البيانات لمنع التلاعب
                     var existingPart = await _context.SpareParts.FindAsync(id);
                     if (existingPart == null) return NotFound();
 
-                    // 📌 التعديل السحري: لا نحدث الاسم أو الكود إلا إذا جاءت بهم قيمة جديدة فعلاً
                     if (!string.IsNullOrEmpty(sparePart.PartCode)) existingPart.PartCode = sparePart.PartCode;
                     if (!string.IsNullOrEmpty(sparePart.Name)) existingPart.Name = sparePart.Name;
 
@@ -96,18 +117,18 @@ namespace KaberSystem.Controllers
                     existingPart.PurchasePrice = sparePart.PurchasePrice;
                     existingPart.SellingPrice = sparePart.SellingPrice;
 
-                    // تحديث بيانات المورد
                     existingPart.SupplierName = sparePart.SupplierName;
                     existingPart.SupplierPhone = sparePart.SupplierPhone;
                     existingPart.SupplierLocation = sparePart.SupplierLocation;
 
-                    // الحماية الأمنية (Backend): تعديل الكمية مسموح لمدير النظام (Admin) فقط
                     if (User.IsInRole("Admin"))
                     {
                         existingPart.MainStockQuantity = sparePart.MainStockQuantity;
                     }
 
                     _context.Update(existingPart);
+                    LogAction("تعديل صنف", $"تم تعديل بيانات الصنف: {existingPart.Name} وتحديث الكميات والأسعار");
+
                     await _context.SaveChangesAsync();
                     TempData["SuccessMessage"] = "تم تحديث بيانات وتصنيف الصنف بنجاح!";
                 }
@@ -121,7 +142,6 @@ namespace KaberSystem.Controllers
             return View(sparePart);
         }
 
-        // 📌 سجل التوالف
         public async Task<IActionResult> DamagedParts()
         {
             var damaged = await _context.DamagedParts
@@ -131,12 +151,12 @@ namespace KaberSystem.Controllers
             return View(damaged);
         }
 
-        // 📌 شاشة تسجيل تالف جديد
         public async Task<IActionResult> RecordDamage()
         {
             ViewData["PartId"] = new SelectList(await _context.SpareParts.Where(p => p.MainStockQuantity > 0).ToListAsync(), "PartId", "Name");
             return View();
         }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RecordDamage([Bind("PartId,Quantity,Reason")] DamagedPart damagedPart)
@@ -144,19 +164,14 @@ namespace KaberSystem.Controllers
             var part = await _context.SpareParts.FindAsync(damagedPart.PartId);
             if (part != null && part.MainStockQuantity >= damagedPart.Quantity && damagedPart.Quantity > 0)
             {
-                // خصم الكمية التالفة من المخزون
                 part.MainStockQuantity -= damagedPart.Quantity;
                 _context.Update(part);
 
                 damagedPart.Date = DateTime.Now;
-
-                // 📌 التحديث المالي: حساب الخسارة (الكمية × سعر شراء القطعة)
                 damagedPart.TotalLoss = damagedPart.Quantity * part.PurchasePrice;
 
                 _context.DamagedParts.Add(damagedPart);
-
-                // تسجيل الحركة في الـ Logs
-                _context.SystemLogs.Add(new SystemLog { ActionType = "تسجيل تالف", Details = $"إتلاف {damagedPart.Quantity} من {part.Name} بخسارة مالية قدرها {damagedPart.TotalLoss} ريال. السبب: {damagedPart.Reason}", Username = User.Identity?.Name });
+                LogAction("تسجيل تالف", $"إتلاف {damagedPart.Quantity} من {part.Name} بخسارة مالية قدرها {damagedPart.TotalLoss} ريال. السبب: {damagedPart.Reason}");
 
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = $"تم خصم الكمية وتسجيل الخسارة المالية ({damagedPart.TotalLoss} ريال) بنجاح!";
@@ -168,7 +183,6 @@ namespace KaberSystem.Controllers
             return View(damagedPart);
         }
 
-        // 📌 الحماية الأمنية: الحذف مسموح للأدمن فقط
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -176,6 +190,8 @@ namespace KaberSystem.Controllers
             if (part != null)
             {
                 _context.SpareParts.Remove(part);
+                LogAction("حذف صنف", $"تم حذف الصنف ({part.Name}) نهائياً من المخزون العام");
+
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "تم حذف الصنف من المخزون العام.";
             }

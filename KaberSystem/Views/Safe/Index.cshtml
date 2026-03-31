@@ -7,14 +7,14 @@
 <div class="sys-page-header">
     <div>
         <h1 class="sys-page-title text-success"><i class="fa-solid fa-vault me-2"></i> الخزنة النقدية (الكاش)</h1>
-        <p class="sys-page-desc">مراقبة السيولة النقدية الواردة من الفنيين، وتوريد الأموال للبنك</p>
+        <p class="sys-page-desc">مراقبة السيولة النقدية الواردة من الفواتير وتصفية الفنيين، وتوريد الأموال للبنك</p>
     </div>
     <button class="sys-btn btn-success fw-bold" data-bs-toggle="modal" data-bs-target="#depositModal">
         <i class="fa-solid fa-money-bill-transfer"></i> توريد أموال (سحب من الخزنة)
     </button>
 </div>
 
-<!-- 📌 لوحة المؤشرات المالية -->
+<!-- لوحة المؤشرات المالية -->
 <div class="row g-4 mb-4">
     <div class="col-md-4">
         <div class="sys-card bg-primary bg-opacity-10 border-0 h-100 d-flex align-items-center p-4">
@@ -85,7 +85,7 @@
                             @item.Description
                             @if (item.OrderId.HasValue)
                             {
-                                <a href="/Orders/Details/@item.OrderId" class="ms-2 badge bg-primary text-white text-decoration-none">طلب #@item.OrderId</a>
+                                <a href="/Orders/Details/@item.OrderId" class="ms-2 badge bg-primary text-white text-decoration-none shadow-sm"><i class="fa-solid fa-link"></i> الفاتورة #@item.OrderId</a>
                             }
                         </td>
                         <td class="text-muted fw-bold small"><i class="fa-solid fa-user-tie me-1"></i> @item.RecordedBy</td>
@@ -139,10 +139,16 @@
 @section Scripts {
     @if (TempData["SuccessMessage"] != null)
     {
-        <script>Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#198754' });</script>
+        <script>
+            var msg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString()));
+            Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: msg, confirmButtonColor: '#198754' });
+        </script>
     }
     @if (TempData["ErrorMessage"] != null)
     {
-        <script>Swal.fire({ icon: 'error', title: 'تنبيه', text: '@Html.Raw(TempData["ErrorMessage"])', confirmButtonColor: '#dc3545' });</script>
+        <script>
+            var errMsg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString()));
+            Swal.fire({ icon: 'error', title: 'تنبيه', text: errMsg, confirmButtonColor: '#dc3545' });
+        </script>
     }
 }

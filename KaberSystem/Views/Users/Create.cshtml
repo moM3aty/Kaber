@@ -43,12 +43,13 @@
                             <option value="Technician">فني صيانة (Technician)</option>
                             <option value="Accounting">محاسب (Accounting)</option>
                             <option value="Store">أمين مخزن (Store)</option>
+                            <option value="HR">موارد بشرية (HR)</option>
                             <option value="PurchasingManager">مدير مشتريات</option>
                             <option value="PurchasingRep">مندوب مشتريات</option>
                         </select>
                     </div>
 
-                    <!-- 📌 نظام الصلاحيات المرنة (Checkboxes) -->
+                    <!-- 📌 نظام الصلاحيات المرنة (تمت إضافة الـ HR) -->
                     <div class="col-12 mt-4">
                         <h5 class="fw-bold border-bottom pb-2 text-dark"><i class="fa-solid fa-user-shield text-warning me-2"></i> الصلاحيات المخصصة (المرنة)</h5>
                         <p class="text-muted small fw-bold">اختر الشاشات والعمليات التي يُسمح لهذا المستخدم برؤيتها والتعديل عليها:</p>
@@ -81,7 +82,14 @@
                             <div class="col-md-4">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageTechnicians" id="perm5">
-                                    <label class="form-check-label fw-bold" for="perm5">إدارة بيانات الفنيين</label>
+                                    <label class="form-check-label fw-bold" for="perm5">إدارة الفنيين</label>
+                                </div>
+                            </div>
+                            <!-- 📌 الصلاحية المرنة للـ HR -->
+                            <div class="col-md-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageHR" id="perm7">
+                                    <label class="form-check-label fw-bold text-success" for="perm7">إدارة الموارد البشرية والرواتب</label>
                                 </div>
                             </div>
                             <div class="col-md-4">

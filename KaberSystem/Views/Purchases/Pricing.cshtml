@@ -34,7 +34,6 @@
             <tbody>
                 @foreach (var item in Model)
                 {
-                    // 📌 الحل الذكي: إذا لم يكن هناك باركود مسجل (للمنتجات القديمة)، اصنع باركوداً بناءً على رقم العملية
                     string displayBarcode = !string.IsNullOrEmpty(item.Barcode) ? item.Barcode : $"KBR-PO-{item.PurchaseId}";
 
                     <tr>
@@ -54,12 +53,9 @@
                         </td>
                         <td>
                             <div class="d-flex gap-2 justify-content-center">
-                                <!-- 📌 تمرير الباركود الآمن -->
                                 <button type="button" class="btn btn-sm btn-outline-dark fw-bold rounded-3 px-3"
-                                        data-barcode="@displayBarcode"
-                                        data-itemname="@item.ItemName"
-                                        onclick="openBarcodeModal(this)">
-                                    <i class="fa-solid fa-print"></i> باركود
+                                        onclick="printBarcodeDirect('@displayBarcode', '@item.ItemName')">
+                                    <i class="fa-solid fa-print"></i> باركود مباشر
                                 </button>
                             </div>
                         </td>
@@ -79,142 +75,32 @@
     </div>
 </div>
 
-<!-- Modal نافذة طباعة الباركود بأحجام مختلفة -->
-<div class="modal fade" id="barcodeModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 rounded-4 shadow-lg">
-            <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-dark"><i class="fa-solid fa-barcode text-primary me-2"></i> طباعة ملصق الباركود</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body py-4 text-center">
-
-                <!-- 📌 منطقة الطباعة المعزولة -->
-                <div id="barcodePrintArea" class="bg-white d-inline-block p-2 rounded-3 border mb-4">
-                    <div id="modalProductName" class="fw-bold text-dark mb-1" style="font-size: 13px; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 auto;"></div>
-                    <svg id="barcodeSvg"></svg>
-                </div>
-
-                <div class="mb-3 text-start">
-                    <label class="fw-bold text-dark mb-2">اختر حجم الملصق للطابعة الحرارية:</label>
-                    <select id="printSize" class="form-select fw-bold border-secondary">
-                        <option value="small">ملصق صغير (38mm x 25mm) - مناسب للقطع الصغيرة</option>
-                        <option value="medium" selected>ملصق متوسط (50mm x 25mm) - قياسي</option>
-                        <option value="large">ملصق كبير (70mm x 40mm) - للكراتين الكبيرة</option>
-                    </select>
-                </div>
-            </div>
-            <div class="modal-footer border-top-0 pt-0">
-                <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">إغلاق</button>
-                <button type="button" class="btn btn-dark fw-bold px-4" onclick="printBarcode()"><i class="fa-solid fa-print me-1"></i> طباعة الآن</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- 📌 CSS خاص بالطباعة النظيفة من نفس الصفحة -->
-<style>
-    @@media print {
-        /* إخفاء كل محتويات الصفحة */
-        body * {
-            visibility: hidden;
-        }
-        /* إظهار منطقة الباركود فقط */
-        #barcodePrintArea, #barcodePrintArea * {
-            visibility: visible;
-        }
-        /* توسيط الباركود في منتصف الملصق */
-        #barcodePrintArea {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            border: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-            text-align: center;
-        }
-
-        #modalProductName {
-            color: #000 !important;
-        }
-
-        svg {
-            max-width: 100%;
-            height: auto;
-        }
-    }
-</style>
-
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
 
     <script>
         @if (TempData["SuccessMessage"] != null)
         {
-                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]);
-                @:Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: @Html.Raw(msg), confirmButtonColor: '#f1950b' });
+                    var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]);
+                    @:Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: @Html.Raw(msg), confirmButtonColor: '#f1950b' });
         }
 
-        var currentBarcode = '';
-        var currentItemName = '';
-
-        function openBarcodeModal(buttonElement) {
-            var barcode = buttonElement.getAttribute('data-barcode');
-            var itemName = buttonElement.getAttribute('data-itemname');
-
-            if (!barcode || barcode === '') {
-                Swal.fire({ icon: 'error', title: 'خطأ', text: 'لا يوجد باركود لهذا الصنف، أو أنه لم يستلم بعد.', confirmButtonColor: '#ee5d50' });
+        // 📌 حل المشكلة 3: دالة الطباعة المباشرة الجديدة (تتجاوز الـ iframe المعطل في بعض المتصفحات)
+        function printBarcodeDirect(code, name) {
+            var printWindow = window.open('', '', 'width=400,height=300');
+            if(!printWindow) {
+                Swal.fire({ icon: 'error', title: 'تنبيه', text: 'يرجى السماح بالنوافذ المنبثقة للطباعة.'});
                 return;
             }
 
-            currentBarcode = barcode;
-            currentItemName = itemName;
+            var doc = printWindow.document;
+            var styleAt = String.fromCharCode(64);
 
-            document.getElementById('modalProductName').innerText = itemName;
-
-            // توليد الباركود بشكل قياسي
-            JsBarcode("#barcodeSvg", barcode, {
-                format: "CODE128",
-                width: 2,
-                height: 40,
-                displayValue: true,
-                fontSize: 14,
-                fontOptions: "bold",
-                margin: 5
-            });
-
-            var barcodeModal = new bootstrap.Modal(document.getElementById('barcodeModal'));
-            barcodeModal.show();
-        }
-
-        // 📌 دالة الطباعة الجديدة: تم إضافة التكبير والتصغير الديناميكي (Zoom/Scale)
-        function printBarcode() {
-            var size = document.getElementById('printSize').value;
-
-            var width, height, zoom;
-            if(size === 'small') { width = '38mm'; height = '25mm'; zoom = 0.6; }
-            else if(size === 'medium') { width = '50mm'; height = '25mm'; zoom = 0.8; }
-            else { width = '70mm'; height = '40mm'; zoom = 1.2; }
-
-            var style = document.createElement('style');
-            style.id = 'dynamicPrintStyle';
-            style.innerHTML = "\x40media print { " +
-                              "\x40page { size: " + width + " " + height + "; margin: 0; } " +
-                              "#barcodePrintArea { transform: translate(-50%, -50%) scale(" + zoom + ") !important; } " +
-                              "}";
-            document.head.appendChild(style);
-
-            // استدعاء نافذة الطباعة الافتراضية
-            window.print();
-
-            // تنظيف الصفحة بعد الطباعة
-            setTimeout(function() {
-                var dynamicStyle = document.getElementById('dynamicPrintStyle');
-                if(dynamicStyle) {
-                    dynamicStyle.remove();
-                }
-            }, 500);
+            doc.write('<html><head><style>' + styleAt + 'page { size: 50mm 25mm; margin:0; } body { font-family: Cairo, sans-serif; text-align:center; padding:2px; background: white; margin: 0; } .title { font-size:10px; font-weight:bold; margin-bottom:2px; overflow:hidden; white-space:nowrap; text-overflow: ellipsis; color: black; } svg { width:100%; height:auto; max-height: 20mm; }</style></head><body>');
+            doc.write('<div class="title">' + name + '</div><svg id="bc"></svg>');
+            doc.write('<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>');
+            doc.write('<script>window.onload = function() { JsBarcode("#bc", "' + code + '", { height:35, fontSize:12, fontOptions: "bold", margin:0, displayValue: true }); setTimeout(function(){ window.print(); window.close(); }, 500); }<\/script></body></html>');
+            doc.close();
         }
     </script>
 }

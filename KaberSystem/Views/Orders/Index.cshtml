@@ -2,6 +2,10 @@
 @{
     ViewData["Title"] = "إدارة الطلبات";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
+
+    // 📌 الحصول على قائمة الطلبات التي توفرت قطعها من الـ ViewBag (تم تجهيزها في الـ Controller)
+    var ordersWithReadyParts = ViewBag.OrdersWithReadyParts as List<int> ?? new List<int>();
+    var techsList = ViewData["TechniciansList"] as IEnumerable<KaberSystem.Models.Technician>;
 }
 
 <div class="sys-page-header">
@@ -17,7 +21,6 @@
     }
 </div>
 
-<!-- 📌 إشعار ذكي للفني بوجود طلبات بانتظاره أو معادة إليه -->
 @if (User.IsInRole("Technician") && ViewBag.NewOrdersCount != null && ViewBag.NewOrdersCount > 0)
 {
     <div class="alert alert-info border-0 border-start border-4 border-info shadow-sm mb-4 d-flex align-items-center bg-white">
@@ -47,12 +50,12 @@
 
 <div class="sys-card">
     <div class="table-responsive">
-        <table class="table table-hover align-middle sys-table text-center w-100">
+        <table class="table align-middle sys-table text-center w-100">
             <thead class="table-light">
                 <tr>
                     <th>رقم الطلب</th>
                     <th>اسم العميل</th>
-                    <th>رقم الهاتف</th>
+                    <th>التواصل</th>
                     <th>نوع الطلب</th>
                     <th>تاريخ الطلب</th>
                     @if (!User.IsInRole("Technician"))
@@ -66,10 +69,33 @@
             <tbody>
                 @foreach (var item in Model)
                 {
-                    <tr>
+                    // 📌 تجهيز رقم الواتساب للعميل
+                    string phoneStr = item.PhoneNumber.StartsWith("0") ? item.PhoneNumber.Substring(1) : item.PhoneNumber;
+                    string whatsappNumber = "966" + phoneStr;
+
+                    // 📌 التحقق مما إذا كان الطلب له قطع غيار جاهزة ليتم تلوينه
+                    bool isReadyForInstall = ordersWithReadyParts.Contains(item.OrderId);
+                    string rowClass = isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")) ? "ready-install-row" : "";
+
+                    <tr class="@rowClass">
                         <td><span class="fw-bold px-2 py-1 bg-light border rounded text-primary">#@item.OrderId</span></td>
-                        <td class="fw-bold text-dark">@item.CustomerName</td>
-                        <td dir="ltr" class="fw-bold">@item.PhoneNumber</td>
+                        <td class="fw-bold text-dark text-start">
+                            @item.CustomerName
+                            @if (isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")))
+                            {
+                                <div class="mt-1"><span class="badge bg-success pulse-badge"><i class="fa-solid fa-box-open"></i> القطعة متوفرة وجاهزة</span></div>
+                            }
+                        </td>
+
+                        <td dir="ltr" class="fw-bold">
+                            <div class="d-flex align-items-center justify-content-center gap-2">
+                                <a href="tel:@item.PhoneNumber" class="text-decoration-none text-dark hover-primary-text">@item.PhoneNumber</a>
+                                <a href="https://wa.me/@whatsappNumber" target="_blank" class="btn btn-sm btn-success rounded-circle px-2 py-1 shadow-sm" title="محادثة واتساب">
+                                    <i class="fa-brands fa-whatsapp"></i>
+                                </a>
+                            </div>
+                        </td>
+
                         <td>
                             @switch (item.Type)
                             {
@@ -77,15 +103,12 @@
                                     <span class="badge bg-primary text-white"><i class="fa-solid fa-wrench"></i> صيانة</span>
                                     break;
                                 case KaberSystem.Models.OrderType.NewInstallation:
-
                                     <span class="badge bg-success text-white"><i class="fa-solid fa-plug"></i> تركيب جديد</span>
                                     break;
                                 case KaberSystem.Models.OrderType.Warranty:
-
                                     <span class="badge bg-warning text-dark"><i class="fa-solid fa-shield"></i> ضمان</span>
                                     break;
                                 case KaberSystem.Models.OrderType.ACWashing:
-
                                     <span class="badge bg-info text-dark"><i class="fa-solid fa-shower"></i> غسيل مكيفات</span>
                                     break;
                             }
@@ -115,31 +138,24 @@
                                     <span class="badge bg-secondary rounded-pill px-3 py-2">جديد</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.Assigned:
-
                                     <span class="badge bg-primary rounded-pill px-3 py-2">تم التعيين</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.Confirmed:
-
                                     <span class="badge bg-warning text-dark rounded-pill px-3 py-2">مؤكد</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.InProgress:
-
                                     <span class="badge bg-info rounded-pill px-3 py-2">قيد التنفيذ</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.Completed:
-
                                     <span class="badge bg-dark rounded-pill px-3 py-2"><i class="fa-solid fa-clock"></i> للمراجعة</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.Approved:
-
                                     <span class="badge bg-success rounded-pill px-3 py-2"><i class="fa-solid fa-check-double"></i> معتمد نهائي</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.Returned:
-
                                     <span class="badge bg-danger rounded-pill px-3 py-2"><i class="fa-solid fa-rotate-left"></i> مُرجع للفني</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.Cancelled:
-
                                     <span class="badge bg-danger rounded-pill px-3 py-2"><i class="fa-solid fa-ban"></i> ملغي</span>
                                     break;
                             }
@@ -158,6 +174,17 @@
                                             <i class="fa-solid fa-user-plus"></i>
                                         </a>
                                     }
+
+                                    <!-- 📌 زر تحديد موعد التركيب يظهر فقط للطلبات الجاهزة -->
+                                    @if (isReadyForInstall)
+                                    {
+                                        <button type="button" class="btn btn-sm btn-success fw-bold px-2 rounded-3 text-white"
+                                                title="تحديد موعد للتركيب"
+                                                data-bs-toggle="modal" data-bs-target="#scheduleModal"
+                                                onclick="setupScheduleModal(@item.OrderId, '@item.CustomerName', @(item.TechnicianId ?? 0))">
+                                            <i class="fa-solid fa-calendar-plus"></i> موعد
+                                        </button>
+                                    }
                                 }
 
                                 @if (User.IsInRole("Admin"))
@@ -173,14 +200,131 @@
                         </td>
                     </tr>
                 }
+                @if (!Model.Any())
+                {
+                    <tr><td colspan="8" class="text-muted fw-bold py-5">لا توجد طلبات مسجلة لعرضها.</td></tr>
+                }
             </tbody>
         </table>
     </div>
 </div>
 
-@section Scripts {
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <script>Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#f1950b' });</script>
+<!-- 📌 Modal تحديد موعد تركيب النواقص للطلب -->
+@if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
+{
+    <div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-calendar-check me-2"></i> تحديد موعد تركيب النواقص</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form asp-action="ScheduleInstallation" method="post">
+                    <div class="modal-body py-4 text-start">
+                        <input type="hidden" name="orderId" id="schedOrderId" value="" />
+
+                        <div class="alert alert-success py-2 small fw-bold mb-4">
+                            <i class="fa-solid fa-info-circle me-1"></i> القطعة المطلوبة متوفرة لطلب العميل: <span id="schedCustomerName" class="text-dark fs-6"></span>. حدد موعداً للذهاب وتركيبها.
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark">الموعد الجديد <span class="text-danger">*</span></label>
+                            <input type="datetime-local" name="scheduledDate" class="form-control fw-bold bg-light border-secondary" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark">تأكيد / تعيين الفني المنفذ <span class="text-danger">*</span></label>
+                            <select name="technicianId" id="schedTechId" class="form-select fw-bold border-secondary bg-light" required>
+                                <option value="">-- اختر الفني --</option>
+                                @if (techsList != null)
+                                {
+                                    foreach (var t in techsList)
+                                    {
+                                        <option value="@t.TechnicianId">@t.Name</option>
+                                    }
+                                }
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark">ملاحظات للفني (اختياري)</label>
+                            <input type="text" name="adminNotes" class="form-control fw-bold border-secondary bg-light" placeholder="مثال: يرجى الذهاب للتركيب وتجربة الجهاز" />
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0 pt-0">
+                        <button type="button" class="btn btn-light fw-bold px-4 rounded-3" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-success fw-bold px-4 rounded-3 fs-6">تأكيد الموعد للفني</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+}
+
+<style>
+    /* تأثير النبض والألوان للطلبات الجاهزة للتركيب */
+    .ready-install-row {
+        background-color: rgba(25, 135, 84, 0.05) !important;
+        border-right: 4px solid #198754 !important;
+        transition: all 0.3s;
     }
+
+        .ready-install-row:hover {
+            background-color: rgba(25, 135, 84, 0.1) !important;
+        }
+
+    @@keyframes subtlePulse {
+        0%
+
+    {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    }
+
+    .pulse-badge {
+        animation: subtlePulse 2s infinite;
+        box-shadow: 0 0 8px rgba(25, 135, 84, 0.4);
+    }
+
+    .hover-primary-text {
+        transition: color 0.2s;
+    }
+
+        .hover-primary-text:hover {
+            color: var(--sys-primary) !important;
+        }
+</style>
+
+@section Scripts {
+    <script>
+        function setupScheduleModal(orderId, customerName, currentTechId) {
+            document.getElementById('schedOrderId').value = orderId;
+            document.getElementById('schedCustomerName').innerText = customerName;
+
+            // تحديد الفني الافتراضي إذا كان الطلب مسنداً مسبقاً
+            if(currentTechId && currentTechId > 0) {
+                document.getElementById('schedTechId').value = currentTechId;
+            } else {
+                document.getElementById('schedTechId').value = "";
+            }
+        }
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: @Html.Raw(msg), confirmButtonColor: '#f1950b' });</text>
+        }
+    </script>
 }
