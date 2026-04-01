@@ -5,6 +5,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using KaberSystem.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
+using System.IO;
+using System.Collections.Generic;
 
 namespace KaberSystem.Controllers
 {
@@ -18,7 +21,6 @@ namespace KaberSystem.Controllers
             _context = context;
         }
 
-        // 📌 دالة مساعدة لتسجيل اللوج بأمان (مع تسجيل الصلاحية)
         private void LogAction(string actionType, string details)
         {
             var username = User.Identity?.Name ?? "مستخدم غير معروف";
@@ -59,10 +61,7 @@ namespace KaberSystem.Controllers
                 purchaseOrder.IsReceivedByStore = false;
 
                 _context.Add(purchaseOrder);
-
-                // 📌 تسجيل الحركة
                 LogAction("إنشاء أمر شراء", $"تم طلب شراء {purchaseOrder.Quantity} من {purchaseOrder.ItemName}");
-
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "تم تسجيل المشتريات بنجاح. بانتظار اعتماد أمين المخزن.";
                 return RedirectToAction(nameof(Index));
@@ -85,8 +84,17 @@ namespace KaberSystem.Controllers
                     existingPart.MainStockQuantity += purchase.Quantity;
                     existingPart.PurchasePrice = purchase.PurchasePrice;
 
+                    // 📌 الإصلاح 1: وضع سعر البيع المبدئي ليكون مساوياً لسعر الشراء حتى يتم تسعيره من الإدارة
+                    // لأن PurchaseOrder لا يحتوي على SellingPrice
+                    if (existingPart.SellingPrice < purchase.PurchasePrice)
+                    {
+                        existingPart.SellingPrice = purchase.PurchasePrice;
+                    }
+
                     if (!string.IsNullOrEmpty(purchase.SupplierName)) existingPart.SupplierName = purchase.SupplierName;
                     if (!string.IsNullOrEmpty(purchase.SupplierPhone)) existingPart.SupplierPhone = purchase.SupplierPhone;
+
+                    // 📌 الإصلاح 2: استخدام SupplierLocation بدلاً من Location
                     if (!string.IsNullOrEmpty(purchase.SupplierLocation)) existingPart.SupplierLocation = purchase.SupplierLocation;
 
                     purchase.Barcode = existingPart.PartCode;
@@ -98,15 +106,15 @@ namespace KaberSystem.Controllers
 
                     var newPart = new SparePart
                     {
+                        PartCode = generatedBarcode,
+                        Barcode = generatedBarcode,
                         Name = purchase.ItemName,
                         PurchasePrice = purchase.PurchasePrice,
-                        SellingPrice = purchase.PurchasePrice,
-                        MainStockQuantity = purchase.Quantity,
+                        SellingPrice = purchase.PurchasePrice, // سعر البيع الافتراضي = التكلفة
                         SupplierName = purchase.SupplierName,
                         SupplierPhone = purchase.SupplierPhone,
-                        SupplierLocation = purchase.SupplierLocation,
-                        PartCode = generatedBarcode,
-                        Barcode = generatedBarcode
+                        SupplierLocation = purchase.SupplierLocation, // 📌 الإصلاح 3
+                        MainStockQuantity = purchase.Quantity
                     };
                     _context.SpareParts.Add(newPart);
                     purchase.Barcode = generatedBarcode;
@@ -114,9 +122,7 @@ namespace KaberSystem.Controllers
 
                 _context.Update(purchase);
 
-                // 📌 تسجيل الحركة
                 LogAction("استلام بضاعة بالمخزن", $"تم استلام بضاعة: {purchase.ItemName} وإضافتها للمخزن الفعلي");
-
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "تم استلام البضاعة وإضافتها للمخزون العام بنجاح.";
             }
@@ -150,7 +156,6 @@ namespace KaberSystem.Controllers
 
                 _context.Update(purchase);
 
-                // 📌 تسجيل الحركة
                 LogAction("تسعير منتج", $"تم تسعير المنتج {purchase.ItemName} بـ {sellingPrice} ريال للعميل");
 
                 await _context.SaveChangesAsync();
@@ -166,8 +171,6 @@ namespace KaberSystem.Controllers
             if (purchase != null)
             {
                 _context.PurchaseOrders.Remove(purchase);
-
-                // 📌 تسجيل الحركة
                 LogAction("إلغاء فاتورة شراء", $"تم إلغاء فاتورة المشتريات الخاصة بالصنف {purchase.ItemName}");
 
                 await _context.SaveChangesAsync();
@@ -206,6 +209,7 @@ namespace KaberSystem.Controllers
             }
 
             string generatedBarcode = "KBR" + new Random().Next(1000000, 9999999).ToString();
+
             var newPart = new SparePart
             {
                 PartCode = generatedBarcode,
@@ -222,6 +226,14 @@ namespace KaberSystem.Controllers
             _context.SpareParts.Add(newPart);
             await _context.SaveChangesAsync();
 
+            var existingPartByName = await _context.SpareParts.FirstOrDefaultAsync(p => p.Name == request.NewPartName);
+            if (existingPartByName != null)
+            {
+                existingPartByName.SellingPrice = sellingPrice;
+                existingPartByName.PurchasePrice = purchasePrice;
+                _context.Update(existingPartByName);
+            }
+
             request.PartId = newPart.PartId;
             request.Status = PartRequestStatus.ReadyForInstallation;
 
@@ -233,7 +245,6 @@ namespace KaberSystem.Controllers
                 _context.Update(request.Order);
             }
 
-            // 📌 تسجيل الحركة
             LogAction("توفير نواقص", $"تم إتمام شراء قطعة ناقصة ({request.NewPartName}) للطلب #{request.OrderId}");
             await _context.SaveChangesAsync();
 
@@ -258,7 +269,6 @@ namespace KaberSystem.Controllers
 
                 _context.Update(request);
 
-                // 📌 تسجيل الحركة
                 LogAction("رفض توفير نواقص", $"تم رفض شراء القطعة ({request.NewPartName}) للطلب #{request.OrderId}. السبب: {reason}");
 
                 await _context.SaveChangesAsync();

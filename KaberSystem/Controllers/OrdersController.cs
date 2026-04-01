@@ -1,10 +1,10 @@
-﻿using System;
+﻿// مسار الملف: Controllers/OrdersController.cs
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using KaberSystem.Models;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using System.IO;
@@ -77,7 +77,6 @@ namespace KaberSystem.Controllers
             return View(orders);
         }
 
-        // 📌 التحديث: إضافة إمكانية تعديل أجور اليد (للزيرة الثانية) من خلال الكول سنتر
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,CallCenter")]
@@ -88,15 +87,12 @@ namespace KaberSystem.Controllers
             {
                 order.TechnicianId = technicianId;
                 order.ScheduledDate = scheduledDate;
-
-                // تحديث أجور اليد للزيارة بناءً على ما يقرره الكول سنتر
                 order.EstimatedPrice = updatedLaborFee;
                 order.IsFeeApplied = updatedLaborFee > 0;
-
                 order.Status = OrderStatus.Assigned;
 
                 string noteHeader = string.IsNullOrEmpty(order.TechnicianNotes) ? "" : "\n----------------\n";
-                order.TechnicianNotes += $"{noteHeader}[تحديث الكول سنتر]: تم جدولة زيارة تركيب يوم {scheduledDate:yyyy/MM/dd hh:mm tt}. أجور اليد الإجمالية المحدثة: {updatedLaborFee} ريال. ملاحظات: {adminNotes}";
+                order.TechnicianNotes += $"{noteHeader}[تحديث الكول سنتر]: تم جدولة زيارة تركيب يوم {scheduledDate:yyyy/MM/dd hh:mm tt}. أجور اليد: {updatedLaborFee} ريال. ملاحظات: {adminNotes}";
 
                 LogAction("جدولة تركيب نواقص", $"تم تحديد موعد لتركيب القطع للطلب #{orderId}. الأجرة المحدثة: {updatedLaborFee}");
                 await _context.SaveChangesAsync();
@@ -106,11 +102,10 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // ... (باقي دوال الكنترولر بدون تغيير، لا تنسى الاحتفاظ بها كما هي) ...
         [Authorize(Roles = "Admin,CallCenter")]
         public async Task<IActionResult> Create()
         {
-            ViewData["TechnicianId"] = new SelectList(await _context.Technicians.Where(t => t.IsAvailable).ToListAsync(), "TechnicianId", "Name");
+            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Technicians.Where(t => t.IsAvailable).ToListAsync(), "TechnicianId", "Name");
             return View();
         }
 
@@ -145,7 +140,7 @@ namespace KaberSystem.Controllers
                 TempData["SuccessMessage"] = "تم إنشاء الطلب بنجاح!";
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["TechnicianId"] = new SelectList(await _context.Technicians.Where(t => t.IsAvailable).ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
+            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Technicians.Where(t => t.IsAvailable).ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
             return View(order);
         }
 
@@ -157,7 +152,7 @@ namespace KaberSystem.Controllers
             var order = await _context.Orders.FindAsync(id);
             if (order == null) return NotFound();
 
-            ViewData["TechnicianId"] = new SelectList(_context.Technicians.Where(t => t.IsAvailable), "TechnicianId", "Name");
+            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.Technicians.Where(t => t.IsAvailable), "TechnicianId", "Name");
             return View(order);
         }
 
@@ -188,6 +183,7 @@ namespace KaberSystem.Controllers
             var order = await _context.Orders.Include(o => o.Technician).FirstOrDefaultAsync(m => m.OrderId == id);
             if (order == null || order.Status != OrderStatus.Assigned) return NotFound();
 
+            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(_context.Technicians, "TechnicianId", "Name", order.TechnicianId);
             return View(order);
         }
 
@@ -204,25 +200,42 @@ namespace KaberSystem.Controllers
                 order.AdvancePayment = advancePayment;
                 order.Status = OrderStatus.Confirmed;
 
+                // 📌 الإصلاح المحاسبي 1: إجمالي الفاتورة المبدئي هو (أجرة اليد) بدون خصم الدفعة المقدمة
+                order.FinalPrice = estimatedPrice;
+
+                // 📌 الإصلاح المحاسبي 2: تسجيل الدفعة المقدمة في الخزنة فوراً
+                if (advancePayment > 0)
+                {
+                    _context.SafeTransactions.Add(new SafeTransaction
+                    {
+                        Amount = advancePayment,
+                        Type = SafeTransactionType.Income,
+                        Description = $"دفعة مقدمة (عربون) لطلب صيانة #{order.OrderId} للعميل {order.CustomerName}",
+                        OrderId = order.OrderId,
+                        RecordedBy = User.Identity?.Name ?? "System",
+                        Date = DateTime.Now
+                    });
+                }
+
                 var invoice = new Invoice
                 {
                     OrderId = order.OrderId,
-                    Amount = advancePayment > 0 ? advancePayment : estimatedPrice,
+                    Amount = estimatedPrice, // الفاتورة بقيمتها كاملة
                     Type = InvoiceType.Advance,
-                    Status = InvoiceStatus.NotReceived,
+                    Status = advancePayment > 0 ? InvoiceStatus.Paid : InvoiceStatus.NotReceived,
                     IssuedAt = DateTime.Now
                 };
+
                 _context.Invoices.Add(invoice);
                 _context.Update(order);
 
-                LogAction("تأكيد موعد", $"تم تأكيد موعد الطلب #{order.OrderId} وإصدار فاتورة مبدئية");
+                LogAction("تأكيد موعد", $"تم تأكيد الطلب #{order.OrderId}، وتم استلام دفعة مقدمة {advancePayment} ريال");
                 await _context.SaveChangesAsync();
 
                 TempData["SuccessMessage"] = "تم تأكيد الطلب وإصدار الفاتورة المبدئية بنجاح.";
             }
             return RedirectToAction("Details", new { id = order?.OrderId });
         }
-
 
         public async Task<IActionResult> Details(int? id)
         {
@@ -240,7 +253,9 @@ namespace KaberSystem.Controllers
 
             if (User.IsInRole("Technician"))
             {
-                if (order.Technician?.Name != User.Identity.Name || order.Status == OrderStatus.Completed || order.Status == OrderStatus.Approved)
+                if (order.Technician?.Name != User.Identity.Name ||
+                    order.Status == OrderStatus.Completed ||
+                    order.Status == OrderStatus.Approved)
                 {
                     TempData["ErrorMessage"] = "تم إغلاق هذا الطلب وتسليمه للإدارة للمراجعة، ولا يمكنك التعديل عليه.";
                     return RedirectToAction(nameof(Index));
@@ -256,6 +271,225 @@ namespace KaberSystem.Controllers
             ViewData["AvailableParts"] = await _context.SpareParts.Where(p => p.MainStockQuantity > 0).ToListAsync();
 
             return View(order);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateStatus(int id, OrderStatus newStatus, string technicianNotes, int isFeeApplied)
+        {
+            var order = await _context.Orders
+                .Include(o => o.UsedSpareParts)
+                .Include(o => o.Invoices)
+                .FirstOrDefaultAsync(o => o.OrderId == id);
+
+            if (order != null)
+            {
+                if (User.IsInRole("Technician") && (newStatus == OrderStatus.Approved || newStatus == OrderStatus.Returned))
+                {
+                    return Unauthorized();
+                }
+
+                string oldStatusStr = order.Status.ToString();
+                order.Status = newStatus;
+                order.TechnicianNotes = technicianNotes;
+                order.IsFeeApplied = (isFeeApplied == 1);
+
+                decimal partsTotal = order.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
+                decimal appliedFee = order.IsFeeApplied ? order.EstimatedPrice : 0;
+
+                // 📌 الإصلاح المحاسبي 3: إجمالي الفاتورة هو (أجور + قطع) .. لا نطرح المقدمة هنا!
+                order.FinalPrice = appliedFee + partsTotal;
+
+                if (newStatus == OrderStatus.Approved)
+                {
+                    var finalInvoice = order.Invoices?.FirstOrDefault(i => i.Type == InvoiceType.Final);
+                    if (finalInvoice == null)
+                    {
+                        _context.Invoices.Add(new Invoice
+                        {
+                            OrderId = order.OrderId,
+                            Amount = order.FinalPrice, // الفاتورة بالقيمة الإجمالية
+                            Type = InvoiceType.Final,
+                            Status = order.IsPaid ? InvoiceStatus.Paid : InvoiceStatus.NotReceived,
+                            IssuedAt = DateTime.Now
+                        });
+                    }
+                    else
+                    {
+                        finalInvoice.Amount = order.FinalPrice;
+                        _context.Update(finalInvoice);
+                    }
+                }
+
+                _context.Update(order);
+                LogAction("تحديث حالة الطلب", $"تحديث الطلب #{id} من {oldStatusStr} إلى {newStatus}");
+                await _context.SaveChangesAsync();
+
+                if (newStatus == OrderStatus.Completed)
+                    TempData["SuccessMessage"] = "تم إكمال الطلب وإرساله للإدارة للمراجعة والاعتماد.";
+                else if (newStatus == OrderStatus.Returned)
+                    TempData["ErrorMessage"] = "تم إرجاع الطلب للفني للتعديل بناءً على ملاحظاتك.";
+                else
+                    TempData["SuccessMessage"] = "تم تحديث حالة الطلب بنجاح!";
+            }
+            return RedirectToAction(nameof(Details), new { id = id });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,Technician,CallCenter")]
+        public async Task<IActionResult> AddUsedPart(int orderId, int partId, int quantity)
+        {
+            var order = await _context.Orders
+                .Include(o => o.UsedSpareParts)
+                .Include(o => o.Technician)
+                    .ThenInclude(t => t.Inventory)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId);
+
+            var part = await _context.SpareParts.FindAsync(partId);
+
+            if (order != null && part != null && order.Technician != null)
+            {
+                var techStock = order.Technician.Inventory?.FirstOrDefault(i => i.PartId == partId);
+
+                if (techStock != null && techStock.Quantity >= quantity)
+                {
+                    techStock.Quantity -= quantity;
+                    if (techStock.Quantity == 0) _context.TechnicianStocks.Remove(techStock);
+                    else _context.Update(techStock);
+
+                    _context.UsedSpareParts.Add(new OrderSparePart
+                    {
+                        OrderId = orderId,
+                        PartId = partId,
+                        QuantityUsed = quantity,
+                        SellingPriceAtTime = part.SellingPrice
+                    });
+
+                    // 📌 تحديث إجمالي الفاتورة
+                    decimal appliedFee = order.IsFeeApplied ? order.EstimatedPrice : 0;
+                    decimal currentPartsTotal = order.UsedSpareParts.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) + (quantity * part.SellingPrice);
+
+                    order.FinalPrice = appliedFee + currentPartsTotal;
+                    _context.Update(order);
+
+                    LogAction("استهلاك عهدة", $"تركيب قطعة ({part.Name}) بكمية ({quantity}) في الطلب #{orderId}");
+                    await _context.SaveChangesAsync();
+
+                    TempData["SuccessMessage"] = "تم إضافة القطعة للفاتورة وخصمها من العهدة بنجاح.";
+                }
+                else
+                {
+                    TempData["ErrorMessage"] = "عفواً، الكمية المطلوبة غير متوفرة في عهدة الفني!";
+                }
+            }
+
+            return RedirectToAction(nameof(Details), new { id = orderId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,Technician,CallCenter")]
+        public async Task<IActionResult> RemoveUsedPart(int orderId, int recordId)
+        {
+            var usedPart = await _context.UsedSpareParts
+                .Include(up => up.Order)
+                .FirstOrDefaultAsync(up => up.Id == recordId && up.OrderId == orderId);
+
+            if (usedPart == null) return NotFound();
+
+            var order = usedPart.Order;
+
+            if ((order.Status == OrderStatus.Completed || order.Status == OrderStatus.Approved) && !User.IsInRole("Admin"))
+            {
+                TempData["ErrorMessage"] = "مغلق! لا يمكن حذف القطع بعد تسليم الطلب للإدارة.";
+                return RedirectToAction(nameof(Details), new { id = orderId });
+            }
+
+            if (order.TechnicianId.HasValue)
+            {
+                var techStock = await _context.TechnicianStocks
+                    .FirstOrDefaultAsync(ts => ts.TechnicianId == order.TechnicianId && ts.PartId == usedPart.PartId);
+
+                if (techStock != null)
+                {
+                    techStock.Quantity += usedPart.QuantityUsed;
+                    _context.Update(techStock);
+                }
+                else
+                {
+                    _context.TechnicianStocks.Add(new TechnicianStock
+                    {
+                        TechnicianId = order.TechnicianId.Value,
+                        PartId = usedPart.PartId,
+                        Quantity = usedPart.QuantityUsed
+                    });
+                }
+            }
+
+            // 📌 الإصلاح المحاسبي 4: إرجاع قيمة القطعة يخصم من إجمالي الفاتورة
+            decimal removedValue = usedPart.QuantityUsed * usedPart.SellingPriceAtTime;
+            order.FinalPrice -= removedValue;
+            if (order.FinalPrice < 0) order.FinalPrice = 0;
+
+            _context.Update(order);
+            _context.UsedSpareParts.Remove(usedPart);
+
+            LogAction("إرجاع قطعة من الفاتورة", $"تم إزالة قطعة من الفاتورة وإعادتها لعهدة الفني للطلب #{orderId}");
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "تم حذف القطعة، وإرجاعها للعهدة، وتحديث الفاتورة بنجاح.";
+            return RedirectToAction(nameof(Details), new { id = orderId });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ProcessPayment(int orderId, PaymentMethod paymentMethod, IFormFile paymentReceipt)
+        {
+            var order = await _context.Orders.Include(o => o.Invoices).FirstOrDefaultAsync(o => o.OrderId == orderId);
+            if (order == null) return NotFound();
+
+            order.PaymentMethod = paymentMethod;
+            order.IsPaid = true;
+
+            if (paymentReceipt != null && paymentReceipt.Length > 0)
+            {
+                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "receipts");
+                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                string uniqueFileName = Guid.NewGuid().ToString() + "_" + paymentReceipt.FileName;
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create)) { await paymentReceipt.CopyToAsync(fileStream); }
+                order.PaymentReceiptPath = "/uploads/receipts/" + uniqueFileName;
+            }
+
+            if (order.Invoices != null)
+            {
+                foreach (var invoice in order.Invoices) { invoice.Status = InvoiceStatus.Paid; }
+            }
+
+            // 📌 الإصلاح المحاسبي الأهم 5: المتبقي للدفع هو (الإجمالي - الدفعة المقدمة)
+            decimal remainingAmountToCollect = order.FinalPrice - order.AdvancePayment;
+
+            if (paymentMethod == PaymentMethod.Cash && remainingAmountToCollect > 0)
+            {
+                _context.SafeTransactions.Add(new SafeTransaction
+                {
+                    Amount = remainingAmountToCollect, // نورد المبلغ المتبقي فقط
+                    Type = SafeTransactionType.Income,
+                    Description = $"تحصيل متبقي فاتورة صيانة للعميل {order.CustomerName}",
+                    OrderId = order.OrderId,
+                    RecordedBy = User.Identity?.Name ?? "System",
+                    Date = DateTime.Now
+                });
+                LogAction("إيداع كاش في الخزنة", $"تم توريد {remainingAmountToCollect} ريال (باقي الفاتورة #{orderId}) إلى الخزنة");
+            }
+
+            _context.Update(order);
+            LogAction("تحصيل فاتورة", $"تم تحصيل الفاتورة النهائية للطلب #{orderId} بطريقة ({paymentMethod})");
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "تم تأكيد التحصيل بنجاح وتحديث الفواتير والخزنة.";
+            return RedirectToAction(nameof(Details), new { id = orderId });
         }
 
         [HttpPost]
@@ -390,119 +624,6 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Details), new { id = orderId });
         }
 
-        [HttpPost]
-        public async Task<IActionResult> UpdateStatus(int id, OrderStatus newStatus, string technicianNotes, int isFeeApplied)
-        {
-            var order = await _context.Orders
-                .Include(o => o.UsedSpareParts)
-                .Include(o => o.Invoices)
-                .FirstOrDefaultAsync(o => o.OrderId == id);
-
-            if (order != null)
-            {
-                if (User.IsInRole("Technician") && (newStatus == OrderStatus.Approved || newStatus == OrderStatus.Returned))
-                {
-                    return Unauthorized();
-                }
-
-                string oldStatusStr = order.Status.ToString();
-                order.Status = newStatus;
-                order.TechnicianNotes = technicianNotes;
-                order.IsFeeApplied = (isFeeApplied == 1);
-
-                decimal partsTotal = order.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
-                decimal appliedFee = order.IsFeeApplied ? order.EstimatedPrice : 0;
-
-                order.FinalPrice = appliedFee + partsTotal - order.AdvancePayment;
-
-                if (newStatus == OrderStatus.Approved)
-                {
-                    var finalInvoice = order.Invoices?.FirstOrDefault(i => i.Type == InvoiceType.Final);
-                    if (finalInvoice == null)
-                    {
-                        var invoice = new Invoice
-                        {
-                            OrderId = order.OrderId,
-                            Amount = order.FinalPrice > 0 ? order.FinalPrice : 0,
-                            Type = InvoiceType.Final,
-                            Status = InvoiceStatus.NotReceived,
-                            IssuedAt = DateTime.Now
-                        };
-                        _context.Invoices.Add(invoice);
-                    }
-                    else
-                    {
-                        finalInvoice.Amount = order.FinalPrice > 0 ? order.FinalPrice : 0;
-                        _context.Update(finalInvoice);
-                    }
-                }
-
-                _context.Update(order);
-
-                LogAction("تحديث حالة الطلب", $"تحديث الطلب #{id} من {oldStatusStr} إلى {newStatus}");
-                await _context.SaveChangesAsync();
-
-                if (newStatus == OrderStatus.Completed)
-                    TempData["SuccessMessage"] = "تم إكمال الطلب وإرساله للإدارة للمراجعة والاعتماد.";
-                else if (newStatus == OrderStatus.Returned)
-                    TempData["ErrorMessage"] = "تم إرجاع الطلب للفني للتعديل بناءً على ملاحظاتك.";
-                else
-                    TempData["SuccessMessage"] = "تم تحديث حالة الطلب بنجاح!";
-            }
-            return RedirectToAction(nameof(Details), new { id = id });
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin,Technician,CallCenter")]
-        public async Task<IActionResult> AddUsedPart(int orderId, int partId, int quantity)
-        {
-            var order = await _context.Orders
-                .Include(o => o.Technician)
-                    .ThenInclude(t => t.Inventory)
-                .FirstOrDefaultAsync(o => o.OrderId == orderId);
-
-            var part = await _context.SpareParts.FindAsync(partId);
-
-            if (order != null && part != null && order.Technician != null)
-            {
-                var techStock = order.Technician.Inventory?.FirstOrDefault(i => i.PartId == partId);
-
-                if (techStock != null && techStock.Quantity >= quantity)
-                {
-                    techStock.Quantity -= quantity;
-                    if (techStock.Quantity == 0)
-                        _context.TechnicianStocks.Remove(techStock);
-                    else
-                        _context.Update(techStock);
-
-                    var usedPart = new OrderSparePart
-                    {
-                        OrderId = orderId,
-                        PartId = partId,
-                        QuantityUsed = quantity,
-                        SellingPriceAtTime = part.SellingPrice
-                    };
-                    _context.UsedSpareParts.Add(usedPart);
-
-                    decimal appliedFee = order.IsFeeApplied ? order.EstimatedPrice : 0;
-                    order.FinalPrice = appliedFee + (order.UsedSpareParts.Sum(p => p.QuantityUsed * p.SellingPriceAtTime)) + (part.SellingPrice * quantity) - order.AdvancePayment;
-                    _context.Update(order);
-
-                    LogAction("استهلاك عهدة", $"تركيب قطعة ({part.Name}) بكمية ({quantity}) في الطلب #{orderId}");
-                    await _context.SaveChangesAsync();
-
-                    TempData["SuccessMessage"] = "تم إضافة القطعة للفاتورة وخصمها من العهدة بنجاح.";
-                }
-                else
-                {
-                    TempData["ErrorMessage"] = "عفواً، الكمية المطلوبة غير متوفرة في عهدة الفني!";
-                }
-            }
-
-            return RedirectToAction(nameof(Details), new { id = orderId });
-        }
-
         public async Task<IActionResult> PrintInvoice(int? id)
         {
             if (id == null) return NotFound();
@@ -546,7 +667,7 @@ namespace KaberSystem.Controllers
             if (id == null) return NotFound();
             var order = await _context.Orders.FindAsync(id);
             if (order == null) return NotFound();
-            ViewData["TechnicianId"] = new SelectList(await _context.Technicians.ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
+            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Technicians.ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
             return View(order);
         }
 
@@ -564,7 +685,7 @@ namespace KaberSystem.Controllers
                 TempData["SuccessMessage"] = "تم تعديل بيانات الطلب بنجاح!";
                 return RedirectToAction(nameof(Index));
             }
-            ViewData["TechnicianId"] = new SelectList(await _context.Technicians.ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
+            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Technicians.ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
             return View(order);
         }
 
@@ -629,116 +750,6 @@ namespace KaberSystem.Controllers
                 TempData["SuccessMessage"] = "تم حذف الطلب نهائياً من النظام مع إرجاع القطع للعهدة وتنظيف سجلاته المالية.";
             }
             return RedirectToAction(nameof(Index));
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin,Technician,CallCenter")]
-        public async Task<IActionResult> RemoveUsedPart(int orderId, int recordId)
-        {
-            var usedPart = await _context.UsedSpareParts
-                .Include(up => up.Order)
-                .FirstOrDefaultAsync(up => up.Id == recordId && up.OrderId == orderId);
-
-            if (usedPart == null) return NotFound();
-
-            var order = usedPart.Order;
-
-            if ((order.Status == OrderStatus.Completed || order.Status == OrderStatus.Approved) && !User.IsInRole("Admin"))
-            {
-                TempData["ErrorMessage"] = "مغلق! لا يمكن حذف القطع بعد تسليم الطلب للإدارة للراجعة.";
-                return RedirectToAction(nameof(Details), new { id = orderId });
-            }
-
-            if (order.TechnicianId.HasValue)
-            {
-                var techStock = await _context.TechnicianStocks
-                    .FirstOrDefaultAsync(ts => ts.TechnicianId == order.TechnicianId && ts.PartId == usedPart.PartId);
-
-                if (techStock != null)
-                {
-                    techStock.Quantity += usedPart.QuantityUsed;
-                    _context.Update(techStock);
-                }
-                else
-                {
-                    _context.TechnicianStocks.Add(new TechnicianStock
-                    {
-                        TechnicianId = order.TechnicianId.Value,
-                        PartId = usedPart.PartId,
-                        Quantity = usedPart.QuantityUsed
-                    });
-                }
-            }
-
-            order.FinalPrice -= (usedPart.QuantityUsed * usedPart.SellingPriceAtTime);
-            _context.Update(order);
-            _context.UsedSpareParts.Remove(usedPart);
-
-            LogAction("إرجاع قطعة من الفاتورة", $"تم إزالة قطعة من الفاتورة وإعادتها لعهدة الفني للطلب #{orderId}");
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "تم حذف القطعة، إرجاعها للعهدة، وتحديث الفاتورة بنجاح.";
-            return RedirectToAction(nameof(Details), new { id = orderId });
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ProcessPayment(int orderId, PaymentMethod paymentMethod, IFormFile paymentReceipt)
-        {
-            var order = await _context.Orders.Include(o => o.Invoices).FirstOrDefaultAsync(o => o.OrderId == orderId);
-            if (order == null) return NotFound();
-
-            order.PaymentMethod = paymentMethod;
-            order.IsPaid = true;
-
-            if (paymentReceipt != null && paymentReceipt.Length > 0)
-            {
-                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "receipts");
-                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-
-                string uniqueFileName = Guid.NewGuid().ToString() + "_" + paymentReceipt.FileName;
-                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                using (var fileStream = new FileStream(filePath, FileMode.Create))
-                {
-                    await paymentReceipt.CopyToAsync(fileStream);
-                }
-                order.PaymentReceiptPath = "/uploads/receipts/" + uniqueFileName;
-            }
-
-            if (order.Invoices != null)
-            {
-                foreach (var invoice in order.Invoices) { invoice.Status = InvoiceStatus.Paid; }
-            }
-
-            if (paymentMethod == PaymentMethod.Cash && order.FinalPrice > 0)
-            {
-                bool alreadyInSafe = await _context.SafeTransactions.AnyAsync(s => s.OrderId == orderId && s.Type == SafeTransactionType.Income);
-                if (!alreadyInSafe)
-                {
-                    var safeTransaction = new SafeTransaction
-                    {
-                        Amount = order.FinalPrice,
-                        Type = SafeTransactionType.Income,
-                        Description = $"إيداع كاش (تحصيل فاتورة صيانة للعميل {order.CustomerName})",
-                        OrderId = order.OrderId,
-                        RecordedBy = User.Identity?.Name ?? "System",
-                        Date = DateTime.Now
-                    };
-                    _context.SafeTransactions.Add(safeTransaction);
-
-                    LogAction("إيداع كاش في الخزنة", $"تم توريد {order.FinalPrice} ريال من الفاتورة #{orderId} إلى الخزنة");
-                }
-            }
-
-            _context.Update(order);
-
-            LogAction("تحصيل فاتورة", $"تم تحصيل الفاتورة النهائية للطلب #{orderId} بطريقة ({paymentMethod})");
-            await _context.SaveChangesAsync();
-
-            TempData["SuccessMessage"] = "تم تأكيد التحصيل بنجاح وتحديث الفواتير والخزنة.";
-            return RedirectToAction(nameof(Details), new { id = orderId });
         }
     }
 }

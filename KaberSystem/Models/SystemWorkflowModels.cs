@@ -258,7 +258,6 @@ namespace KaberSystem.Models
     }
 
     public enum DeductionSource { Company, Technician }
-
     public class Expense
     {
         [Key] public int Id { get; set; }
