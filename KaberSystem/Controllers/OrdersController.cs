@@ -62,7 +62,6 @@ namespace KaberSystem.Controllers
                 ViewBag.NewOrdersCount = orders.Count(o => o.Status == OrderStatus.Assigned || o.Status == OrderStatus.Returned);
             }
 
-            // 📌 الميزة الجديدة: البحث عن الطلبات التي توفرت قطع غيارها (للكول سنتر والإدارة)
             if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
             {
                 var readyPartOrders = await _context.OrderPartRequests
@@ -78,7 +77,6 @@ namespace KaberSystem.Controllers
             return View(orders);
         }
 
-        // 📌 دالة جديدة: تحديد موعد التركيب للقطعة التي توفرت
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,CallCenter")]
@@ -90,7 +88,6 @@ namespace KaberSystem.Controllers
                 order.TechnicianId = technicianId;
                 order.ScheduledDate = scheduledDate;
 
-                // إعادة الطلب لحالة (تم التعيين) ليظهر في قائمة الفني كطلب جديد
                 order.Status = OrderStatus.Assigned;
 
                 string noteHeader = string.IsNullOrEmpty(order.TechnicianNotes) ? "" : "\n----------------\n";
@@ -565,16 +562,74 @@ namespace KaberSystem.Controllers
             return View(order);
         }
 
+        // 📌 التحديث الجذري لحل مشكلة الحذف للطلبات المتربطة بجدول الخزنة وغيرها
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
-            var order = await _context.Orders.FindAsync(id);
+            // جلب الطلب مع جميع الجداول المرتبطة به لكي لا نقع في خطأ (Foreign Key Constraint)
+            var order = await _context.Orders
+                .Include(o => o.Invoices)
+                .Include(o => o.UsedSpareParts)
+                .FirstOrDefaultAsync(o => o.OrderId == id);
+
             if (order != null)
             {
+                // 1. تنظيف وحذف حركات الخزنة المتعلقة بالطلب
+                var safeTransactions = await _context.SafeTransactions.Where(s => s.OrderId == id).ToListAsync();
+                if (safeTransactions.Any())
+                {
+                    _context.SafeTransactions.RemoveRange(safeTransactions);
+                }
+
+                // 2. تنظيف طلبات النواقص من المخزن لهذا الطلب
+                var partRequests = await _context.OrderPartRequests.Where(pr => pr.OrderId == id).ToListAsync();
+                if (partRequests.Any())
+                {
+                    _context.OrderPartRequests.RemoveRange(partRequests);
+                }
+
+                // 3. إرجاع القطع المسحوبة لعهدة الفني ثم حذفها من الفاتورة
+                if (order.UsedSpareParts != null && order.UsedSpareParts.Any())
+                {
+                    foreach (var usedPart in order.UsedSpareParts)
+                    {
+                        if (order.TechnicianId.HasValue)
+                        {
+                            var techStock = await _context.TechnicianStocks
+                                .FirstOrDefaultAsync(ts => ts.TechnicianId == order.TechnicianId && ts.PartId == usedPart.PartId);
+
+                            if (techStock != null)
+                            {
+                                techStock.Quantity += usedPart.QuantityUsed;
+                                _context.Update(techStock);
+                            }
+                            else
+                            {
+                                _context.TechnicianStocks.Add(new TechnicianStock
+                                {
+                                    TechnicianId = order.TechnicianId.Value,
+                                    PartId = usedPart.PartId,
+                                    Quantity = usedPart.QuantityUsed
+                                });
+                            }
+                        }
+                    }
+                    _context.UsedSpareParts.RemoveRange(order.UsedSpareParts);
+                }
+
+                // 4. حذف الفواتير
+                if (order.Invoices != null && order.Invoices.Any())
+                {
+                    _context.Invoices.RemoveRange(order.Invoices);
+                }
+
+                // 5. أخيراً، حذف الطلب الأصلي
                 _context.Orders.Remove(order);
-                LogAction("حذف طلب", $"حذف الطلب #{order.OrderId} الخاص بالعميل {order.CustomerName} نهائياً");
+
+                LogAction("حذف طلب", $"حذف الطلب #{order.OrderId} الخاص بالعميل {order.CustomerName} نهائياً وكل الحركات المرتبطة به");
+
                 await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم حذف الطلب نهائياً من النظام.";
+                TempData["SuccessMessage"] = "تم حذف الطلب نهائياً من النظام مع إرجاع القطع للعهدة وتنظيف سجلاته المالية.";
             }
             return RedirectToAction(nameof(Index));
         }

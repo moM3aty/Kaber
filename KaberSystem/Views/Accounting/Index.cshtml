@@ -1,194 +1,189 @@
-﻿<!-- مسار الملف: Views/Accounting/Index.cshtml -->
-@{
-    ViewData["Title"] = "اللوحة المالية وصافي الربح";
+﻿@{
+    ViewData["Title"] = "تقارير الأرباح والحسابات";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 
-    var techReports = ViewBag.TechnicianReports as IEnumerable<dynamic>;
-    decimal netProfit = ViewBag.NetCompanyProfit;
+    decimal totalRevenue = ViewBag.TotalRevenue ?? 0;
+    decimal cogs = ViewBag.CostOfGoodsSold ?? 0;
+    decimal grossProfit = ViewBag.GrossProfit ?? 0;
+    decimal totalExpenses = ViewBag.TotalExpenses ?? 0;
+    decimal damagesCost = ViewBag.TotalDamagesCost ?? 0;
+    decimal netProfit = ViewBag.NetCompanyProfit ?? 0;
+
+    string currentMonthYear = ViewBag.CurrentMonthYear;
+    string monthName = ViewBag.MonthName;
 }
 
-<div class="d-flex justify-content-between align-items-end mb-4 d-print-none">
+<div class="sys-page-header d-flex justify-content-between align-items-center flex-wrap">
     <div>
-        <h2 class="fw-bolder text-dark mb-1" style="letter-spacing: -1px;"><i class="fa-solid fa-chart-pie text-primary me-2"></i> القوائم المالية وصافي الربح (P&L)</h2>
-        <p class="text-muted fw-bold mb-0">مراقبة الإيرادات، المصروفات، وأداء الفنيين المالي بدقة</p>
+        <h1 class="sys-page-title text-success"><i class="fa-solid fa-chart-line me-2"></i> قائمة الدخل والمركز المالي</h1>
+        <p class="sys-page-desc">مراقبة الأرباح والمصروفات الخاصة بالشهر المحدد، مع ترحيل مديونيات الفنيين.</p>
     </div>
-    <div class="d-flex gap-2">
-        <button onclick="window.print()" class="btn btn-white border-0 shadow-sm rounded-pill px-4 fw-bold text-dark hover-elevate">
-            <i class="fa-solid fa-print me-2 text-primary"></i> طباعة التقرير العام
-        </button>
+    <div class="d-flex gap-3 align-items-center mt-3 mt-md-0">
+        <!-- 📌 أداة الفلترة الشهرية (تحدث الصفحة تلقائياً عند تغيير الشهر) -->
+        <form method="get" asp-action="Index" class="m-0 bg-white p-1 rounded-pill shadow-sm border border-success">
+            <div class="d-flex align-items-center px-2">
+                <i class="fa-regular fa-calendar-days text-success me-2"></i>
+                <span class="fw-bold text-dark me-2 small">شهر الحساب:</span>
+                <input type="month" name="monthYear" value="@currentMonthYear" class="form-control form-control-sm fw-bold border-0 text-success" style="box-shadow: none; cursor: pointer;" onchange="this.form.submit()" />
+            </div>
+        </form>
+
+        <a href="/Accounting/Invoices" class="sys-btn btn-outline-dark fw-bold bg-white"><i class="fa-solid fa-file-invoice-dollar"></i> الفواتير</a>
+        <a href="/Accounting/Expenses" class="sys-btn btn-danger fw-bold"><i class="fa-solid fa-money-bill-wave"></i> المصروفات</a>
     </div>
 </div>
 
-<!-- 📌 لوحة صافي أرباح الشركة (الرئيسية) -->
-<div class="card border-0 rounded-4 shadow-lg mb-4 overflow-hidden position-relative" style="background: linear-gradient(135deg, #1e3c72, #2a5298);">
-    <i class="fa-solid fa-scale-balanced position-absolute text-white" style="font-size: 200px; opacity: 0.05; right: -20px; top: -30px;"></i>
-    <div class="card-body p-4 p-xl-5 text-white position-relative z-1 text-center d-flex flex-column align-items-center justify-content-center">
-        <h5 class="fw-bold opacity-75 mb-2 text-uppercase tracking-wide">صافي أرباح الشركة النهائي (Net Profit)</h5>
-        <h1 class="display-3 fw-bolder mb-0 @(netProfit >= 0 ? "text-success" : "text-danger")" style="text-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-            @netProfit.ToString("N0") <span class="fs-4 text-white">ر.س</span>
-        </h1>
-        <p class="mt-3 mb-0 fw-bold opacity-75 small">المعادلة: (إجمالي الإيرادات المحصلة) - (المصروفات + الرواتب + خسائر التوالف)</p>
-    </div>
+<div class="alert alert-success border-0 border-start border-4 border-success shadow-sm mb-4 bg-white fw-bold">
+    <i class="fa-solid fa-chart-pie fs-4 text-success me-2 align-middle"></i>
+    الأرقام المعروضة في البطاقات أدناه تمثل <b>الحركة المالية لشهر (@monthName) فقط</b>.
 </div>
 
-<!-- 📌 البطاقات المالية التفصيلية -->
+<!-- 📌 قائمة الدخل (Income Statement View) للشهر المحدد -->
 <div class="row g-4 mb-5">
-    <div class="col-lg-3 col-sm-6">
-        <div class="card border-0 rounded-4 shadow-sm h-100 p-4 stat-card border-bottom border-4 border-primary">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold text-muted mb-0">إجمالي الإيرادات</h6>
-                <div class="icon-box bg-primary bg-opacity-10 text-primary rounded-circle"><i class="fa-solid fa-vault"></i></div>
-            </div>
-            <h3 class="fw-bolder text-dark mb-0">@Convert.ToDecimal(ViewBag.TotalRevenue).ToString("N0") <span class="fs-6 text-muted">ر.س</span></h3>
+    <!-- 1. إجمالي المبيعات -->
+    <div class="col-md-3">
+        <div class="sys-card bg-primary bg-opacity-10 border-0 h-100 p-4 text-center">
+            <i class="fa-solid fa-sack-dollar fs-1 text-primary mb-2"></i>
+            <h6 class="fw-bold text-muted mb-1">المبيعات (إيرادات @monthName)</h6>
+            <h3 class="fw-bold text-dark m-0">@totalRevenue.ToString("N2") <span class="fs-6">ر.س</span></h3>
         </div>
     </div>
 
-    <div class="col-lg-3 col-sm-6">
-        <div class="card border-0 rounded-4 shadow-sm h-100 p-4 stat-card border-bottom border-4 border-success">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold text-muted mb-0">الدخل اليومي</h6>
-                <div class="icon-box bg-success bg-opacity-10 text-success rounded-circle"><i class="fa-solid fa-money-bill-trend-up"></i></div>
-            </div>
-            <h3 class="fw-bolder text-success mb-0">+@Convert.ToDecimal(ViewBag.DailyIncome).ToString("N0") <span class="fs-6 text-muted">ر.س</span></h3>
+    <!-- 2. تكلفة البضاعة المباعة -->
+    <div class="col-md-3">
+        <div class="sys-card bg-secondary bg-opacity-10 border-0 h-100 p-4 text-center" style="border-top: 4px solid #6c757d !important;">
+            <i class="fa-solid fa-boxes-packing fs-1 text-secondary mb-2"></i>
+            <h6 class="fw-bold text-muted mb-1">تكلفة القطع المباعة (COGS)</h6>
+            <h3 class="fw-bold text-secondary m-0">- @cogs.ToString("N2") <span class="fs-6">ر.س</span></h3>
+            <small class="text-muted fw-bold d-block mt-1">أسعار شراء القطع المستهلكة بالشهر</small>
         </div>
     </div>
 
-    <div class="col-lg-3 col-sm-6">
-        <div class="card border-0 rounded-4 shadow-sm h-100 p-4 stat-card border-bottom border-4 border-warning">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold text-muted mb-0">المصروفات والرواتب</h6>
-                <div class="icon-box bg-warning bg-opacity-10 text-warning-dark rounded-circle"><i class="fa-solid fa-file-invoice-dollar"></i></div>
-            </div>
-            <h3 class="fw-bolder text-warning-dark mb-0">-@Convert.ToDecimal(ViewBag.TotalExpenses).ToString("N0") <span class="fs-6 text-muted">ر.س</span></h3>
+    <!-- 3. مجمل الربح -->
+    <div class="col-md-3">
+        <div class="sys-card bg-info bg-opacity-10 border-0 h-100 p-4 text-center">
+            <i class="fa-solid fa-scale-balanced fs-1 text-info mb-2"></i>
+            <h6 class="fw-bold text-muted mb-1">مجمل الربح (للشهر المحدد)</h6>
+            <h3 class="fw-bold text-dark m-0">@grossProfit.ToString("N2") <span class="fs-6">ر.س</span></h3>
         </div>
     </div>
 
-    <div class="col-lg-3 col-sm-6">
-        <div class="card border-0 rounded-4 shadow-sm h-100 p-4 stat-card border-bottom border-4 border-danger">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold text-muted mb-0">قيمة التوالف (خسائر)</h6>
-                <div class="icon-box bg-danger bg-opacity-10 text-danger rounded-circle"><i class="fa-solid fa-dumpster-fire"></i></div>
-            </div>
-            <h3 class="fw-bolder text-danger mb-0">-@Convert.ToDecimal(ViewBag.TotalDamagesCost).ToString("N0") <span class="fs-6 text-muted">ر.س</span></h3>
+    <!-- 4. المصروفات التشغيلية والتوالف -->
+    <div class="col-md-3">
+        <div class="sys-card bg-danger bg-opacity-10 border-0 h-100 p-4 text-center">
+            <i class="fa-solid fa-arrow-trend-down fs-1 text-danger mb-2"></i>
+            <h6 class="fw-bold text-muted mb-1">مصروفات وتوالف (للشهر المحدد)</h6>
+            <h3 class="fw-bold text-danger m-0">- @((totalExpenses + damagesCost).ToString("N2")) <span class="fs-6">ر.س</span></h3>
         </div>
     </div>
 </div>
 
-<!-- 📌 جدول أرباح الفنيين وكشف الذمة المالي -->
-<div class="card border-0 rounded-4 shadow-sm mb-4">
-    <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
-        <h4 class="fw-bolder text-dark mb-0"><i class="fa-solid fa-briefcase text-warning me-2"></i> كشف إنتاجية وذمة الفنيين المالي</h4>
-        <p class="text-muted small fw-bold mt-1">يتم الآن خصم المصروفات والسلف تلقائياً من دخل الفني لإظهار صافي الربح (Net Profit) لكل موظف.</p>
-    </div>
-    <div class="card-body p-0 mt-3">
-        <div class="table-responsive">
-            <table class="table table-borderless table-hover align-middle text-center mb-0 w-100 custom-table">
-                <thead class="bg-light text-muted small fw-bold text-uppercase">
-                    <tr>
-                        <th class="py-3 ps-4 text-start">الفني المختص</th>
-                        <th class="py-3">دخل الفني (Gross)</th>
-                        <th class="py-3">المصروفات/الخصم</th>
-                        <th class="py-3">صافي الربح (Net)</th>
-                        <th class="py-3">كاش مع الفني</th>
-                        <th class="py-3 pe-4">إجراءات</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach (var tech in techReports)
+<!-- 📌 صافي الربح النهائي -->
+<div class="row justify-content-center mb-5">
+    <div class="col-md-8">
+        <div class="sys-card h-100 d-flex flex-column align-items-center p-5 text-white shadow-lg position-relative overflow-hidden @(netProfit >= 0 ? "bg-success" : "bg-danger")">
+            <i class="fa-solid fa-chart-pie position-absolute" style="font-size: 200px; opacity: 0.1; right: -20px; bottom: -40px;"></i>
+            <div class="position-relative z-1 text-center">
+                <p class="fw-bold text-white-50 mb-2 fs-4">صافي الربح الفعلي عن شهر (@monthName)</p>
+                <h1 class="fw-bolder m-0 display-3" style="letter-spacing: -1px;">
+                    @if (netProfit > 0)
                     {
-                        <tr style="border-bottom: 1px solid #f8f9fa;">
-                            <td class="text-start ps-4 py-4">
-                                <div class="d-flex align-items-center">
-                                    <div class="avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle me-3 d-flex justify-content-center align-items-center fw-bold shadow-sm">
-                                        @tech.Name.Substring(0, 1)
-                                    </div>
-                                    <span class="fw-bolder text-dark">@tech.Name</span>
-                                </div>
-                            </td>
-                            <td class="fw-bold text-dark">@tech.GrossIncome.ToString("N2")</td>
-                            <td class="fw-bold text-danger">-@tech.TotalDeductions.ToString("N2")</td>
-                            <td class="fw-bolder text-success bg-success bg-opacity-10">
-                                @tech.NetProfit.ToString("N2") <small class="text-muted">ر.س</small>
-                            </td>
-                            <td>
-                                @if(tech.WalletBalance > 0) {
-                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold shadow-sm">
-                                        <i class="fa-solid fa-wallet me-1"></i> @tech.WalletBalance.ToString("N2")
-                                    </span>
-                                } else {
-                                    <span class="text-muted small fw-bold">0.00</span>
-                                }
-                            </td>
-                            <td class="pe-4">
-                                <button type="button" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#settleModal_@tech.Id">
-                                    <i class="fa-solid fa-hand-holding-dollar me-1"></i> تصفية الكاش
-                                </button>
-                            </td>
-                        </tr>
+                        <text>+</text>
+                    }
+ @netProfit.ToString("N2") <span class="fs-3">ريال سعودي</span>
+                </h1>
+                <p class="text-white-50 mt-3 mb-0 fw-bold"><i class="fa-solid fa-check-double me-1"></i> هذا الرقم هو الربح الحقيقي بعد خصم تكلفة البضاعة والمصروفات والتوالف.</p>
+            </div>
+        </div>
+    </div>
+</div>
 
-                        <!-- Modal: توريد الكاش من الفني -->
-                        <div class="modal fade" id="settleModal_@tech.Id" tabindex="-1" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered">
-                                <div class="modal-content border-0 rounded-4 shadow-lg">
-                                    <div class="modal-header border-0 pb-0">
-                                        <h5 class="modal-title fw-bold"><i class="fa-solid fa-receipt text-success me-2"></i> توريد نقدية من @tech.Name</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <form asp-action="SettleTechCash" method="post">
-                                        <input type="hidden" name="techId" value="@tech.Id" />
-                                        <div class="modal-body py-4">
-                                            <div class="mb-3">
-                                                <label class="form-label fw-bold small text-muted text-uppercase">المبلغ المستلم فعلياً <span class="text-danger">*</span></label>
-                                                <div class="input-group input-group-lg">
-                                                    <input type="number" step="0.01" name="amount" class="form-control fw-bold border-2 border-success text-success" max="@tech.WalletBalance" value="@tech.WalletBalance" required />
-                                                    <span class="input-group-text bg-light fw-bold">ر.س</span>
+<div class="sys-card mt-4">
+    <h4 class="fw-bold text-dark border-bottom pb-3 mb-4"><i class="fa-solid fa-users-gear text-primary me-2"></i> ملخص حسابات وعُهد الفنيين</h4>
+
+    <div class="alert alert-warning py-2 small fw-bold">
+        <i class="fa-solid fa-triangle-exclamation me-1"></i> <b>توضيح محاسبي:</b> المبيعات والخصومات في الجدول تخص شهر <b>(@monthName)</b> فقط. أما (الكاش في اليد) و (إجمالي المديونية) فهي <b>أرصدة تراكمية مرحّلة</b> من كل الشهور السابقة والحالية حتى يتم تسويتها.
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle text-center sys-table w-100">
+            <thead class="table-light">
+                <tr>
+                    <th>اسم الفني</th>
+                    <th>مبيعات الفني<br><span class="text-primary small">(هذا الشهر)</span></th>
+                    <th>سلف وخصومات<br><span class="text-danger small">(هذا الشهر)</span></th>
+                    <th>إجمالي المديونية التراكمية<br><span class="text-danger small">(مرحّلة)</span></th>
+                    <th>الكاش المُحصّل باليد<br><span class="text-primary small">(مرحّل للعهدة)</span></th>
+                    <th>إجراءات</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var tech in ViewBag.TechnicianReports)
+                {
+                    <tr>
+                        <td class="fw-bold text-start ps-3"><i class="fa-solid fa-user-tie text-muted me-2"></i> @tech.Name</td>
+                        <td class="fw-bold text-success">@tech.GrossIncome.ToString("N2")</td>
+                        <td class="fw-bold text-danger border-end">@tech.TotalDeductions.ToString("N2")</td>
+
+                        <!-- المديونيات المرحلة -->
+                        <td class="fw-bold text-danger">@tech.AllTimeDeductions.ToString("N2")</td>
+
+                        <!-- الكاش المرحل -->
+                        <td class="fw-bold text-primary bg-primary bg-opacity-10 rounded-3">@tech.WalletBalance.ToString("N2")</td>
+                        <td>
+                            <button type="button" class="btn btn-sm btn-outline-success fw-bold px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#settleModal_@tech.Id">
+                                <i class="fa-solid fa-hand-holding-dollar me-1"></i> توريد كاش
+                            </button>
+
+                            <!-- Modal تصفية الكاش -->
+                            <div class="modal fade" id="settleModal_@tech.Id" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content border-0 rounded-4 shadow-lg">
+                                        <div class="modal-header border-bottom-0 pb-0">
+                                            <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-vault me-2"></i> توريد كاش من الفني: @tech.Name</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <form asp-action="SettleTechCash" method="post">
+                                            <div class="modal-body py-4 text-start">
+                                                <input type="hidden" name="techId" value="@tech.Id" />
+
+                                                <div class="alert alert-info py-2 small fw-bold lh-lg">
+                                                    إجمالي الكاش (التراكمي) الذي استلمه الفني من العملاء بيده ولم يورده: <b>@tech.WalletBalance.ToString("N2") ريال</b>
                                                 </div>
-                                                <small class="text-muted fw-bold d-block mt-2">إجمالي الكاش المسجل في ذمة الفني: @tech.WalletBalance ريال</small>
+
+                                                <div class="mb-3 mt-3">
+                                                    <label class="form-label fw-bold">المبلغ المُورّد للخزنة الآن <span class="text-danger">*</span></label>
+                                                    <div class="input-group">
+                                                        <input type="number" step="0.01" name="amount" class="form-control fw-bold border-success text-success" required />
+                                                        <span class="input-group-text bg-light fw-bold">ر.س</span>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">البيان / ملاحظات</label>
+                                                    <input type="text" name="note" class="form-control bg-light fw-bold" placeholder="مثال: تصفية عهدة يومية" />
+                                                </div>
                                             </div>
-                                            <div class="mb-3 text-start">
-                                                <label class="form-label fw-bold small text-muted text-uppercase">بيان الحركة</label>
-                                                <input type="text" name="note" class="form-control fw-bold bg-light border-0" placeholder="مثال: توريد كاش عهدة الأسبوع" />
+                                            <div class="modal-footer border-top-0 pt-0">
+                                                <button type="submit" class="btn btn-success fw-bold w-100 py-2"><i class="fa-solid fa-check"></i> تأكيد التوريد للخزنة</button>
                                             </div>
-                                        </div>
-                                        <div class="modal-footer border-0 pt-0">
-                                            <button type="submit" class="btn btn-success fw-bold w-100 py-3 rounded-pill shadow-sm">تأكيد التوريد لخزنة الشركة</button>
-                                        </div>
-                                    </form>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    }
-                </tbody>
-            </table>
-        </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
 </div>
-
-<style>
-    .icon-box { width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
-    .stat-card { transition: transform 0.3s ease, box-shadow 0.3s ease; }
-    .stat-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.05) !important; }
-    .avatar-sm { width: 45px; height: 45px; font-size: 1.2rem; }
-    .custom-table th { font-size: 0.85rem; letter-spacing: 0.5px; }
-    .custom-table tbody tr { transition: background-color 0.2s ease; border-bottom: 1px solid #f8f9fa; }
-    .custom-table tbody tr:hover { background-color: #fcfcfd !important; }
-    .text-warning-dark { color: #d39e00 !important; }
-    .hover-elevate { transition: transform 0.2s ease; }
-    .hover-elevate:hover { transform: translateY(-3px); }
-
-    @@media print {
-        body { background: white !important; }
-        .sys-sidebar, .sys-header, .d-print-none, .modal { display: none !important; }
-        .sys-main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-        .card { border: 1px solid #000 !important; box-shadow: none !important; break-inside: avoid; }
-        .text-white { color: #000 !important; }
-        .bg-primary, .bg-success, .bg-warning { background-color: transparent !important; color: #000 !important; border: 1px solid #000 !important; }
-    }
-</style>
 
 @section Scripts {
     @if (TempData["SuccessMessage"] != null)
     {
-        <script>Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#198754' });</script>
+        <script>
+            var msg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString()));
+            Swal.fire({ icon: 'success', title: 'تم', text: msg, confirmButtonColor: '#198754' });
+        </script>
     }
 }

@@ -18,10 +18,14 @@
         <p class="sys-page-desc">إدارة تفاصيل الزيارة، الميزانية، والاعتماد النهائي للطلب</p>
     </div>
     <div class="d-flex gap-2">
-        <a href="/Orders/Index" class="btn btn-outline-secondary fw-bold px-4 border-2 rounded-3">
+        <a href="/Orders/Index" class="btn btn-outline-secondary fw-bold px-4 border-2 rounded-3 shadow-sm">
             <i class="fa-solid fa-arrow-right"></i> عودة
         </a>
-        <a href="/Orders/PrintInvoice/@Model.OrderId" target="_blank" class="sys-btn sys-btn-primary">
+        <!-- 📌 زر عرض السعر تم إضافته هنا -->
+        <a href="/Orders/Quotation/@Model.OrderId" target="_blank" class="btn btn-info fw-bold px-4 rounded-3 shadow-sm text-dark">
+            <i class="fa-solid fa-file-signature"></i> عرض السعر
+        </a>
+        <a href="/Orders/PrintInvoice/@Model.OrderId" target="_blank" class="sys-btn sys-btn-primary shadow-sm">
             <i class="fa-solid fa-file-invoice"></i> عرض الفاتورة
         </a>
     </div>
@@ -212,7 +216,7 @@
                                             @if (req.Status == KaberSystem.Models.PartRequestStatus.PendingWarehouse)
                                             {
                                                 <div class="d-flex gap-1 justify-content-center">
-                                                    <!-- 📌 زر الموافقة والصرف (تم إضافته وحل المشكلة) -->
+                                                    <!-- 📌 زر الموافقة والصرف -->
                                                     <form asp-action="ApproveWarehouseRequest" method="post">
                                                         <input type="hidden" name="requestId" value="@req.Id" />
                                                         <button type="submit" class="btn btn-sm btn-success fw-bold" title="موافقة وصرف لعهدة الفني" onclick="return confirm('هل متأكد من صرف القطعة من المخزن وتحويلها لعهدة الفني؟')">
@@ -220,7 +224,7 @@
                                                         </button>
                                                     </form>
 
-                                                    <!-- 📌 زر الرفض في حال عدم توفرها بالمخزن -->
+                                                    <!-- 📌 زر الرفض -->
                                                     <form asp-action="RejectWarehouseRequest" method="post">
                                                         <input type="hidden" name="requestId" value="@req.Id" />
                                                         <button type="submit" class="btn btn-sm btn-danger fw-bold" title="رفض الطلب" onclick="return confirm('تأكيد رفض طلب الصرف؟')">
@@ -272,7 +276,7 @@
                                     @foreach (var part in Model.UsedSpareParts)
                                     {
                                         <tr>
-                                            <td class="fw-bold text-dark text-start">@part.SparePart.Name</td>
+                                            <td class="fw-bold text-dark text-start">@part.SparePart?.Name</td>
                                             <td class="fw-bold">@part.QuantityUsed</td>
                                             <td class="fw-bold text-success">@((part.QuantityUsed * part.SellingPriceAtTime).ToString("N2")) ريال</td>
                                             <td class="d-print-none">
@@ -469,7 +473,7 @@
                             {
                                 foreach (var p in Model.Technician.Inventory)
                                 {
-                                    <option value="@p.PartId">@p.SparePart.Name (العهدة: @p.Quantity)</option>
+                                    <option value="@p.PartId">@(p.SparePart?.Name ?? "قطعة غير مسماة") (العهدة: @p.Quantity)</option>
                                 }
                             }
                         </select>
@@ -504,76 +508,23 @@
 
 <style>
     @@keyframes pulse {
-        0%
-
-    {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); }
+        70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
     }
 
-    70% {
-        transform: scale(1.02);
-        box-shadow: 0 0 0 10px rgba(25, 135, 84, 0);
-    }
-
-    100% {
-        transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
-    }
-
-    }
-
-    .sys-card {
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-    }
-
-    .form-check-input {
-        width: 1.5em;
-        height: 1.5em;
-        cursor: pointer;
-    }
-
-    .btn-outline-success:hover, .btn-outline-primary:hover, .btn-outline-info:hover {
-        color: white !important;
-    }
-
-    label.btn {
-        transition: all 0.2s ease-in-out;
-    }
-
-        label.btn:hover {
-            transform: translateY(-2px);
-        }
+    .sys-card { border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+    .form-check-input { width: 1.5em; height: 1.5em; cursor: pointer; }
+    .btn-outline-success:hover, .btn-outline-primary:hover, .btn-outline-info:hover { color: white !important; }
+    label.btn { transition: all 0.2s ease-in-out; }
+    label.btn:hover { transform: translateY(-2px); }
 
     @@media print {
-        body {
-            background: white !important;
-        }
-
-        .sys-sidebar, .sys-header, .d-print-none {
-            display: none !important;
-        }
-
-        .sys-main {
-            margin: 0 !important;
-            padding: 15px !important;
-            width: 100% !important;
-        }
-
-        .printable-card {
-            box-shadow: none !important;
-            border: 1px solid #000 !important;
-            padding: 20px !important;
-        }
-
-        .print-table th, .print-table td {
-            border: 1px solid #000 !important;
-            color: #000 !important;
-        }
-
-        .print-no-bg {
-            background-color: transparent !important;
-        }
+        body { background: white !important; }
+        .sys-sidebar, .sys-header, .d-print-none { display: none !important; }
+        .sys-main { margin: 0 !important; padding: 15px !important; width: 100% !important; }
+        .printable-card { box-shadow: none !important; border: 1px solid #000 !important; padding: 20px !important; }
+        .print-table th, .print-table td { border: 1px solid #000 !important; color: #000 !important; }
+        .print-no-bg { background-color: transparent !important; }
     }
 </style>

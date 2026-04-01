@@ -1,17 +1,26 @@
-﻿<!-- مسار الملف: Views/Accounting/Expenses.cshtml -->
-@model IEnumerable<KaberSystem.Models.Expense>
+﻿@model IEnumerable<KaberSystem.Models.Expense>
 @{
     ViewData["Title"] = "المرتبات والمصروفات";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
+    string currentMonthYear = ViewBag.CurrentMonthYear;
 }
 
-<div class="d-flex justify-content-between align-items-end mb-4">
+<div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
     <div>
         <h2 class="fw-bolder text-dark mb-1" style="letter-spacing: -0.5px;">
             <i class="fa-solid fa-money-check-dollar text-danger me-2"></i> إدارة المرتبات والمصروفات
         </h2>
         <p class="text-muted fw-bold mb-0">تسجيل الرواتب، السلف، والمصروفات مع تحديد جهة تحمل التكلفة مالياً</p>
     </div>
+
+    <!-- 📌 أداة الفلترة الشهرية المدمجة مع تصميمك -->
+    <form method="get" asp-action="Expenses" class="m-0 bg-white p-2 rounded-pill shadow-sm border border-danger">
+        <div class="d-flex align-items-center px-2">
+            <i class="fa-regular fa-calendar-days text-danger me-2 fs-5"></i>
+            <span class="fw-bold text-dark me-2 small">عرض مصروفات شهر:</span>
+            <input type="month" name="monthYear" value="@currentMonthYear" class="form-control form-control-sm fw-bold border-0 text-danger bg-transparent p-0" style="box-shadow: none; cursor: pointer; width: auto;" onchange="this.form.submit()" />
+        </div>
+    </form>
 </div>
 
 <div class="row g-4">
@@ -36,21 +45,14 @@
                         </div>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold text-muted small text-uppercase">مرتبط بالمستفيد (اختياري)</label>
-                        <select name="TechnicianId" class="form-select sys-input fw-bold bg-light" asp-items="ViewBag.TechnicianId">
-                            <option value="">-- مصروف إداري عام --</option>
-                        </select>
-                    </div>
-
-                    <!-- 📌 منطق جهة الخصم الجديد -->
-                    <div class="p-3 bg-light rounded-4 mb-4 border">
+                    <!-- 📌 منطق جهة الخصم -->
+                    <div class="p-3 bg-light rounded-4 mb-3 border">
                         <label class="fw-bold text-primary mb-3 d-block small text-uppercase tracking-wider">
                             <i class="fa-solid fa-scale-balanced me-1"></i> جهة الخصم المحاسبية:
                         </label>
 
                         <div class="form-check mb-3">
-                            <input class="form-check-input" type="radio" name="DeductionFrom" id="dedCompany" value="Company" checked>
+                            <input class="form-check-input" type="radio" name="DeductionFrom" id="dedCompany" value="Company" checked onchange="toggleTechSelect()">
                             <label class="form-check-label fw-bold text-dark" for="dedCompany">
                                 <span class="d-block">دخل الشركة العام</span>
                                 <small class="text-muted fw-normal">تُحسب كمصروف تشغيلي (رواتب، إيجار، بنزين)</small>
@@ -58,12 +60,20 @@
                         </div>
 
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="DeductionFrom" id="dedTech" value="Technician">
+                            <input class="form-check-input" type="radio" name="DeductionFrom" id="dedTech" value="Technician" onchange="toggleTechSelect()">
                             <label class="form-check-label fw-bold text-danger" for="dedTech">
                                 <span class="d-block">دخل الفني الخاص</span>
                                 <small class="text-muted fw-normal">تُخصم من صافي أرباح الفني (سلفة، مديونية، جزاء)</small>
                             </label>
                         </div>
+                    </div>
+
+                    <!-- 📌 القائمة المنسدلة للفنيين (تظهر وتختفي برمجياً) -->
+                    <div class="mb-4" id="techSelectContainer" style="display: none;">
+                        <label class="form-label fw-bold text-danger small text-uppercase">اختر الفني المُراد الخصم منه <span class="text-danger">*</span></label>
+                        <select name="TechnicianId" id="TechnicianId" class="form-select sys-input fw-bold bg-light border-danger" asp-items="ViewBag.TechnicianId">
+                            <option value="">-- اختر الفني --</option>
+                        </select>
                     </div>
 
                     <button type="submit" class="btn btn-primary fw-bold w-100 py-3 rounded-pill shadow-sm hover-elevate">
@@ -128,7 +138,7 @@
                                         }
                                         else
                                         {
-                                            <span class="text-muted small fw-bold">مصرف إداري</span>
+                                            <span class="text-muted small fw-bold">مصرف عام</span>
                                         }
                                     </td>
                                     <td dir="ltr" class="text-muted fw-bold small">
@@ -139,7 +149,7 @@
                                         <td class="pe-4">
                                             <form asp-action="DeleteExpense" method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذا القيد المالي؟ سيؤثر ذلك على التقارير فوراً.');">
                                                 <input type="hidden" name="id" value="@item.Id" />
-                                                <button type="submit" class="btn btn-sm btn-light text-danger rounded-circle hover-danger" style="width:38px; height:38px;">
+                                                <button type="submit" class="btn btn-sm btn-light text-danger rounded-circle hover-danger" style="width:38px; height:38px;" title="حذف القيد">
                                                     <i class="fa-solid fa-trash-can"></i>
                                                 </button>
                                             </form>
@@ -154,7 +164,7 @@
                                         <div class="bg-light rounded-circle d-inline-flex justify-content-center align-items-center mb-3" style="width: 70px; height: 70px;">
                                             <i class="fa-solid fa-file-invoice-dollar fs-3 opacity-50"></i>
                                         </div>
-                                        <h6 class="fw-bold">لا توجد سجلات مصروفات حالياً.</h6>
+                                        <h6 class="fw-bold">لا توجد سجلات مصروفات في هذا الشهر.</h6>
                                     </td>
                                 </tr>
                             }
@@ -167,18 +177,41 @@
 </div>
 
 @section Scripts {
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <script>
-            Swal.fire({
-                icon: 'success',
-                title: 'تم بنجاح',
-                text: '@Html.Raw(TempData["SuccessMessage"])',
-                confirmButtonColor: '#05cd99',
-                customClass: { popup: 'rounded-4' }
-            });
-        </script>
-    }
+    <script>
+        // 📌 دالة ذكية لإظهار وإخفاء قائمة الفنيين بناءً على الاختيار
+        function toggleTechSelect() {
+            var isTech = document.getElementById('dedTech').checked;
+            var techContainer = document.getElementById('techSelectContainer');
+            var techSelect = document.getElementById('TechnicianId');
+
+            if (isTech) {
+                techContainer.style.display = 'block';
+                techSelect.required = true;
+            } else {
+                techContainer.style.display = 'none';
+                techSelect.required = false;
+                techSelect.value = '';
+            }
+        }
+
+        // تشغيل الدالة فور تحميل الصفحة للتأكد من الحالة الافتراضية
+        document.addEventListener("DOMContentLoaded", function () {
+            toggleTechSelect();
+        });
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+                <text>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'تم بنجاح',
+                    text: '@Html.Raw(TempData["SuccessMessage"])',
+                    confirmButtonColor: '#05cd99',
+                    customClass: { popup: 'rounded-4' }
+                });
+                </text>
+        }
+    </script>
 }
 
 <style>

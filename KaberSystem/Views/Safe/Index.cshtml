@@ -61,6 +61,7 @@
                     <th>البيان (الوصف)</th>
                     <th>بواسطة</th>
                     <th>التاريخ</th>
+                    <th>إجراءات</th>
                 </tr>
             </thead>
             <tbody>
@@ -90,14 +91,78 @@
                         </td>
                         <td class="text-muted fw-bold small"><i class="fa-solid fa-user-tie me-1"></i> @item.RecordedBy</td>
                         <td dir="ltr" class="text-muted fw-bold small">@item.Date.ToString("yyyy-MM-dd hh:mm tt")</td>
+
+                        <!-- 📌 أزرار التعديل والحذف -->
+                        <td>
+                            <div class="d-flex gap-2 justify-content-center">
+                                <button type="button" class="btn btn-sm btn-outline-primary fw-bold px-2 rounded-3"
+                                        onclick="openEditModal(@item.Id, @item.Amount, '@Html.Raw(item.Description.Replace("'", "\\'"))', '@item.Type', '@(item.OrderId.HasValue ? "true" : "false")')"
+                                        data-bs-toggle="modal" data-bs-target="#editTransactionModal" title="تعديل الحركة">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+
+                                @if (User.IsInRole("Admin"))
+                                {
+                                    <form asp-action="DeleteTransaction" method="post" class="d-inline" onsubmit="return confirm('تأكيد الحذف؟ سيتم تعديل رصيد الخزنة فوراً.');">
+                                        <input type="hidden" name="id" value="@item.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger fw-bold px-2 rounded-3" title="حذف الحركة">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        </td>
                     </tr>
                 }
                 @if (!Model.Any())
                 {
-                    <tr><td colspan="6" class="text-center py-5 text-muted fw-bold">لا توجد أي حركات في الخزنة حالياً.</td></tr>
+                    <tr><td colspan="7" class="text-center py-5 text-muted fw-bold">لا توجد أي حركات في الخزنة حالياً.</td></tr>
                 }
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- 📌 Modal: تعديل حركة خزنة -->
+<div class="modal fade" id="editTransactionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0">
+                <h5 class="modal-title fw-bold text-primary"><i class="fa-solid fa-pen-to-square me-2"></i> تعديل قيد الخزنة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-action="EditTransaction" method="post">
+                <div class="modal-body py-4 text-start">
+                    <input type="hidden" name="id" id="edit_id" />
+
+                    <div id="edit_warning" class="alert alert-warning py-2 small fw-bold" style="display:none;">
+                        <i class="fa-solid fa-circle-info me-1"></i> هذه الحركة مسجلة آلياً من فاتورة صيانة. يمكنك تعديل <b>(البيان فقط)</b> للتوضيح. لتعديل المبلغ، يرجى استرداد الفاتورة من شاشة الفواتير.
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">نوع الحركة</label>
+                        <select name="type" id="edit_type" class="form-select fw-bold bg-light border-secondary">
+                            <option value="Income">إيداع / تحصيل (+)</option>
+                            <option value="DepositToBank">سحب / توريد للبنك (-)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">المبلغ (ر.س) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" name="amount" id="edit_amount" class="form-control fw-bold border-primary text-primary" required />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">البيان (الوصف) <span class="text-danger">*</span></label>
+                        <textarea name="description" id="edit_desc" class="form-control fw-bold bg-light" rows="2" required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0">
+                    <button type="button" class="btn btn-light fw-bold px-4 rounded-3" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-4 rounded-3"><i class="fa-solid fa-save"></i> حفظ التعديلات</button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -137,18 +202,46 @@
 </div>
 
 @section Scripts {
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <script>
-            var msg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString()));
-            Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: msg, confirmButtonColor: '#198754' });
-        </script>
-    }
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <script>
-            var errMsg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString()));
-            Swal.fire({ icon: 'error', title: 'تنبيه', text: errMsg, confirmButtonColor: '#dc3545' });
-        </script>
-    }
+    <script>
+        // 📌 دالة ذكية لتعبئة بيانات نافذة التعديل وحماية الحقول إذا كانت الفاتورة آلية
+        function openEditModal(id, amount, desc, type, isLinkedToOrder) {
+            document.getElementById('edit_id').value = id;
+            document.getElementById('edit_amount').value = amount;
+            document.getElementById('edit_desc').value = desc;
+            document.getElementById('edit_type').value = type;
+
+            var amountInput = document.getElementById('edit_amount');
+            var typeInput = document.getElementById('edit_type');
+            var warningDiv = document.getElementById('edit_warning');
+
+            if (isLinkedToOrder === 'true') {
+                amountInput.readOnly = true;
+                amountInput.classList.add('bg-light');
+                typeInput.style.pointerEvents = "none";
+                typeInput.classList.add('bg-light');
+                warningDiv.style.display = 'block';
+            } else {
+                amountInput.readOnly = false;
+                amountInput.classList.remove('bg-light');
+                typeInput.style.pointerEvents = "auto";
+                typeInput.classList.remove('bg-light');
+                warningDiv.style.display = 'none';
+            }
+        }
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+                <text>
+                var msg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString()));
+                Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: msg, confirmButtonColor: '#198754', customClass: { popup: 'rounded-4' } });
+                </text>
+        }
+        @if (TempData["ErrorMessage"] != null)
+        {
+                <text>
+                var errMsg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString()));
+                Swal.fire({ icon: 'error', title: 'تنبيه', text: errMsg, confirmButtonColor: '#dc3545', customClass: { popup: 'rounded-4' } });
+                </text>
+        }
+    </script>
 }

@@ -186,16 +186,64 @@ namespace KaberSystem.Controllers
             return View(technician);
         }
 
+        // 📌 حل مشكلة الحذف الآمن: فك الارتباط بالطلبات، المصروفات، وإرجاع العهدة
         [HttpGet]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
-            var technician = await _context.Technicians.FindAsync(id);
+            // جلب الفني مع كافة متعلقاته المرتبطة في قاعدة البيانات لتجنب خطأ Foreign Key Constraint
+            var technician = await _context.Technicians
+                .Include(t => t.Inventory)
+                .Include(t => t.AssignedOrders)
+                .Include(t => t.Expenses)
+                .FirstOrDefaultAsync(t => t.TechnicianId == id);
+
             if (technician != null)
             {
+                // 1. إرجاع قطع الغيار من عهدة الفني إلى المخزن العام لكي لا تضيع الأصول
+                if (technician.Inventory != null && technician.Inventory.Any())
+                {
+                    foreach (var stock in technician.Inventory)
+                    {
+                        var mainPart = await _context.SpareParts.FindAsync(stock.PartId);
+                        if (mainPart != null)
+                        {
+                            mainPart.MainStockQuantity += stock.Quantity;
+                            _context.Update(mainPart);
+                        }
+                    }
+                    _context.TechnicianStocks.RemoveRange(technician.Inventory);
+                }
+
+                // 2. فك ارتباط الفني بالطلبات (حماية الطلبات من الحذف وإضافة ملاحظة للتوضيح)
+                if (technician.AssignedOrders != null && technician.AssignedOrders.Any())
+                {
+                    foreach (var order in technician.AssignedOrders)
+                    {
+                        order.TechnicianId = null; // إزالة الفني ليصبح الطلب معلقاً
+
+                        string noteHeader = string.IsNullOrEmpty(order.TechnicianNotes) ? "" : "\n----------------\n";
+                        order.TechnicianNotes += $"{noteHeader}[نظام الإدارة]: تم حذف حساب الفني ({technician.Name}) الذي كان مكلفاً بهذا الطلب.";
+
+                        _context.Update(order);
+                    }
+                }
+
+                // 3. فك ارتباط الفني بالمصروفات والسلف (حماية السجلات المحاسبية)
+                if (technician.Expenses != null && technician.Expenses.Any())
+                {
+                    foreach (var exp in technician.Expenses)
+                    {
+                        exp.TechnicianId = null; // فك الارتباط
+                        exp.Description += $" [كانت مسجلة على الفني المحذوف: {technician.Name}]";
+                        _context.Update(exp);
+                    }
+                }
+
+                // 4. حذف سجل الفني بسلام
                 _context.Technicians.Remove(technician);
                 await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم حذف الفني وجميع بياناته بنجاح!";
+                TempData["SuccessMessage"] = "تم حذف الفني بنجاح، وإرجاع عهدته للمخزن، والاحتفاظ بطلباته وحساباته بأمان!";
             }
             return RedirectToAction(nameof(Index));
         }

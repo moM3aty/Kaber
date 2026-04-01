@@ -25,36 +25,39 @@
 
 <div class="row justify-content-center">
     <div class="col-lg-10">
-        <div class="sys-card printable-card bg-white position-relative overflow-hidden" style="min-height: 800px;">
+        <div class="sys-card printable-card bg-white position-relative overflow-hidden" style="min-height: 800px; border-top: 8px solid #f1950b !important;">
 
-            <div class="position-absolute top-50 start-50 translate-middle" style="opacity: 0.03; z-index: 0; pointer-events: none;">
+            <!-- العلامة المائية -->
+            <div class="position-absolute top-50 start-50 translate-middle watermark-print" style="opacity: 0.03; z-index: 0; pointer-events: none;">
                 <i class="fa-solid fa-file-signature" style="font-size: 400px;"></i>
             </div>
 
-            <div class="d-flex justify-content-between align-items-start border-bottom pb-4 mb-4 position-relative z-1">
+            <!-- الترويسة -->
+            <div class="d-flex justify-content-between align-items-start border-bottom pb-4 mb-4 position-relative z-1 flex-wrap-print">
                 <div>
-                    <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-bolt text-primary me-2"></i> شركة كابر للصيانة</h2>
-                    <p class="text-muted fw-bold mb-0">المملكة العربية السعودية</p>
+                    <img src="/images/logo.png" width="160px" style="border-radius:15px;" alt="Logo" />
+                    <p class="text-muted fw-bold mb-0 mt-2">المملكة العربية السعودية</p>
                     <p class="text-muted fw-bold mb-0">جوال: 0541683466</p>
                 </div>
-                <div class="text-end">
-                    <h2 class="fw-bold text-warning mb-2 border border-2 border-warning px-4 py-2 rounded-3 d-inline-block">عرض سعر (Quotation)</h2>
+                <div class="text-end text-start-print mt-3 mt-sm-0">
+                    <h2 class="fw-bold text-warning mb-2 border border-2 border-warning px-4 py-2 rounded-3 d-inline-block title-print">عرض سعر (Quotation)</h2>
                     <p class="m-0 fw-bold fs-6 text-dark mt-2">رقم المرجع: <span class="text-primary">QT-#@Model.OrderId</span></p>
                     <p class="m-0 fw-bold fs-6 text-dark">تاريخ الإصدار: @DateTime.Now.ToString("yyyy-MM-dd")</p>
                 </div>
             </div>
 
-            <div class="row mb-5 position-relative z-1">
-                <div class="col-sm-6">
-                    <div class="p-3 bg-light rounded-3 border-start border-4 border-primary h-100 print-no-bg">
+            <!-- بيانات العميل والصيانة -->
+            <div class="row mb-5 position-relative z-1 print-row">
+                <div class="col-sm-6 print-col-6 mb-3 mb-sm-0">
+                    <div class="p-3 bg-light rounded-3 border-start border-4 border-primary h-100 print-bg">
                         <h6 class="fw-bold text-muted mb-2">مقدم إلى العميل:</h6>
                         <h5 class="fw-bold text-dark mb-1">@Model.CustomerName</h5>
-                        <p class="mb-1 fw-bold text-muted" dir="ltr" style="text-align:right;">@Model.PhoneNumber <i class="fa-solid fa-phone ms-1 small"></i></p>
-                        <p class="mb-0 fw-bold text-muted">@Model.Address <i class="fa-solid fa-location-dot ms-1 small"></i></p>
+                        <p class="mb-1 fw-bold text-muted" dir="ltr" style="text-align:right;">@Model.PhoneNumber <i class="fa-solid fa-phone ms-1 small text-dark"></i></p>
+                        <p class="mb-0 fw-bold text-muted">@Model.Address <i class="fa-solid fa-location-dot ms-1 small text-dark"></i></p>
                     </div>
                 </div>
-                <div class="col-sm-6">
-                    <div class="p-3 bg-light rounded-3 border-start border-4 border-secondary h-100 print-no-bg">
+                <div class="col-sm-6 print-col-6">
+                    <div class="p-3 bg-light rounded-3 border-start border-4 border-secondary h-100 print-bg">
                         <h6 class="fw-bold text-muted mb-2">بيانات الصيانة:</h6>
                         <p class="mb-1 fw-bold text-dark"><span class="text-muted">الجهاز:</span> @Model.DeviceName</p>
                         <p class="mb-0 fw-bold text-dark"><span class="text-muted">المشكلة:</span> @Model.ProblemDescription</p>
@@ -62,11 +65,12 @@
                 </div>
             </div>
 
+            <!-- الجدول -->
             <div class="position-relative z-1">
                 <table class="table table-bordered text-center align-middle print-table">
                     <thead class="table-light">
                         <tr>
-                            <th class="py-3">البيان / القطعة</th>
+                            <th class="py-3 text-start ps-3">البيان / القطعة</th>
                             <th class="py-3">الكمية</th>
                             <th class="py-3">سعر الوحدة</th>
                             <th class="py-3">الإجمالي (شامل الضريبة)</th>
@@ -74,7 +78,7 @@
                     </thead>
                     <tbody>
                         <tr>
-                            <td class="fw-bold text-dark text-start">أجور اليد / الفحص الفني للطلب</td>
+                            <td class="fw-bold text-dark text-start ps-3">أجور اليد / الفحص الفني للطلب</td>
                             <td class="fw-bold">1</td>
                             <td class="fw-bold text-muted">@laborFee.ToString("N2") ريال</td>
                             <td class="fw-bold text-dark">@laborFee.ToString("N2") ريال</td>
@@ -85,7 +89,7 @@
                             @foreach (var part in Model.UsedSpareParts)
                             {
                                 <tr>
-                                    <td class="fw-bold text-dark text-start">@part.SparePart.Name</td>
+                                    <td class="fw-bold text-dark text-start ps-3">@part.SparePart.Name</td>
                                     <td class="fw-bold">@part.QuantityUsed</td>
                                     <td class="fw-bold text-muted">@part.SellingPriceAtTime.ToString("N2") ريال</td>
                                     <td class="fw-bold text-dark">@((part.QuantityUsed * part.SellingPriceAtTime).ToString("N2")) ريال</td>
@@ -102,29 +106,31 @@
                     <tfoot class="table-light">
                         <tr>
                             <td colspan="3" class="text-end fw-bold fs-5 pe-4">الإجمالي النهائي المقدر:</td>
-                            <td class="text-success fw-bold fs-4 bg-success bg-opacity-10">@grandTotal.ToString("N2") <span class="fs-6">ريال</span></td>
+                            <td class="text-success fw-bold fs-4 print-success-bg">@grandTotal.ToString("N2") <span class="fs-6">ريال</span></td>
                         </tr>
                     </tfoot>
                 </table>
             </div>
 
-            <div class="mt-5 pt-3 border-top position-relative z-1 text-muted fw-bold small lh-lg">
+            <!-- الملاحظات -->
+            <div class="mt-5 pt-3 border-top position-relative z-1 text-muted fw-bold small lh-lg prevent-break">
                 <p class="mb-1 text-danger"><i class="fa-solid fa-circle-info"></i> ملاحظات هامة:</p>
-                <ul class="mb-0">
+                <ul class="mb-0 text-dark">
                     <li>هذا المستند هو عرض سعر مبدئي (تقديري) بناءً على الفحص الأولي، وقد يتغير السعر في حال اكتشاف أعطال إضافية أثناء العمل.</li>
                     <li>عرض السعر صالح لمدة (7) أيام من تاريخ إصداره.</li>
                     <li>الأسعار الموضحة أعلاه شاملة لضريبة القيمة المضافة.</li>
                 </ul>
             </div>
 
-            <div class="d-flex justify-content-between mt-5 pt-5 px-4 position-relative z-1 d-none d-print-flex">
+            <!-- التوقيعات (تظهر في الطباعة فقط) -->
+            <div class="d-flex justify-content-between mt-5 pt-5 px-4 position-relative z-1 d-none d-print-flex prevent-break">
                 <div class="text-center">
                     <h6 class="fw-bold text-dark mb-4">توقيع العميل (بالموافقة)</h6>
-                    <p>.......................................</p>
+                    <p class="text-dark">.......................................</p>
                 </div>
                 <div class="text-center">
                     <h6 class="fw-bold text-dark mb-4">توقيع الفني / الإدارة</h6>
-                    <p>.......................................</p>
+                    <p class="text-dark">.......................................</p>
                 </div>
             </div>
 
@@ -133,13 +139,104 @@
 </div>
 
 <style>
+    /* إعدادات الطباعة الاحترافية */
     @@media print {
-        body { background: white !important; margin: 0 !important; padding: 0 !important; }
-        .sys-sidebar, .sys-header, .d-print-none { display: none !important; }
-        .sys-main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
-        .printable-card { box-shadow: none !important; border: none !important; padding: 20px !important; }
-        .print-table th, .print-table td { border: 1px solid #000 !important; color: #000 !important; }
-        * { color: #000 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        .print-no-bg { background-color: transparent !important; border: 1px solid #ccc !important; }
+        /* إجبار المتصفح على طباعة الألوان والخلفيات */
+        * {
+            -webkit-print-color-adjust: exact !important;
+            color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        /* ضبط الهوامش وحجم الورقة لتكون A4 */
+        @@page {
+            size: A4 portrait;
+            margin: 1cm;
+        }
+
+        body {
+            background: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            font-size: 14px !important;
+        }
+        /* إخفاء واجهة النظام (الشريط الجانبي والعلوي والأزرار) */
+        .sys-sidebar, .sys-header, .sys-page-header, .d-print-none {
+            display: none !important;
+        }
+
+        .sys-main, .sys-wrapper, .sys-content {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+        /* تظبيط الكارت الرئيسي */
+        .printable-card {
+            box-shadow: none !important;
+            border: none !important;
+            padding: 0 !important;
+            border-top: 8px solid #f1950b !important; /* الاحتفاظ بالخط البرتقالي العلوي */
+        }
+        /* تظبيط الجداول لتكون واضحة بخطوط سوداء */
+        .print-table {
+            border-collapse: collapse !important;
+            width: 100% !important;
+            margin-bottom: 20px !important;
+        }
+
+            .print-table th, .print-table td {
+                border: 1px solid #ddd !important;
+                color: #000 !important;
+                padding: 10px !important;
+            }
+
+        .table-light th, .table-light td {
+            background-color: #f8f9fa !important;
+        }
+        /* تظبيط الأعمدة بجوار بعضها (مهم جداً للـ PDF) */
+        .print-row {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            gap: 15px;
+        }
+
+        .print-col-6 {
+            width: 50% !important;
+            flex: 0 0 50% !important;
+            max-width: 50% !important;
+            padding: 0 !important;
+        }
+
+        .print-bg {
+            background-color: #f8f9fa !important;
+            border: 1px solid #eee !important;
+        }
+
+        .print-success-bg {
+            background-color: rgba(25, 135, 84, 0.1) !important;
+            color: #198754 !important;
+        }
+        /* منع انقسام الجداول أو التوقيعات بين صفحتين */
+        .prevent-break {
+            page-break-inside: avoid !important;
+        }
+
+        tr {
+            page-break-inside: avoid !important;
+        }
+        /* تظبيط الترويسة */
+        .flex-wrap-print {
+            display: flex !important;
+            justify-content: space-between !important;
+        }
+
+        .title-print {
+            color: #f1950b !important;
+            border-color: #f1950b !important;
+        }
+
+        .watermark-print i {
+            color: #e9ecef !important;
+        }
     }
 </style>

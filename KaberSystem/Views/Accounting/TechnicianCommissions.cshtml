@@ -1,0 +1,258 @@
+﻿@{
+    ViewData["Title"] = "حاسبة نسب وعمولات الفنيين";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+
+    var technicians = ViewData["Technicians"] as IEnumerable<KaberSystem.Models.Technician>;
+    var selectedTech = ViewBag.Technician as KaberSystem.Models.Technician;
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title text-success"><i class="fa-solid fa-percent me-2"></i> حاسبة تصفية ونسب الفنيين</h1>
+        <p class="sys-page-desc">حساب عمولة الفني بناءً على طلباته المنجزة، مع خصم السلف والغيابات تلقائياً.</p>
+    </div>
+</div>
+
+<!-- 📌 1. قسم الفلترة واختيار الفني -->
+<div class="sys-card mb-4 bg-light border-0">
+    <form method="get" asp-action="TechnicianCommissions" class="row g-3 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label fw-bold">اختر الفني المُراد محاسبته:</label>
+            <select name="techId" class="form-select form-select-lg fw-bold border-secondary" required>
+                <option value="">-- اختر الفني --</option>
+                @if (technicians != null)
+                {
+                    foreach (var t in technicians)
+                    {
+                        bool isSelected = selectedTech != null && selectedTech.TechnicianId == t.TechnicianId;
+                        <option value="@t.TechnicianId" selected="@isSelected">@t.Name</option>
+                    }
+                }
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label fw-bold">اختر شهر المحاسبة:</label>
+            <input type="month" name="monthYear" class="form-control form-control-lg fw-bold border-secondary" value="@Context.Request.Query["monthYear"]" required />
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm"><i class="fa-solid fa-calculator me-1"></i> كشف الحساب</button>
+        </div>
+    </form>
+</div>
+
+@if (selectedTech != null)
+{
+    decimal totalRev = ViewBag.TotalRevenue ?? 0;
+    decimal laborRev = ViewBag.LaborRevenue ?? 0;
+    decimal partsRev = ViewBag.PartsRevenue ?? 0;
+    decimal totalDeductions = ViewBag.TotalDeductions ?? 0;
+    decimal cashInHand = ViewBag.CashInHand ?? 0;
+
+    <!-- 📌 2. ملخص أرباح الفني -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="sys-card bg-primary bg-opacity-10 border-0 h-100 p-4 text-center">
+                <i class="fa-solid fa-coins fs-1 text-primary mb-2"></i>
+                <h6 class="fw-bold text-muted mb-1">إجمالي الفواتير (التي أنجزها)</h6>
+                <h3 class="fw-bold text-dark m-0" id="lblTotalRev">@totalRev.ToString("N2") <span class="fs-6">ر.س</span></h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="sys-card bg-info bg-opacity-10 border-0 h-100 p-4 text-center">
+                <i class="fa-solid fa-hand-holding-dollar fs-1 text-info mb-2"></i>
+                <h6 class="fw-bold text-muted mb-1">أجور اليد والفحص (منها)</h6>
+                <h3 class="fw-bold text-dark m-0" id="lblLaborRev">@laborRev.ToString("N2") <span class="fs-6">ر.س</span></h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="sys-card bg-danger bg-opacity-10 border-0 h-100 p-4 text-center">
+                <i class="fa-solid fa-file-invoice-dollar fs-1 text-danger mb-2"></i>
+                <h6 class="fw-bold text-muted mb-1">الخصومات والسلف (عليه)</h6>
+                <h3 class="fw-bold text-danger m-0" id="lblDeductions">@totalDeductions.ToString("N2") <span class="fs-6">ر.س</span></h3>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="sys-card bg-warning bg-opacity-10 border-0 h-100 p-4 text-center">
+                <i class="fa-solid fa-sack-dollar fs-1 text-warning mb-2"></i>
+                <h6 class="fw-bold text-muted mb-1">الكاش المُحصّل (في يده)</h6>
+                <h3 class="fw-bold text-dark m-0">@cashInHand.ToString("N2") <span class="fs-6">ر.س</span></h3>
+                <small class="text-muted fw-bold">هذا المبلغ حصله نقداً ولم يورده.</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📌 3. الحاسبة التفاعلية -->
+    <div class="sys-card mb-4 border border-success border-2 shadow-sm">
+        <h4 class="fw-bold text-success border-bottom pb-3 mb-4"><i class="fa-solid fa-gear fa-spin me-2"></i> حاسبة العمولة والصافي المستحق</h4>
+
+        <div class="row g-4 align-items-center">
+            <div class="col-md-4">
+                <label class="form-label fw-bold text-dark fs-5">حساب النسبة يتم بناءً على:</label>
+                <div class="d-flex flex-column gap-2 mt-2">
+                    <label class="form-check-label fw-bold bg-light p-2 rounded border cursor-pointer">
+                        <input type="radio" name="calcBase" value="@totalRev" class="form-check-input me-2" checked onchange="calculateNet()"> إجمالي الفواتير (شامل القطع)
+                    </label>
+                    <label class="form-check-label fw-bold bg-light p-2 rounded border cursor-pointer">
+                        <input type="radio" name="calcBase" value="@laborRev" class="form-check-input me-2" onchange="calculateNet()"> أجور اليد والفحص فقط
+                    </label>
+                </div>
+            </div>
+
+            <div class="col-md-3 text-center border-end border-start">
+                <label class="form-label fw-bold text-primary fs-5">نسبة الفني المئوية (%)</label>
+                <div class="input-group input-group-lg justify-content-center mt-2">
+                    <input type="number" id="commissionPercent" class="form-control text-center fw-bold fs-3 text-primary border-primary" value="30" min="0" max="100" style="max-width: 120px;" oninput="calculateNet()" />
+                    <span class="input-group-text bg-primary text-white fw-bold fs-4">%</span>
+                </div>
+            </div>
+
+            <div class="col-md-5 text-center">
+                <p class="fw-bold text-muted mb-1 fs-5">الصافي المستحق للدفع (بعد خصم السلف)</p>
+                <div class="bg-success text-white rounded-4 p-3 shadow-lg pulse-success">
+                    <h1 class="m-0 fw-bolder display-4" id="finalNetPayout">0.00 <span class="fs-4">ر.س</span></h1>
+                </div>
+
+                <!-- زر تسجيل الدفع -->
+                <button type="button" class="btn btn-dark fw-bold w-100 mt-3 py-2 fs-5" data-bs-toggle="modal" data-bs-target="#payModal">
+                    <i class="fa-solid fa-cash-register me-2"></i> تأكيد وصرف العمولة
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📌 نافذة تأكيد الدفع -->
+    <div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 rounded-4 shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0">
+                    <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-money-bill-transfer me-2"></i> صرف مستحقات الفني</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form asp-action="PayCommission" method="post">
+                    <div class="modal-body py-4 text-start">
+                        <input type="hidden" name="techId" value="@selectedTech.TechnicianId" />
+                        <input type="hidden" name="monthYearName" value="@ViewBag.MonthYearName" />
+                        <input type="hidden" name="deductionAmount" value="@totalDeductions" />
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">المبلغ النهائي المُراد صرفه (كاش من الخزنة) <span class="text-danger">*</span></label>
+                            <input type="number" step="0.01" id="formFinalAmount" name="finalAmount" class="form-control form-control-lg fw-bold border-success text-success bg-light" required readonly />
+                            <small class="text-muted fw-bold d-block mt-1">يتم احتساب هذا الرقم من الحاسبة تلقائياً.</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">ملاحظات المحاسب</label>
+                            <input type="text" name="notes" class="form-control fw-bold" placeholder="مثال: تم التصفية لحساب شهر..." />
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0 pt-0">
+                        <button type="button" class="btn btn-light fw-bold px-4 rounded-3" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-success fw-bold px-4 rounded-3 fs-5"><i class="fa-solid fa-check-double me-1"></i> صرف وتسجيل بالدفاتر</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📌 تفاصيل الطلبات والخصومات في هذا الشهر -->
+    <div class="row g-4 mt-2">
+        <div class="col-lg-8">
+            <div class="sys-card h-100">
+                <h5 class="fw-bold text-dark border-bottom pb-2"><i class="fa-solid fa-list-check text-primary me-2"></i> الطلبات المنجزة خلال (@ViewBag.MonthYearName)</h5>
+                <div class="table-responsive mt-3" style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm table-bordered text-center align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>الطلب</th>
+                                <th>التاريخ</th>
+                                <th>الفاتورة (إجمالي)</th>
+                                <th>أجور اليد</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var o in (IEnumerable<KaberSystem.Models.Order>)ViewBag.TechOrders)
+                            {
+                                <tr>
+                                    <td class="fw-bold"><a href="/Orders/Details/@o.OrderId" target="_blank" class="text-decoration-none">#@o.OrderId</a></td>
+                                    <td class="text-muted fw-bold" dir="ltr">@o.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                    <td class="fw-bold text-success">@o.FinalPrice</td>
+                                    <td class="fw-bold text-primary">@(o.IsFeeApplied? o.EstimatedPrice: 0)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="sys-card h-100 bg-danger bg-opacity-10 border border-danger">
+                <h5 class="fw-bold text-danger border-bottom border-danger pb-2"><i class="fa-solid fa-file-invoice-dollar me-2"></i> سجل السلف والخصومات</h5>
+                <div class="table-responsive mt-3">
+                    <table class="table table-sm table-borderless text-center align-middle">
+                        <tbody>
+                            @foreach (var exp in (IEnumerable<KaberSystem.Models.Expense>)ViewBag.DeductionsList)
+                            {
+                                <tr class="border-bottom border-danger">
+                                    <td class="text-start fw-bold text-dark small">@exp.Description</td>
+                                    <td class="fw-bold text-danger">@exp.Amount</td>
+                                </tr>
+                            }
+                            @if (!((IEnumerable<KaberSystem.Models.Expense>)ViewBag.DeductionsList).Any())
+                            {
+                                <tr><td class="text-muted fw-bold">لا يوجد سلف أو خصومات هذا الشهر.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📌 سكربت الحساب الفوري (Live JavaScript) -->
+    <script>
+        function calculateNet() {
+            // 1. جلب القيم
+            var baseAmount = parseFloat(document.querySelector('input[name="calcBase"]:checked').value) || 0;
+            var percent = parseFloat(document.getElementById('commissionPercent').value) || 0;
+            var totalDeductions = parseFloat('@totalDeductions') || 0;
+
+            // 2. حساب العمولة
+            var grossCommission = baseAmount * (percent / 100);
+
+            // 3. خصم السلف والغيابات للحصول على الصافي
+            var netPayout = grossCommission - totalDeductions;
+
+            // منع الأرقام السالبة ظاهرياً (إذا كانت السلف أكبر من الراتب)
+            if (netPayout < 0) netPayout = 0;
+
+            // 4. تحديث الشاشة والحقل المخفي للصرف
+            document.getElementById('finalNetPayout').innerHTML = netPayout.toFixed(2) + ' <span class="fs-4">ر.س</span>';
+            document.getElementById('formFinalAmount').value = netPayout.toFixed(2);
+        }
+
+        // تشغيل الحساب فور تحميل الصفحة
+        document.addEventListener("DOMContentLoaded", function() {
+            calculateNet();
+        });
+    </script>
+}
+
+@section Scripts {
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <script>
+            var msg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString()));
+            Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: msg, confirmButtonColor: '#198754', customClass: { popup: 'rounded-4' } });
+        </script>
+    }
+}
+<style>
+    @@keyframes subtlePulseSuccess {
+        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.4); }
+        70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); }
+        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+    }
+    .pulse-success { animation: subtlePulseSuccess 2s infinite; }
+    .cursor-pointer { cursor: pointer; transition: background 0.2s; }
+    .cursor-pointer:hover { background: #e9ecef !important; }
+</style>
