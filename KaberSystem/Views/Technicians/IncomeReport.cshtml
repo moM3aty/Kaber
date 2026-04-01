@@ -1,263 +1,163 @@
-﻿@model IEnumerable<KaberSystem.Models.Technician>
-@{
-    ViewData["Title"] = "تقرير أرباح الفنيين";
+﻿@{
+    ViewData["Title"] = "تقارير الأرباح والحسابات";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 
-    // 📌 جلب متغيرات الفلتر من الرابط (أو وضع قيم افتراضية)
-    decimal commissionPercent = decimal.TryParse(Context.Request.Query["commission"], out decimal c) ? c : 30m;
-    decimal commissionRate = commissionPercent / 100m;
-    
-    DateTime? startDate = DateTime.TryParse(Context.Request.Query["startDate"], out DateTime sd) ? sd : null;
-    DateTime? endDate = DateTime.TryParse(Context.Request.Query["endDate"], out DateTime ed) ? ed : null;
+    decimal totalRevenue = ViewBag.TotalRevenue ?? 0;
+    decimal cogs = ViewBag.CostOfGoodsSold ?? 0;
+    decimal grossProfit = ViewBag.GrossProfit ?? 0;
+    decimal totalExpenses = ViewBag.TotalExpenses ?? 0;
+    decimal damagesCost = ViewBag.TotalDamagesCost ?? 0;
+    decimal netProfit = ViewBag.NetCompanyProfit ?? 0;
+
+    string currentMonthYear = ViewBag.CurrentMonthYear;
+    string monthName = ViewBag.MonthName;
 }
 
-<div class="sys-page-header d-print-none">
+<div class="sys-page-header d-flex justify-content-between align-items-center flex-wrap">
     <div>
-        <h1 class="sys-page-title">أرباح وإنتاجية الفنيين</h1>
-        <p class="sys-page-desc">تقرير محاسبي مفصل يوضح الإيرادات، العمولات، وتفاصيل كل موعد تم تنفيذه مع الخصومات والمصروفات</p>
+        <h1 class="sys-page-title text-success"><i class="fa-solid fa-chart-line me-2"></i> قائمة الدخل والمركز المالي</h1>
+        <p class="sys-page-desc">مراقبة الأرباح والمصروفات الخاصة بالشهر المحدد، مع ترحيل مديونيات الفنيين.</p>
     </div>
-    <button class="sys-btn sys-btn-primary" onclick="window.print()">
-        <i class="fa-solid fa-print"></i> طباعة التقرير
-    </button>
+    <div class="d-flex gap-3 align-items-center mt-3 mt-md-0">
+        <form method="get" asp-action="Index" class="m-0 bg-white p-1 rounded-pill shadow-sm border border-success">
+            <div class="d-flex align-items-center px-2">
+                <i class="fa-regular fa-calendar-days text-success me-2"></i>
+                <span class="fw-bold text-dark me-2 small">شهر الحساب:</span>
+                <input type="month" name="monthYear" value="@currentMonthYear" class="form-control form-control-sm fw-bold border-0 text-success" style="box-shadow: none; cursor: pointer;" onchange="this.form.submit()" />
+            </div>
+        </form>
+        <!-- 📌 تم إضافة زر لفتح شيت الإكسل الشامل (Master Ledger) -->
+        <a href="/Accounting/MasterLedger" class="sys-btn btn-success text-white fw-bold"><i class="fa-solid fa-file-excel"></i> الدفتر الشامل (Excel)</a>
+    </div>
 </div>
 
-<!-- 📌 فلتر البحث وتعديل النسبة -->
-<div class="sys-card mb-4 d-print-none bg-light border-0">
-    <form method="get" class="row g-3 align-items-end">
-        <div class="col-md-3">
-            <label class="form-label fw-bold text-dark"><i class="fa-regular fa-calendar me-1"></i> من تاريخ (اختياري)</label>
-            <input type="date" name="startDate" class="form-control sys-input" value="@Context.Request.Query["startDate"]" />
+<!-- (نفس كروت الإحصائيات السابقة كما هي) -->
+<div class="row g-4 mb-5">
+    <div class="col-md-3">
+        <div class="sys-card bg-primary bg-opacity-10 border-0 h-100 p-4 text-center">
+            <i class="fa-solid fa-sack-dollar fs-1 text-primary mb-2"></i>
+            <h6 class="fw-bold text-muted mb-1">المبيعات (إيرادات @monthName)</h6>
+            <h3 class="fw-bold text-dark m-0">@totalRevenue.ToString("N2") <span class="fs-6">ر.س</span></h3>
         </div>
-        <div class="col-md-3">
-            <label class="form-label fw-bold text-dark"><i class="fa-regular fa-calendar-check me-1"></i> إلى تاريخ (اختياري)</label>
-            <input type="date" name="endDate" class="form-control sys-input" value="@Context.Request.Query["endDate"]" />
+    </div>
+    <div class="col-md-3">
+        <div class="sys-card bg-secondary bg-opacity-10 border-0 h-100 p-4 text-center" style="border-top: 4px solid #6c757d !important;">
+            <i class="fa-solid fa-boxes-packing fs-1 text-secondary mb-2"></i>
+            <h6 class="fw-bold text-muted mb-1">تكلفة القطع المباعة (COGS)</h6>
+            <h3 class="fw-bold text-secondary m-0">- @cogs.ToString("N2") <span class="fs-6">ر.س</span></h3>
+            <small class="text-muted fw-bold d-block mt-1">أسعار شراء القطع المستهلكة بالشهر</small>
         </div>
-        <div class="col-md-3">
-            <label class="form-label fw-bold text-primary"><i class="fa-solid fa-percent me-1"></i> نسبة العمولة للفنيين</label>
-            <div class="input-group">
-                <input type="number" step="0.01" name="commission" class="form-control sys-input border-end-0 fw-bold text-primary" value="@commissionPercent" min="0" max="100" required />
-                <span class="input-group-text bg-white border-start-0 text-muted fw-bold">%</span>
+    </div>
+    <div class="col-md-3">
+        <div class="sys-card bg-info bg-opacity-10 border-0 h-100 p-4 text-center">
+            <i class="fa-solid fa-scale-balanced fs-1 text-info mb-2"></i>
+            <h6 class="fw-bold text-muted mb-1">مجمل الربح (للشهر المحدد)</h6>
+            <h3 class="fw-bold text-dark m-0">@grossProfit.ToString("N2") <span class="fs-6">ر.س</span></h3>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="sys-card bg-danger bg-opacity-10 border-0 h-100 p-4 text-center">
+            <i class="fa-solid fa-arrow-trend-down fs-1 text-danger mb-2"></i>
+            <h6 class="fw-bold text-muted mb-1">مصروفات وتوالف (للشهر المحدد)</h6>
+            <h3 class="fw-bold text-danger m-0">- @((totalExpenses + damagesCost).ToString("N2")) <span class="fs-6">ر.س</span></h3>
+        </div>
+    </div>
+</div>
+
+<div class="row justify-content-center mb-5">
+    <div class="col-md-8">
+        <div class="sys-card h-100 d-flex flex-column align-items-center p-5 text-white shadow-lg position-relative overflow-hidden @(netProfit >= 0 ? "bg-success" : "bg-danger")">
+            <i class="fa-solid fa-chart-pie position-absolute" style="font-size: 200px; opacity: 0.1; right: -20px; bottom: -40px;"></i>
+            <div class="position-relative z-1 text-center">
+                <p class="fw-bold text-white-50 mb-2 fs-4">صافي الربح الفعلي عن شهر (@monthName)</p>
+                <h1 class="fw-bolder m-0 display-3" style="letter-spacing: -1px;">
+                    @if (netProfit > 0)
+                    {
+                        <text>+</text>
+                    }
+ @netProfit.ToString("N2") <span class="fs-3">ريال سعودي</span>
+                </h1>
+                <p class="text-white-50 mt-3 mb-0 fw-bold"><i class="fa-solid fa-check-double me-1"></i> هذا الرقم هو الربح الحقيقي بعد خصم تكلفة البضاعة والمصروفات والتوالف.</p>
             </div>
         </div>
-        <div class="col-md-3">
-            <button type="submit" class="sys-btn sys-btn-primary w-100 py-3 fs-6">
-                <i class="fa-solid fa-filter me-2"></i> تحديث التقرير والحسابات
-            </button>
-        </div>
-    </form>
+    </div>
 </div>
 
-<div class="sys-card printable-card">
-    
-    <!-- ترويسة الطباعة (تظهر فقط في الورق) -->
-    <div class="d-none d-print-block text-center border-bottom pb-4 mb-4">
-        <h2 class="fw-bold text-dark mb-1"><i class="fa-solid fa-bolt text-primary me-2"></i> شركة كابر للصيانة</h2>
-        <h4 class="text-muted fw-bold mb-3">تقرير أرباح وعمولات الفنيين التفصيلي</h4>
-        <div class="d-flex justify-content-between align-items-center mt-3 px-3">
-            <p class="m-0 fw-bold fs-5">نسبة العمولة المطبقة: @commissionPercent%</p>
-            <p class="m-0 fw-bold fs-5">الفترة: @(startDate?.ToString("yyyy/MM/dd") ?? "بداية العمل") إلى @(endDate?.ToString("yyyy/MM/dd") ?? "اليوم")</p>
-        </div>
-    </div>
+<!-- 📌 التحديث: فصل أجور اليد عن القطع في جدول الفنيين بناءً على ملاحظة الفيديو -->
+<div class="sys-card mt-4">
+    <h4 class="fw-bold text-dark border-bottom pb-3 mb-4"><i class="fa-solid fa-users-gear text-primary me-2"></i> ملخص مبيعات وحسابات الفنيين</h4>
 
-    <!-- عنوان الشاشة (يختفي في الطباعة) -->
-    <div class="d-flex align-items-center border-bottom pb-3 mb-4 d-print-none">
-        <div class="bg-success bg-opacity-10 text-success rounded-circle d-flex justify-content-center align-items-center me-3" style="width: 50px; height: 50px;">
-            <i class="fa-solid fa-hand-holding-dollar fs-4"></i>
-        </div>
-        <h4 class="fw-bold m-0 text-dark">كشف حساب الفنيين الإجمالي</h4>
-    </div>
-
-    <div class="table-responsive overflow-visible">
-        <table class="table table-hover align-middle text-center sys-table w-100 print-table">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle text-center sys-table w-100">
             <thead class="table-light">
                 <tr>
                     <th>اسم الفني</th>
-                    <th>الطلبات المنجزة</th>
-                    <th>إيرادات رسوم الفحص</th>
-                    <th>العمولة (@commissionPercent%)</th>
-                    <th class="text-danger">الخصومات والمصروفات</th>
-                    <th class="text-primary fs-6">الصافي للمحاسبة</th>
-                    <th>الحالة</th>
-                    <th class="d-print-none">الإجراءات والتفاصيل</th>
+                    <th>إجمالي المبيعات<br><span class="text-muted small">(هذا الشهر)</span></th>
+                    <th>مبيعات أجور اليد<br><span class="text-success small">(تُحسب منها العمولة)</span></th>
+                    <th>مبيعات قطع الغيار<br><span class="text-info small">(لا تدخل بالعمولة)</span></th>
+                    <th>إجمالي السلف / مديونية<br><span class="text-danger small">(مرحّلة)</span></th>
+                    <th>العهدة (الكاش المُحصّل)<br><span class="text-primary small">(مرحّلة)</span></th>
+                    <th>إجراءات</th>
                 </tr>
             </thead>
             <tbody>
-                @{
-                    decimal totalAllIncomes = 0;
-                    decimal totalAllCommissions = 0;
-                    decimal totalAllExpenses = 0;
-                    decimal totalAllNet = 0;
-                    int colsCount = User.IsInRole("Admin") ? 8 : 7;
-                }
-                @foreach (var tech in Model)
+                @foreach (var tech in ViewBag.TechnicianReports)
                 {
-                    // 📌 1. تصفية الطلبات المكتملة بناءً على الفلتر الزمني
-                    var completedOrders = tech.AssignedOrders?
-                        .Where(o => o.Status == KaberSystem.Models.OrderStatus.Completed)
-                        .Where(o => (!startDate.HasValue || (o.ScheduledDate ?? o.CreatedAt).Date >= startDate.Value.Date) &&
-                                    (!endDate.HasValue || (o.ScheduledDate ?? o.CreatedAt).Date <= endDate.Value.Date))
-                        .ToList() ?? new List<KaberSystem.Models.Order>();
-
-                    // 📌 2. تصفية المصروفات والخصومات بناءً على الفلتر الزمني
-                    var techExpensesList = tech.Expenses?
-                        .Where(e => (!startDate.HasValue || e.Date.Date >= startDate.Value.Date) &&
-                                    (!endDate.HasValue || e.Date.Date <= endDate.Value.Date))
-                        .ToList() ?? new List<KaberSystem.Models.Expense>();
-
-                    // 📌 3. الحسابات الإجمالية
-                    decimal totalLaborIncome = completedOrders.Sum(o => o.EstimatedPrice);
-                    decimal grossCommission = totalLaborIncome * commissionRate;
-                    decimal techExpenses = techExpensesList.Sum(e => e.Amount);
-                    decimal netCommission = grossCommission - techExpenses;
-
-                    // 📌 4. تجميع الإجماليات أسفل الجدول
-                    totalAllIncomes += totalLaborIncome;
-                    totalAllCommissions += grossCommission;
-                    totalAllExpenses += techExpenses;
-                    totalAllNet += netCommission;
-
                     <tr>
-                        <td class="fw-bold text-dark text-end">
-                            <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(tech.Name)&background=f1950b&color=fff" class="rounded-circle me-2 d-print-none" width="35" height="35">
-                            @tech.Name
-                        </td>
-                        <td class="fw-bold fs-5">@completedOrders.Count</td>
-                        <td class="text-dark fw-bold fs-5 bg-light">@totalLaborIncome <span class="small text-muted">ر.س</span></td>
-                        <td class="text-success fw-bold fs-5">@grossCommission <span class="small text-muted">ر.س</span></td>
-                        <td class="text-danger fw-bold fs-5 bg-danger bg-opacity-10 border-start border-end">@techExpenses <span class="small text-muted">ر.س</span></td>
-                        <td class="text-primary fw-bold fs-4">@netCommission <span class="small text-muted">ر.س</span></td>
+                        <td class="fw-bold text-start ps-3"><i class="fa-solid fa-user-tie text-muted me-2"></i> @tech.Name</td>
+                        <td class="fw-bold text-dark fs-6">@tech.TotalIncome.ToString("N2")</td>
+                        <!-- أجور اليد مفصولة -->
+                        <td class="fw-bold text-success fs-6 bg-success bg-opacity-10 border-end border-start">@tech.LaborSales.ToString("N2")</td>
+                        <!-- مبيعات القطع مفصولة -->
+                        <td class="fw-bold text-info text-dark">@tech.PartsSales.ToString("N2")</td>
+
+                        <td class="fw-bold text-danger">@tech.AllTimeDeductions.ToString("N2")</td>
+                        <td class="fw-bold text-primary bg-primary bg-opacity-10 rounded-3">@tech.WalletBalance.ToString("N2")</td>
                         <td>
-                            @if (netCommission > 0)
-                            {
-                                <span class="badge bg-warning text-dark px-3 py-2 rounded-pill print-badge"><i class="fa-solid fa-clock d-print-none"></i> مستحقة الدفع</span>
-                            }
-                            else if (netCommission < 0)
-                            {
-                                <span class="badge bg-danger px-3 py-2 rounded-pill print-badge"><i class="fa-solid fa-triangle-exclamation d-print-none"></i> حساب مكشوف</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted small fw-bold">لا يوجد رصيد</span>
-                            }
-                        </td>
-                        <td class="d-print-none">
-                            <div class="d-flex gap-2 justify-content-center">
-                                <!-- 📌 زر إظهار التفاصيل لكل فني -->
-                                <button type="button" class="btn btn-sm btn-info text-dark fw-bold rounded-3 px-3 shadow-sm" data-bs-toggle="collapse" data-bs-target="#details-@tech.TechnicianId">
-                                    <i class="fa-solid fa-list-check"></i> تفاصيل الحركات
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
+                            <button type="button" class="btn btn-sm btn-outline-success fw-bold px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#settleModal_@tech.Id">
+                                <i class="fa-solid fa-hand-holding-dollar me-1"></i> توريد كاش
+                            </button>
 
-                    <!-- 📌 الصف المخفي: تفاصيل كل موعد وكل خصم للفني -->
-                    <tr class="collapse fade border-0" id="details-@tech.TechnicianId">
-                        <td colspan="@colsCount" class="p-0 border-0">
-                            <div class="bg-light p-4 m-2 rounded-4 border border-secondary shadow-inner">
-                                <div class="row g-4">
-                                    
-                                    <!-- جدول الطلبات المنجزة بالتفصيل -->
-                                    <div class="col-md-7">
-                                        <h6 class="fw-bold text-success mb-3"><i class="fa-solid fa-screwdriver-wrench me-1"></i> تفاصيل المواعيد والطلبات المنجزة</h6>
-                                        @if(completedOrders.Any())
-                                        {
-                                            <div class="table-responsive bg-white rounded-3 shadow-sm">
-                                                <table class="table table-sm table-bordered text-center align-middle mb-0">
-                                                    <thead class="table-success">
-                                                        <tr>
-                                                            <th>رقم الطلب</th>
-                                                            <th>تاريخ التنفيذ</th>
-                                                            <th>رسوم الفحص/العمل</th>
-                                                            <th>العمولة (@commissionPercent%)</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @foreach(var o in completedOrders)
-                                                        {
-                                                            <tr>
-                                                                <td class="fw-bold text-muted">ORD-#@o.OrderId</td>
-                                                                <td dir="ltr" class="small fw-bold">@(o.ScheduledDate?.ToString("yyyy/MM/dd") ?? o.CreatedAt.ToString("yyyy/MM/dd"))</td>
-                                                                <td class="fw-bold">@o.EstimatedPrice ر.س</td>
-                                                                <td class="text-success fw-bold">@(o.EstimatedPrice * commissionRate) ر.س</td>
-                                                            </tr>
-                                                        }
-                                                    </tbody>
-                                                </table>
+                            <!-- Modal تصفية الكاش (كما هو مسبقاً) -->
+                            <div class="modal fade" id="settleModal_@tech.Id" tabindex="-1" aria-hidden="true">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content border-0 rounded-4 shadow-lg">
+                                        <div class="modal-header border-bottom-0 pb-0">
+                                            <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-vault me-2"></i> توريد كاش من الفني: @tech.Name</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <form asp-action="SettleTechCash" method="post">
+                                            <div class="modal-body py-4 text-start">
+                                                <input type="hidden" name="techId" value="@tech.Id" />
+
+                                                <div class="alert alert-info py-2 small fw-bold lh-lg">
+                                                    إجمالي الكاش (التراكمي) الذي استلمه الفني من العملاء بيده ولم يورده: <b>@tech.WalletBalance.ToString("N2") ريال</b>
+                                                </div>
+
+                                                <div class="mb-3 mt-3">
+                                                    <label class="form-label fw-bold">المبلغ المُورّد للخزنة الآن <span class="text-danger">*</span></label>
+                                                    <div class="input-group">
+                                                        <input type="number" step="0.01" name="amount" class="form-control fw-bold border-success text-success" required />
+                                                        <span class="input-group-text bg-light fw-bold">ر.س</span>
+                                                    </div>
+                                                </div>
+                                                <div class="mb-3">
+                                                    <label class="form-label fw-bold">البيان / ملاحظات</label>
+                                                    <input type="text" name="note" class="form-control bg-light fw-bold" placeholder="مثال: تصفية عهدة يومية" />
+                                                </div>
                                             </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="alert alert-light border text-center small fw-bold">لا توجد طلبات منجزة في هذه الفترة.</div>
-                                        }
-                                    </div>
-
-                                    <!-- جدول الخصومات والتوالف والسلف بالتفصيل -->
-                                    <div class="col-md-5">
-                                        <h6 class="fw-bold text-danger mb-3"><i class="fa-solid fa-minus-circle me-1"></i> تفاصيل المصروفات والخصومات والتوالف</h6>
-                                        @if(techExpensesList.Any())
-                                        {
-                                            <div class="table-responsive bg-white rounded-3 shadow-sm">
-                                                <table class="table table-sm table-bordered text-center align-middle mb-0">
-                                                    <thead class="table-danger">
-                                                        <tr>
-                                                            <th>التاريخ</th>
-                                                            <th>البيان (نوع الخصم)</th>
-                                                            <th>المبلغ المخصوم</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        @foreach(var e in techExpensesList)
-                                                        {
-                                                            <tr>
-                                                                <td dir="ltr" class="small fw-bold text-muted">@e.Date.ToString("yyyy/MM/dd")</td>
-                                                                <td class="fw-bold text-start">@e.Description</td>
-                                                                <td class="text-danger fw-bold">@e.Amount ر.س</td>
-                                                            </tr>
-                                                        }
-                                                    </tbody>
-                                                </table>
+                                            <div class="modal-footer border-top-0 pt-0">
+                                                <button type="submit" class="btn btn-success fw-bold w-100 py-2"><i class="fa-solid fa-check"></i> تأكيد التوريد للخزنة</button>
                                             </div>
-                                        }
-                                        else
-                                        {
-                                            <div class="alert alert-light border text-center small fw-bold">لا توجد خصومات أو مصروفات مسجلة في هذه الفترة.</div>
-                                        }
+                                        </form>
                                     </div>
-
                                 </div>
                             </div>
                         </td>
                     </tr>
                 }
-                
-                <!-- صف الإجمالي يظهر في الطباعة والشاشة -->
-                <tr class="table-dark text-white fw-bold fs-5">
-                    <td colspan="2" class="text-end pe-4">الإجمالي العام (للفترة المحددة):</td>
-                    <td class="text-white">@totalAllIncomes <span class="small">ر.س</span></td>
-                    <td class="text-success">@totalAllCommissions <span class="small">ر.س</span></td>
-                    <td class="text-danger">@totalAllExpenses <span class="small">ر.س</span></td>
-                    <td class="text-warning">@totalAllNet <span class="small">ر.س</span></td>
-                    <td></td>
-                    <td class="d-print-none"></td>
-                </tr>
             </tbody>
         </table>
-    </div>
-
-    <!-- أماكن التوقيع (تظهر فقط في الطباعة) -->
-    <div class="d-none d-print-flex justify-content-between mt-5 pt-5 px-5">
-        <div class="text-center">
-            <h5 class="fw-bold text-dark mb-4">توقيع الفني المُستلم</h5>
-            <p>.......................................</p>
-        </div>
-        <div class="text-center">
-            <h5 class="fw-bold text-dark mb-4">المحاسب المختص</h5>
-            <p>.......................................</p>
-        </div>
-        <div class="text-center">
-            <h5 class="fw-bold text-dark mb-4">اعتماد الإدارة</h5>
-            <p>.......................................</p>
-        </div>
     </div>
 </div>
 
@@ -265,31 +165,8 @@
     @if (TempData["SuccessMessage"] != null)
     {
         <script>
-            Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonText: 'حسناً', confirmButtonColor: '#f1950b' });
+            var msg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString()));
+            Swal.fire({ icon: 'success', title: 'تم', text: msg, confirmButtonColor: '#198754' });
         </script>
     }
 }
-
-<style>
-    .sys-input { border: 2px solid var(--sys-border); padding: 10px 15px; border-radius: 8px; font-weight: 600; background-color: var(--sys-bg); transition: all 0.3s;}
-    .sys-input:focus { border-color: var(--sys-primary); box-shadow: 0 0 0 0.25rem rgba(241, 149, 11, 0.15); background-color: #fff; outline: none; }
-    .shadow-inner { box-shadow: inset 0 2px 10px rgba(0,0,0,0.05); }
-    
-    /* تنسيقات الطباعة الاحترافية للتقرير */
-    @@media print {
-        body { background: white !important; margin: 0 !important; padding: 0 !important; }
-        .sys-sidebar, .sys-header, .d-print-none, #backToTop, .whatsapp-btn, .dataTables_wrapper .row { display: none !important; }
-        .sys-main { margin: 0 !important; padding: 20px !important; width: 100% !important; }
-        .sys-content { padding: 0 !important; }
-        .printable-card { box-shadow: none !important; border: 2px solid #000 !important; border-radius: 10px !important; padding: 30px !important; break-inside: avoid; width: 100%; }
-        .print-table { border-collapse: collapse !important; width: 100% !important; margin-bottom: 30px !important; }
-        .print-table th, .print-table td { border: 1px solid #000 !important; color: #000 !important; padding: 12px !important; background-color: transparent !important; }
-        .print-table th { background-color: #f8f9fa !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        * { color: #000 !important; }
-        .table-dark th, .table-dark td { background-color: #eee !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-        .print-badge { border: 1px solid #000 !important; background: transparent !important; color: #000 !important; border-radius: 5px !important; padding: 5px 10px !important; }
-        
-        /* إظهار التفاصيل المنسدلة إجبارياً في الطباعة ليكون التقرير كامل */
-        .collapse { display: table-row !important; visibility: visible !important; }
-    }
-</style>

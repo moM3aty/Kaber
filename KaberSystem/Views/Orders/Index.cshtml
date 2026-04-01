@@ -1,11 +1,19 @@
-﻿@model IEnumerable<KaberSystem.Models.Order>
+﻿@using KaberSystem.Models
+@using Microsoft.EntityFrameworkCore
+@inject ApplicationDbContext DbContext
+@model IEnumerable<KaberSystem.Models.Order>
 @{
     ViewData["Title"] = "إدارة الطلبات";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 
-    // 📌 الحصول على قائمة الطلبات التي توفرت قطعها من الـ ViewBag (تم تجهيزها في الـ Controller)
     var ordersWithReadyParts = ViewBag.OrdersWithReadyParts as List<int> ?? new List<int>();
     var techsList = ViewData["TechniciansList"] as IEnumerable<KaberSystem.Models.Technician>;
+
+    int techAlertCount = 0;
+    if (User.IsInRole("Technician"))
+    {
+        techAlertCount = DbContext.Orders.Count(o => o.Technician.Name == User.Identity.Name && (o.Status == OrderStatus.Assigned || o.Status == OrderStatus.Returned));
+    }
 }
 
 <div class="sys-page-header">
@@ -21,7 +29,7 @@
     }
 </div>
 
-@if (User.IsInRole("Technician") && ViewBag.NewOrdersCount != null && ViewBag.NewOrdersCount > 0)
+@if (User.IsInRole("Technician") && techAlertCount > 0)
 {
     <div class="alert alert-info border-0 border-start border-4 border-info shadow-sm mb-4 d-flex align-items-center bg-white">
         <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3 text-info">
@@ -29,7 +37,7 @@
         </div>
         <div>
             <h5 class="fw-bold text-dark mb-1">لديك مهام بانتظارك!</h5>
-            <p class="mb-0 text-muted fw-bold">يوجد (<span class="text-danger">@ViewBag.NewOrdersCount</span>) طلبات جديدة أو معادة من الإدارة للتعديل بانتظار استلامك.</p>
+            <p class="mb-0 text-muted fw-bold">يوجد (<span class="text-danger">@techAlertCount</span>) طلبات جديدة أو معادة من الإدارة للتعديل بانتظار استلامك.</p>
         </div>
     </div>
 }
@@ -69,11 +77,9 @@
             <tbody>
                 @foreach (var item in Model)
                 {
-                    // 📌 تجهيز رقم الواتساب للعميل
                     string phoneStr = item.PhoneNumber.StartsWith("0") ? item.PhoneNumber.Substring(1) : item.PhoneNumber;
                     string whatsappNumber = "966" + phoneStr;
 
-                    // 📌 التحقق مما إذا كان الطلب له قطع غيار جاهزة ليتم تلوينه
                     bool isReadyForInstall = ordersWithReadyParts.Contains(item.OrderId);
                     string rowClass = isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")) ? "ready-install-row" : "";
 
@@ -175,13 +181,13 @@
                                         </a>
                                     }
 
-                                    <!-- 📌 زر تحديد موعد التركيب يظهر فقط للطلبات الجاهزة -->
                                     @if (isReadyForInstall)
                                     {
+                                        <!-- 📌 تمرير EstimatedPrice القديمة لتسهيل التعديل -->
                                         <button type="button" class="btn btn-sm btn-success fw-bold px-2 rounded-3 text-white"
                                                 title="تحديد موعد للتركيب"
                                                 data-bs-toggle="modal" data-bs-target="#scheduleModal"
-                                                onclick="setupScheduleModal(@item.OrderId, '@item.CustomerName', @(item.TechnicianId ?? 0))">
+                                                onclick="setupScheduleModal(@item.OrderId, '@item.CustomerName', @(item.TechnicianId ?? 0), @item.EstimatedPrice)">
                                             <i class="fa-solid fa-calendar-plus"></i> موعد
                                         </button>
                                     }
@@ -209,7 +215,6 @@
     </div>
 </div>
 
-<!-- 📌 Modal تحديد موعد تركيب النواقص للطلب -->
 @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
 {
     <div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
@@ -246,6 +251,16 @@
                             </select>
                         </div>
 
+                        <!-- 📌 التحديث: السماح بتعديل أجور اليد للزيارة الثانية -->
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-dark">تحديث أجور اليد (رسوم الفحص + التركيب) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" name="updatedLaborFee" id="schedLaborFee" class="form-control fw-bold border-secondary bg-light" required />
+                                <span class="input-group-text bg-white fw-bold">ر.س</span>
+                            </div>
+                            <small class="text-muted fw-bold d-block mt-1 lh-sm">ضع إجمالي أجور اليد المطلوبة. إذا دفع العميل الفحص مسبقاً، لا تنسى تسجيله كـ "مقدم" داخل الطلب لكي يُخصم من الإجمالي.</small>
+                        </div>
+
                         <div class="mb-3">
                             <label class="form-label fw-bold text-dark">ملاحظات للفني (اختياري)</label>
                             <input type="text" name="adminNotes" class="form-control fw-bold border-secondary bg-light" placeholder="مثال: يرجى الذهاب للتركيب وتجربة الجهاز" />
@@ -262,7 +277,6 @@
 }
 
 <style>
-    /* تأثير النبض والألوان للطلبات الجاهزة للتركيب */
     .ready-install-row {
         background-color: rgba(25, 135, 84, 0.05) !important;
         border-right: 4px solid #198754 !important;
@@ -309,11 +323,13 @@
 
 @section Scripts {
     <script>
-        function setupScheduleModal(orderId, customerName, currentTechId) {
+        function setupScheduleModal(orderId, customerName, currentTechId, currentFee) {
             document.getElementById('schedOrderId').value = orderId;
             document.getElementById('schedCustomerName').innerText = customerName;
 
-            // تحديد الفني الافتراضي إذا كان الطلب مسنداً مسبقاً
+            // وضع أجور اليد القديمة كافتراضية لكي لا يبدأ من الصفر
+            document.getElementById('schedLaborFee').value = currentFee || 0;
+
             if(currentTechId && currentTechId > 0) {
                 document.getElementById('schedTechId').value = currentTechId;
             } else {

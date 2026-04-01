@@ -77,10 +77,11 @@ namespace KaberSystem.Controllers
             return View(orders);
         }
 
+        // 📌 التحديث: إضافة إمكانية تعديل أجور اليد (للزيرة الثانية) من خلال الكول سنتر
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,CallCenter")]
-        public async Task<IActionResult> ScheduleInstallation(int orderId, int technicianId, DateTime scheduledDate, string adminNotes)
+        public async Task<IActionResult> ScheduleInstallation(int orderId, int technicianId, DateTime scheduledDate, decimal updatedLaborFee, string adminNotes)
         {
             var order = await _context.Orders.FindAsync(orderId);
             if (order != null)
@@ -88,19 +89,24 @@ namespace KaberSystem.Controllers
                 order.TechnicianId = technicianId;
                 order.ScheduledDate = scheduledDate;
 
+                // تحديث أجور اليد للزيارة بناءً على ما يقرره الكول سنتر
+                order.EstimatedPrice = updatedLaborFee;
+                order.IsFeeApplied = updatedLaborFee > 0;
+
                 order.Status = OrderStatus.Assigned;
 
                 string noteHeader = string.IsNullOrEmpty(order.TechnicianNotes) ? "" : "\n----------------\n";
-                order.TechnicianNotes += $"{noteHeader}[تحديث الكول سنتر]: موعد تركيب القطعة يوم {scheduledDate:yyyy/MM/dd hh:mm tt}. ملاحظات: {adminNotes}";
+                order.TechnicianNotes += $"{noteHeader}[تحديث الكول سنتر]: تم جدولة زيارة تركيب يوم {scheduledDate:yyyy/MM/dd hh:mm tt}. أجور اليد الإجمالية المحدثة: {updatedLaborFee} ريال. ملاحظات: {adminNotes}";
 
-                LogAction("جدولة تركيب نواقص", $"تم تحديد موعد لتركيب القطع للطلب #{orderId} وإسناده للفني");
+                LogAction("جدولة تركيب نواقص", $"تم تحديد موعد لتركيب القطع للطلب #{orderId}. الأجرة المحدثة: {updatedLaborFee}");
                 await _context.SaveChangesAsync();
 
-                TempData["SuccessMessage"] = "تم تحديد موعد التركيب وتوجيه الطلب للفني بنجاح!";
+                TempData["SuccessMessage"] = "تم تحديد موعد التركيب وتحديث أجور اليد بنجاح!";
             }
             return RedirectToAction(nameof(Index));
         }
 
+        // ... (باقي دوال الكنترولر بدون تغيير، لا تنسى الاحتفاظ بها كما هي) ...
         [Authorize(Roles = "Admin,CallCenter")]
         public async Task<IActionResult> Create()
         {
@@ -562,11 +568,9 @@ namespace KaberSystem.Controllers
             return View(order);
         }
 
-        // 📌 التحديث الجذري لحل مشكلة الحذف للطلبات المتربطة بجدول الخزنة وغيرها
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
-            // جلب الطلب مع جميع الجداول المرتبطة به لكي لا نقع في خطأ (Foreign Key Constraint)
             var order = await _context.Orders
                 .Include(o => o.Invoices)
                 .Include(o => o.UsedSpareParts)
@@ -574,21 +578,18 @@ namespace KaberSystem.Controllers
 
             if (order != null)
             {
-                // 1. تنظيف وحذف حركات الخزنة المتعلقة بالطلب
                 var safeTransactions = await _context.SafeTransactions.Where(s => s.OrderId == id).ToListAsync();
                 if (safeTransactions.Any())
                 {
                     _context.SafeTransactions.RemoveRange(safeTransactions);
                 }
 
-                // 2. تنظيف طلبات النواقص من المخزن لهذا الطلب
                 var partRequests = await _context.OrderPartRequests.Where(pr => pr.OrderId == id).ToListAsync();
                 if (partRequests.Any())
                 {
                     _context.OrderPartRequests.RemoveRange(partRequests);
                 }
 
-                // 3. إرجاع القطع المسحوبة لعهدة الفني ثم حذفها من الفاتورة
                 if (order.UsedSpareParts != null && order.UsedSpareParts.Any())
                 {
                     foreach (var usedPart in order.UsedSpareParts)
@@ -617,17 +618,13 @@ namespace KaberSystem.Controllers
                     _context.UsedSpareParts.RemoveRange(order.UsedSpareParts);
                 }
 
-                // 4. حذف الفواتير
                 if (order.Invoices != null && order.Invoices.Any())
                 {
                     _context.Invoices.RemoveRange(order.Invoices);
                 }
 
-                // 5. أخيراً، حذف الطلب الأصلي
                 _context.Orders.Remove(order);
-
                 LogAction("حذف طلب", $"حذف الطلب #{order.OrderId} الخاص بالعميل {order.CustomerName} نهائياً وكل الحركات المرتبطة به");
-
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "تم حذف الطلب نهائياً من النظام مع إرجاع القطع للعهدة وتنظيف سجلاته المالية.";
             }

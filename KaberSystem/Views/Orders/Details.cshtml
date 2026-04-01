@@ -5,9 +5,13 @@
 
     string phone = Model.PhoneNumber.StartsWith("0") ? Model.PhoneNumber.Substring(1) : Model.PhoneNumber;
     string waNumber = "966" + phone;
+
+    // الحسابات المالية الدقيقة (تمنع تكرار الـ 150)
     decimal partsTotal = Model.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
-    decimal appliedFee = Model.IsFeeApplied ? Model.EstimatedPrice : 0;
-    decimal finalPrice = appliedFee + partsTotal - Model.AdvancePayment;
+    decimal appliedLaborFee = Model.IsFeeApplied ? Model.EstimatedPrice : 0; // هذا يمثل إجمالي أجرة اليد للطلب كاملاً (مثلاً 150 فحص + 100 تركيب = 250)
+
+    // الإجمالي النهائي يساوي: (القطع + إجمالي أجور اليد) ناقص (ما تم دفعه مقدماً كعربون في الزيارة الأولى)
+    decimal finalPrice = appliedLaborFee + partsTotal - Model.AdvancePayment;
 
     var partRequests = ViewBag.PartRequests as IEnumerable<KaberSystem.Models.OrderPartRequest>;
 }
@@ -21,7 +25,6 @@
         <a href="/Orders/Index" class="btn btn-outline-secondary fw-bold px-4 border-2 rounded-3 shadow-sm">
             <i class="fa-solid fa-arrow-right"></i> عودة
         </a>
-        <!-- 📌 زر عرض السعر تم إضافته هنا -->
         <a href="/Orders/Quotation/@Model.OrderId" target="_blank" class="btn btn-info fw-bold px-4 rounded-3 shadow-sm text-dark">
             <i class="fa-solid fa-file-signature"></i> عرض السعر
         </a>
@@ -85,10 +88,10 @@
         </div>
     </div>
 
-    <!-- التحكم بالحالة -->
+    <!-- التحكم بالحالة والتسعير -->
     <div class="col-lg-4">
         <div class="sys-card h-100 d-print-none text-center">
-            <h4 class="fw-bold mb-4 text-primary border-bottom pb-3"><i class="fa-solid fa-bars-progress me-2"></i> التحكم بالحالة</h4>
+            <h4 class="fw-bold mb-4 text-primary border-bottom pb-3"><i class="fa-solid fa-bars-progress me-2"></i> التحكم والميزانية</h4>
 
             <form asp-action="UpdateStatus" method="post" class="mb-4 bg-light p-3 rounded-3 border text-start">
                 <input type="hidden" name="id" value="@Model.OrderId" />
@@ -113,16 +116,17 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="fw-bold mb-2 text-dark small">تطبيق رسوم الفحص:</label>
-                    <select name="isFeeApplied" class="form-select fw-bold border-secondary">
-                        <option value="1" selected="@(Model.IsFeeApplied)">نعم (@Model.EstimatedPrice ريال)</option>
+                    <label class="fw-bold mb-1 text-dark small">إجمالي أجور اليد المطبقة (فحص + تركيب):</label>
+                    <select name="isFeeApplied" class="form-select fw-bold border-secondary mb-1">
+                        <option value="1" selected="@(Model.IsFeeApplied)">تطبيق الأجرة (@Model.EstimatedPrice ريال)</option>
                         <option value="0" selected="@(!Model.IsFeeApplied)">لا (إعفاء/ضمان)</option>
                     </select>
+                    <small class="text-muted" style="font-size: 11px;">ملاحظة: هذا الرقم يمثل <b>كامل</b> أجرة الفني للزيارات.</small>
                 </div>
 
                 <div class="mb-3">
                     <label class="fw-bold mb-2 text-dark small">ملاحظات العمل:</label>
-                    <textarea name="technicianNotes" class="form-control fw-bold border-secondary" rows="3">@Model.TechnicianNotes</textarea>
+                    <textarea name="technicianNotes" class="form-control fw-bold border-secondary" rows="2">@Model.TechnicianNotes</textarea>
                 </div>
 
                 <button type="submit" class="btn btn-primary fw-bold w-100 py-2"><i class="fa-solid fa-save"></i> حفظ وتحديث</button>
@@ -251,7 +255,7 @@
             <div class="row g-4">
                 <div class="col-md-7">
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold text-dark m-0">قطع الغيار المستخدمة (من عهدة الفني)</h6>
+                        <h6 class="fw-bold text-dark m-0">قطع الغيار المستخدمة (تم تركيبها)</h6>
                         @if ((Model.Status != KaberSystem.Models.OrderStatus.Completed && Model.Status != KaberSystem.Models.OrderStatus.Approved) || User.IsInRole("Admin"))
                         {
                             <button type="button" class="btn btn-sm btn-outline-primary fw-bold d-print-none" data-bs-toggle="modal" data-bs-target="#addPartModal">
@@ -297,11 +301,28 @@
                 </div>
 
                 <div class="col-md-5">
-                    <h6 class="fw-bold text-dark mb-3 d-print-none">الخلاصة المالية والدفع</h6>
+                    <h6 class="fw-bold text-dark mb-3 d-print-none">الخلاصة المالية (التي تمنع الازدواجية)</h6>
                     <div class="p-4 border rounded-4 bg-light shadow-sm print-no-bg">
-                        <div class="d-flex justify-content-between mb-3 border-bottom pb-3"><span class="fw-bold text-muted">رسوم الفحص:</span><span class="fw-bold text-dark fs-5">@appliedFee.ToString("N2") ريال</span></div>
-                        <div class="d-flex justify-content-between mb-3 border-bottom pb-3"><span class="fw-bold text-muted">قطع الغيار:</span><span class="fw-bold text-dark fs-5">@partsTotal.ToString("N2") ريال</span></div>
-                        <div class="d-flex justify-content-between align-items-center mt-4"><span class="fw-bold text-dark fs-4">المبلغ المستحق:</span><span class="fw-bold text-primary fs-3 border border-primary px-3 py-1 rounded-3">@finalPrice.ToString("N2") ريال</span></div>
+                        <!-- 1. إجمالي أجور اليد -->
+                        <div class="d-flex justify-content-between mb-2 pb-2"><span class="fw-bold text-muted">إجمالي أجور اليد:</span><span class="fw-bold text-dark fs-6">@appliedLaborFee.ToString("N2") ريال</span></div>
+
+                        <!-- 2. إجمالي القطع -->
+                        <div class="d-flex justify-content-between mb-2 pb-2"><span class="fw-bold text-muted">إجمالي قطع الغيار:</span><span class="fw-bold text-dark fs-6">@partsTotal.ToString("N2") ريال</span></div>
+
+                        <!-- 3. العربون الذي تم دفعه -->
+                        @if (Model.AdvancePayment > 0)
+                        {
+                            <div class="d-flex justify-content-between mb-3 text-danger border-bottom pb-3">
+                                <span class="fw-bold">المدفوع مقدماً (عربون فحص):</span>
+                                <span class="fw-bold fs-6">- @Model.AdvancePayment.ToString("N2") ريال</span>
+                            </div>
+                        }
+
+                        <!-- 4. الصافي المتبقي للدفع -->
+                        <div class="d-flex justify-content-between align-items-center mt-3">
+                            <span class="fw-bold text-dark fs-5">المتبقي سداده الآن:</span>
+                            <span class="fw-bold text-primary fs-3 border border-primary px-3 py-1 rounded-3">@finalPrice.ToString("N2") ريال</span>
+                        </div>
                     </div>
 
                     @if (Model.Status == KaberSystem.Models.OrderStatus.Completed || Model.Status == KaberSystem.Models.OrderStatus.Approved)
@@ -322,7 +343,6 @@
                                     @if (!string.IsNullOrEmpty(Model.PaymentReceiptPath))
                                     {
                                         <br>
-                            
                                         <a href="@Model.PaymentReceiptPath" target="_blank" class="btn btn-sm btn-light mt-3 fw-bold text-success border"><i class="fa-solid fa-image"></i> عرض الإيصال</a>
                                     }
                                 </div>
@@ -389,7 +409,7 @@
     </div>
 </div>
 
-<!-- Modal 1 -->
+<!-- Modal 1: طلب حجز قطعة من المخزن -->
 <div class="modal fade d-print-none" id="requestWarehouseModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 rounded-4 shadow-lg">
@@ -426,7 +446,7 @@
     </div>
 </div>
 
-<!-- Modal 2 -->
+<!-- Modal 2: طلب شراء خارجي -->
 <div class="modal fade d-print-none" id="requestPurchaseModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 rounded-4 shadow-lg">
@@ -454,7 +474,7 @@
     </div>
 </div>
 
-<!-- Modal 3 -->
+<!-- 📌 التحديث: إضافة سعر القطعة داخل القائمة المنسدلة للتركيب -->
 <div class="modal fade d-print-none" id="addPartModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 rounded-4 shadow-lg">
@@ -471,9 +491,9 @@
                             <option value="">-- اختر --</option>
                             @if (Model.Technician?.Inventory != null)
                             {
-                                foreach (var p in Model.Technician.Inventory)
+                                foreach (var p in Model.Technician.Inventory.Where(x => x.Quantity > 0))
                                 {
-                                    <option value="@p.PartId">@(p.SparePart?.Name ?? "قطعة غير مسماة") (العهدة: @p.Quantity)</option>
+                                    <option value="@p.PartId">@(p.SparePart?.Name ?? "قطعة غير مسماة") | السعر: @(p.SparePart?.SellingPrice ?? 0) ريال (العهدة: @p.Quantity)</option>
                                 }
                             }
                         </select>
@@ -508,23 +528,73 @@
 
 <style>
     @@keyframes pulse {
-        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); }
-        70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); }
-        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+        0% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
+        }
+
+        70% {
+            transform: scale(1.02);
+            box-shadow: 0 0 0 10px rgba(25, 135, 84, 0);
+        }
+
+        100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
+        }
     }
 
-    .sys-card { border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-    .form-check-input { width: 1.5em; height: 1.5em; cursor: pointer; }
-    .btn-outline-success:hover, .btn-outline-primary:hover, .btn-outline-info:hover { color: white !important; }
-    label.btn { transition: all 0.2s ease-in-out; }
-    label.btn:hover { transform: translateY(-2px); }
+    .sys-card {
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+
+    .form-check-input {
+        width: 1.5em;
+        height: 1.5em;
+        cursor: pointer;
+    }
+
+    .btn-outline-success:hover, .btn-outline-primary:hover, .btn-outline-info:hover {
+        color: white !important;
+    }
+
+    label.btn {
+        transition: all 0.2s ease-in-out;
+    }
+
+        label.btn:hover {
+            transform: translateY(-2px);
+        }
 
     @@media print {
-        body { background: white !important; }
-        .sys-sidebar, .sys-header, .d-print-none { display: none !important; }
-        .sys-main { margin: 0 !important; padding: 15px !important; width: 100% !important; }
-        .printable-card { box-shadow: none !important; border: 1px solid #000 !important; padding: 20px !important; }
-        .print-table th, .print-table td { border: 1px solid #000 !important; color: #000 !important; }
-        .print-no-bg { background-color: transparent !important; }
+        body {
+            background: white !important;
+        }
+
+        .sys-sidebar, .sys-header, .d-print-none {
+            display: none !important;
+        }
+
+        .sys-main {
+            margin: 0 !important;
+            padding: 15px !important;
+            width: 100% !important;
+        }
+
+        .printable-card {
+            box-shadow: none !important;
+            border: 1px solid #000 !important;
+            padding: 20px !important;
+        }
+
+        .print-table th, .print-table td {
+            border: 1px solid #000 !important;
+            color: #000 !important;
+        }
+
+        .print-no-bg {
+            background-color: transparent !important;
+        }
     }
 </style>

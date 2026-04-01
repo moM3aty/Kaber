@@ -19,7 +19,6 @@
         <p class="sys-page-desc">مراقبة الأرباح والمصروفات الخاصة بالشهر المحدد، مع ترحيل مديونيات الفنيين.</p>
     </div>
     <div class="d-flex gap-3 align-items-center mt-3 mt-md-0">
-        <!-- 📌 أداة الفلترة الشهرية (تحدث الصفحة تلقائياً عند تغيير الشهر) -->
         <form method="get" asp-action="Index" class="m-0 bg-white p-1 rounded-pill shadow-sm border border-success">
             <div class="d-flex align-items-center px-2">
                 <i class="fa-regular fa-calendar-days text-success me-2"></i>
@@ -27,20 +26,12 @@
                 <input type="month" name="monthYear" value="@currentMonthYear" class="form-control form-control-sm fw-bold border-0 text-success" style="box-shadow: none; cursor: pointer;" onchange="this.form.submit()" />
             </div>
         </form>
-
-        <a href="/Accounting/Invoices" class="sys-btn btn-outline-dark fw-bold bg-white"><i class="fa-solid fa-file-invoice-dollar"></i> الفواتير</a>
-        <a href="/Accounting/Expenses" class="sys-btn btn-danger fw-bold"><i class="fa-solid fa-money-bill-wave"></i> المصروفات</a>
+        <!-- 📌 زر لفتح شيت الإكسل الشامل (Master Ledger) -->
+        <a href="/Accounting/MasterLedger" class="btn btn-lg btn-outline-primary fw-bold px-3 rounded-pill"><i class="fa-solid fa-file-excel"></i> الدفتر الشامل (Excel)</a>
     </div>
 </div>
 
-<div class="alert alert-success border-0 border-start border-4 border-success shadow-sm mb-4 bg-white fw-bold">
-    <i class="fa-solid fa-chart-pie fs-4 text-success me-2 align-middle"></i>
-    الأرقام المعروضة في البطاقات أدناه تمثل <b>الحركة المالية لشهر (@monthName) فقط</b>.
-</div>
-
-<!-- 📌 قائمة الدخل (Income Statement View) للشهر المحدد -->
 <div class="row g-4 mb-5">
-    <!-- 1. إجمالي المبيعات -->
     <div class="col-md-3">
         <div class="sys-card bg-primary bg-opacity-10 border-0 h-100 p-4 text-center">
             <i class="fa-solid fa-sack-dollar fs-1 text-primary mb-2"></i>
@@ -48,8 +39,6 @@
             <h3 class="fw-bold text-dark m-0">@totalRevenue.ToString("N2") <span class="fs-6">ر.س</span></h3>
         </div>
     </div>
-
-    <!-- 2. تكلفة البضاعة المباعة -->
     <div class="col-md-3">
         <div class="sys-card bg-secondary bg-opacity-10 border-0 h-100 p-4 text-center" style="border-top: 4px solid #6c757d !important;">
             <i class="fa-solid fa-boxes-packing fs-1 text-secondary mb-2"></i>
@@ -58,8 +47,6 @@
             <small class="text-muted fw-bold d-block mt-1">أسعار شراء القطع المستهلكة بالشهر</small>
         </div>
     </div>
-
-    <!-- 3. مجمل الربح -->
     <div class="col-md-3">
         <div class="sys-card bg-info bg-opacity-10 border-0 h-100 p-4 text-center">
             <i class="fa-solid fa-scale-balanced fs-1 text-info mb-2"></i>
@@ -67,8 +54,6 @@
             <h3 class="fw-bold text-dark m-0">@grossProfit.ToString("N2") <span class="fs-6">ر.س</span></h3>
         </div>
     </div>
-
-    <!-- 4. المصروفات التشغيلية والتوالف -->
     <div class="col-md-3">
         <div class="sys-card bg-danger bg-opacity-10 border-0 h-100 p-4 text-center">
             <i class="fa-solid fa-arrow-trend-down fs-1 text-danger mb-2"></i>
@@ -78,7 +63,6 @@
     </div>
 </div>
 
-<!-- 📌 صافي الربح النهائي -->
 <div class="row justify-content-center mb-5">
     <div class="col-md-8">
         <div class="sys-card h-100 d-flex flex-column align-items-center p-5 text-white shadow-lg position-relative overflow-hidden @(netProfit >= 0 ? "bg-success" : "bg-danger")">
@@ -98,22 +82,20 @@
     </div>
 </div>
 
+<!-- 📌 ملخص مبيعات وحسابات الفنيين المحدث -->
 <div class="sys-card mt-4">
-    <h4 class="fw-bold text-dark border-bottom pb-3 mb-4"><i class="fa-solid fa-users-gear text-primary me-2"></i> ملخص حسابات وعُهد الفنيين</h4>
-
-    <div class="alert alert-warning py-2 small fw-bold">
-        <i class="fa-solid fa-triangle-exclamation me-1"></i> <b>توضيح محاسبي:</b> المبيعات والخصومات في الجدول تخص شهر <b>(@monthName)</b> فقط. أما (الكاش في اليد) و (إجمالي المديونية) فهي <b>أرصدة تراكمية مرحّلة</b> من كل الشهور السابقة والحالية حتى يتم تسويتها.
-    </div>
+    <h4 class="fw-bold text-dark border-bottom pb-3 mb-4"><i class="fa-solid fa-users-gear text-primary me-2"></i> ملخص مبيعات وحسابات الفنيين</h4>
 
     <div class="table-responsive">
         <table class="table table-hover align-middle text-center sys-table w-100">
             <thead class="table-light">
                 <tr>
                     <th>اسم الفني</th>
-                    <th>مبيعات الفني<br><span class="text-primary small">(هذا الشهر)</span></th>
-                    <th>سلف وخصومات<br><span class="text-danger small">(هذا الشهر)</span></th>
-                    <th>إجمالي المديونية التراكمية<br><span class="text-danger small">(مرحّلة)</span></th>
-                    <th>الكاش المُحصّل باليد<br><span class="text-primary small">(مرحّل للعهدة)</span></th>
+                    <th>إجمالي المبيعات<br><span class="text-muted small">(هذا الشهر)</span></th>
+                    <th>مبيعات أجور اليد<br><span class="text-success small">(تُحسب منها العمولة)</span></th>
+                    <th>مبيعات قطع الغيار<br><span class="text-info small">(لا تدخل بالعمولة)</span></th>
+                    <th>إجمالي السلف / مديونية<br><span class="text-danger small">(مرحّلة)</span></th>
+                    <th>العهدة (الكاش المُحصّل)<br><span class="text-primary small">(مرحّلة)</span></th>
                     <th>إجراءات</th>
                 </tr>
             </thead>
@@ -122,13 +104,13 @@
                 {
                     <tr>
                         <td class="fw-bold text-start ps-3"><i class="fa-solid fa-user-tie text-muted me-2"></i> @tech.Name</td>
-                        <td class="fw-bold text-success">@tech.GrossIncome.ToString("N2")</td>
-                        <td class="fw-bold text-danger border-end">@tech.TotalDeductions.ToString("N2")</td>
 
-                        <!-- المديونيات المرحلة -->
+                        <!-- 📌 المتغيرات الجديدة بالأسماء الصحيحة -->
+                        <td class="fw-bold text-dark fs-6">@tech.TotalIncome.ToString("N2")</td>
+                        <td class="fw-bold text-success fs-6 bg-success bg-opacity-10 border-end border-start">@tech.LaborSales.ToString("N2")</td>
+                        <td class="fw-bold text-info text-dark">@tech.PartsSales.ToString("N2")</td>
+
                         <td class="fw-bold text-danger">@tech.AllTimeDeductions.ToString("N2")</td>
-
-                        <!-- الكاش المرحل -->
                         <td class="fw-bold text-primary bg-primary bg-opacity-10 rounded-3">@tech.WalletBalance.ToString("N2")</td>
                         <td>
                             <button type="button" class="btn btn-sm btn-outline-success fw-bold px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#settleModal_@tech.Id">

@@ -32,6 +32,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudGluZ1xJbnZvaWNlcy5jc2h0bWw=
 build_metadata.AdditionalFiles.CssScope = 
 
+[D:/Dev/Kaber/KaberSystem/Views/Accounting/MasterLedger.cshtml]
+build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudGluZ1xNYXN0ZXJMZWRnZXIuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
 [D:/Dev/Kaber/KaberSystem/Views/Accounting/TechnicianCommissions.cshtml]
 build_metadata.AdditionalFiles.TargetPath = Vmlld3NcQWNjb3VudGluZ1xUZWNobmljaWFuQ29tbWlzc2lvbnMuY3NodG1s
 build_metadata.AdditionalFiles.CssScope = 
