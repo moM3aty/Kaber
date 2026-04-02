@@ -1,4 +1,5 @@
-﻿@using KaberSystem.Models
+﻿<!-- مسار الملف: Views/Orders/Index.cshtml -->
+@using KaberSystem.Models
 @using Microsoft.EntityFrameworkCore
 @inject ApplicationDbContext DbContext
 @model IEnumerable<KaberSystem.Models.Order>
@@ -16,53 +17,61 @@
     }
 }
 
-<div class="sys-page-header">
-    <div>
-        <h1 class="sys-page-title">الطلبات الواردة</h1>
-        <p class="sys-page-desc">إدارة جميع طلبات الصيانة ومراجعتها وتتبع حالتها</p>
+<!-- الرأس العلوي -->
+<div class="d-flex justify-content-between align-items-center mb-5 fade-in-up">
+    <div class="d-flex align-items-center gap-3">
+        <div class="bg-white text-primary rounded-circle d-flex justify-content-center align-items-center shadow-sm" style="width: 55px; height: 55px; font-size: 22px;">
+            <i class="fa-solid fa-headset"></i>
+        </div>
+        <div>
+            <h2 class="fw-bolder text-dark mb-1" style="letter-spacing: -0.5px;">الطلبات الواردة</h2>
+            <p class="text-muted fw-bold mb-0">إدارة جميع طلبات الصيانة ومراجعتها وتتبع حالتها بدقة</p>
+        </div>
     </div>
     @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
     {
-        <a href="/Orders/Create" class="sys-btn sys-btn-primary">
-            <i class="fa-solid fa-plus"></i> إنشاء طلب جديد
+        <a href="/Orders/Create" class="btn btn-primary fw-bolder px-4 rounded-pill shadow-sm hover-elevate py-2">
+            <i class="fa-solid fa-plus me-1"></i> إنشاء طلب جديد
         </a>
     }
 </div>
 
 @if (User.IsInRole("Technician") && techAlertCount > 0)
 {
-    <div class="alert alert-info border-0 border-start border-4 border-info shadow-sm mb-4 d-flex align-items-center bg-white">
-        <div class="bg-info bg-opacity-10 p-3 rounded-circle me-3 text-info">
-            <i class="fa-solid fa-bell fa-shake fs-3"></i>
-        </div>
-        <div>
-            <h5 class="fw-bold text-dark mb-1">لديك مهام بانتظارك!</h5>
-            <p class="mb-0 text-muted fw-bold">يوجد (<span class="text-danger">@techAlertCount</span>) طلبات جديدة أو معادة من الإدارة للتعديل بانتظار استلامك.</p>
+    <div class="premium-alert info fade-in-up">
+        <div class="icon-box"><i class="fa-solid fa-bell fa-shake"></i></div>
+        <div class="content">
+            <h5 class="fw-bolder mb-1">لديك مهام بانتظارك!</h5>
+            <p class="mb-0 fw-bold">يوجد (<span class="text-danger fs-5">@techAlertCount</span>) طلبات جديدة أو معادة من الإدارة للتعديل بانتظار استلامك والبدء بها.</p>
         </div>
     </div>
 }
 
-<div class="sys-card mb-4 bg-light border-0">
-    <form method="get" asp-action="Index" class="row g-3 align-items-center">
+<!-- الفلترة والبحث -->
+<div class="premium-card mb-4 fade-in-up border-0 bg-transparent shadow-none" style="animation-delay: 0.1s;">
+    <form method="get" asp-action="Index" class="row g-3">
         <div class="col-md-9">
-            <div class="input-group input-group-lg shadow-sm">
-                <span class="input-group-text bg-white border-end-0 text-primary"><i class="fa-solid fa-magnifying-glass"></i></span>
-                <input type="text" name="searchQuery" value="@ViewData["CurrentSearch"]" class="form-control border-start-0 fw-bold" placeholder="ابحث باسم العميل أو رقم الجوال..." />
+            <div class="position-relative">
+                <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="top: 50%; right: 20px; transform: translateY(-50%);"></i>
+                <input type="text" name="searchQuery" value="@ViewData["CurrentSearch"]" class="premium-input form-control w-100 pe-5 shadow-sm" placeholder="ابحث باسم العميل أو رقم الجوال السريع..." style="border: 1px solid #e2e8f0; background: #fff;" />
             </div>
         </div>
         <div class="col-md-3">
-            <button type="submit" class="btn btn-primary btn-lg w-100 fw-bold shadow-sm">بحث</button>
+            <button type="submit" class="btn btn-dark w-100 fw-bolder py-3 rounded-pill shadow-sm hover-elevate">
+                <i class="fa-solid fa-search me-1 text-warning"></i> بحث بالطلبات
+            </button>
         </div>
     </form>
 </div>
 
-<div class="sys-card">
-    <div class="table-responsive">
-        <table class="table align-middle sys-table text-center w-100">
-            <thead class="table-light">
+<!-- جدول الطلبات -->
+<div class="premium-card fade-in-up" style="animation-delay: 0.2s;">
+    <div class="table-responsive p-0">
+        <table class="table premium-table align-middle text-center mb-0 w-100">
+            <thead>
                 <tr>
-                    <th>رقم الطلب</th>
-                    <th>اسم العميل</th>
+                    <th class="text-start ps-4">رقم الطلب</th>
+                    <th class="text-start">اسم العميل</th>
                     <th>التواصل</th>
                     <th>نوع الطلب</th>
                     <th>تاريخ الطلب</th>
@@ -84,19 +93,23 @@
                     string rowClass = isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")) ? "ready-install-row" : "";
 
                     <tr class="@rowClass">
-                        <td><span class="fw-bold px-2 py-1 bg-light border rounded text-primary">#@item.OrderId</span></td>
-                        <td class="fw-bold text-dark text-start">
+                        <td class="text-start ps-4">
+                            <span class="premium-badge default fs-6">#@item.OrderId</span>
+                        </td>
+                        <td class="fw-bolder text-dark text-start">
                             @item.CustomerName
                             @if (isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")))
                             {
-                                <div class="mt-1"><span class="badge bg-success pulse-badge"><i class="fa-solid fa-box-open"></i> القطعة متوفرة وجاهزة</span></div>
+                                <div class="mt-2">
+                                    <span class="premium-badge success shadow-sm payment-btn-pulse"><i class="fa-solid fa-box-open me-1"></i> القطعة متوفرة وجاهزة</span>
+                                </div>
                             }
                         </td>
 
                         <td dir="ltr" class="fw-bold">
-                            <div class="d-flex align-items-center justify-content-center gap-2">
-                                <a href="tel:@item.PhoneNumber" class="text-decoration-none text-dark hover-primary-text">@item.PhoneNumber</a>
-                                <a href="https://wa.me/@whatsappNumber" target="_blank" class="btn btn-sm btn-success rounded-circle px-2 py-1 shadow-sm" title="محادثة واتساب">
+                            <div class="d-flex align-items-center justify-content-center gap-3">
+                                <a href="tel:@item.PhoneNumber" class="text-decoration-none text-muted hover-primary-text">@item.PhoneNumber</a>
+                                <a href="https://wa.me/@whatsappNumber" target="_blank" class="btn-whatsapp-icon shadow-sm" title="محادثة واتساب">
                                     <i class="fa-brands fa-whatsapp"></i>
                                 </a>
                             </div>
@@ -106,33 +119,34 @@
                             @switch (item.Type)
                             {
                                 case KaberSystem.Models.OrderType.Maintenance:
-                                    <span class="badge bg-primary text-white"><i class="fa-solid fa-wrench"></i> صيانة</span>
+                                    <span class="premium-badge primary-light"><i class="fa-solid fa-wrench me-1"></i> صيانة</span>
                                     break;
                                 case KaberSystem.Models.OrderType.NewInstallation:
-                                    <span class="badge bg-success text-white"><i class="fa-solid fa-plug"></i> تركيب جديد</span>
+                                    <span class="premium-badge success"><i class="fa-solid fa-plug me-1"></i> تركيب جديد</span>
                                     break;
                                 case KaberSystem.Models.OrderType.Warranty:
-                                    <span class="badge bg-warning text-dark"><i class="fa-solid fa-shield"></i> ضمان</span>
+                                    <span class="premium-badge warning"><i class="fa-solid fa-shield me-1"></i> ضمان</span>
                                     break;
                                 case KaberSystem.Models.OrderType.ACWashing:
-                                    <span class="badge bg-info text-dark"><i class="fa-solid fa-shower"></i> غسيل مكيفات</span>
+                                    <span class="premium-badge info"><i class="fa-solid fa-shower me-1"></i> غسيل مكيفات</span>
                                     break;
                             }
                         </td>
-                        <td class="text-muted fw-bold">@item.CreatedAt.ToString("yyyy-MM-dd hh:mm tt")</td>
+                        <td class="text-muted fw-bold small">@item.CreatedAt.ToString("yyyy-MM-dd hh:mm tt")</td>
 
                         @if (!User.IsInRole("Technician"))
                         {
                             <td>
                                 @if (item.Technician != null)
                                 {
-                                    <span class="badge bg-light text-dark border border-secondary rounded-pill px-3 py-2">
-                                        <i class="fa-solid fa-user-gear text-primary me-1"></i> @item.Technician.Name
-                                    </span>
+                                    <div class="d-inline-flex align-items-center bg-light border rounded-pill px-3 py-1">
+                                        <i class="fa-solid fa-user-gear text-primary me-2 small"></i>
+                                        <span class="text-dark fw-bold small">@item.Technician.Name</span>
+                                    </div>
                                 }
                                 else
                                 {
-                                    <span class="badge bg-light text-muted border rounded-pill px-3 py-2"><i class="fa-solid fa-clock text-warning"></i> بانتظار التعيين</span>
+                                    <span class="premium-badge warning"><i class="fa-solid fa-clock me-1"></i> بانتظار التعيين</span>
                                 }
                             </td>
                         }
@@ -141,34 +155,34 @@
                             @switch (item.Status)
                             {
                                 case KaberSystem.Models.OrderStatus.New:
-                                    <span class="badge bg-secondary rounded-pill px-3 py-2">جديد</span>
+                                    <span class="premium-badge default shadow-sm">جديد</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.Assigned:
-                                    <span class="badge bg-primary rounded-pill px-3 py-2">تم التعيين</span>
+                                    <span class="premium-badge primary shadow-sm">تم التعيين</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.Confirmed:
-                                    <span class="badge bg-warning text-dark rounded-pill px-3 py-2">مؤكد</span>
+                                    <span class="premium-badge warning shadow-sm">مؤكد</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.InProgress:
-                                    <span class="badge bg-info rounded-pill px-3 py-2">قيد التنفيذ</span>
+                                    <span class="premium-badge info shadow-sm">قيد التنفيذ</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.Completed:
-                                    <span class="badge bg-dark rounded-pill px-3 py-2"><i class="fa-solid fa-clock"></i> للمراجعة</span>
+                                    <span class="premium-badge dark shadow-sm"><i class="fa-solid fa-clock me-1"></i> للمراجعة</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.Approved:
-                                    <span class="badge bg-success rounded-pill px-3 py-2"><i class="fa-solid fa-check-double"></i> معتمد نهائي</span>
+                                    <span class="premium-badge success shadow-sm"><i class="fa-solid fa-check-double me-1"></i> معتمد نهائي</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.Returned:
-                                    <span class="badge bg-danger rounded-pill px-3 py-2"><i class="fa-solid fa-rotate-left"></i> مُرجع للفني</span>
+                                    <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-rotate-left me-1"></i> مُرجع للفني</span>
                                     break;
                                 case KaberSystem.Models.OrderStatus.Cancelled:
-                                    <span class="badge bg-danger rounded-pill px-3 py-2"><i class="fa-solid fa-ban"></i> ملغي</span>
+                                    <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-ban me-1"></i> ملغي</span>
                                     break;
                             }
                         </td>
                         <td>
-                            <div class="d-flex gap-2 justify-content-center">
-                                <a href="/Orders/Details/@item.OrderId" class="btn btn-sm btn-outline-primary fw-bold px-3 rounded-3" title="الاستلام والمراجعة">
+                            <div class="d-flex gap-2 justify-content-center align-items-center">
+                                <a href="/Orders/Details/@item.OrderId" class="btn btn-sm btn-light border text-primary fw-bold px-3 rounded-pill hover-elevate" title="الاستلام والمراجعة">
                                     <i class="fa-solid fa-folder-open me-1"></i> فتح
                                 </a>
 
@@ -176,31 +190,41 @@
                                 {
                                     @if (item.Status == KaberSystem.Models.OrderStatus.New)
                                     {
-                                        <a href="/Orders/Assign/@item.OrderId" class="btn btn-sm btn-success fw-bold px-2 text-white rounded-3" title="تعيين فني">
+                                        <a href="/Orders/Assign/@item.OrderId" class="btn btn-sm btn-primary fw-bold text-white rounded-circle hover-elevate d-flex justify-content-center align-items-center shadow-sm" style="width: 35px; height: 35px;" title="تعيين فني">
                                             <i class="fa-solid fa-user-plus"></i>
                                         </a>
                                     }
 
                                     @if (isReadyForInstall)
                                     {
-                                        <!-- 📌 تمرير EstimatedPrice القديمة لتسهيل التعديل -->
-                                        <button type="button" class="btn btn-sm btn-success fw-bold px-2 rounded-3 text-white"
+                                        <button type="button" class="btn btn-sm btn-success fw-bold px-3 rounded-pill text-white hover-elevate shadow-sm"
                                                 title="تحديد موعد للتركيب"
                                                 data-bs-toggle="modal" data-bs-target="#scheduleModal"
-                                                onclick="setupScheduleModal(@item.OrderId, '@item.CustomerName', @(item.TechnicianId ?? 0), @item.EstimatedPrice)">
-                                            <i class="fa-solid fa-calendar-plus"></i> موعد
+                                                onclick="setupScheduleModal(@item.OrderId, '@Html.Raw(item.CustomerName.Replace("'", "\\'"))', @(item.TechnicianId ?? 0))">
+                                            <i class="fa-solid fa-calendar-plus me-1"></i> موعد جديد
                                         </button>
                                     }
                                 }
 
                                 @if (User.IsInRole("Admin"))
                                 {
-                                    <a href="/Orders/Edit/@item.OrderId" class="btn btn-sm btn-outline-warning fw-bold text-dark px-2 rounded-3" title="تعديل الطلب">
-                                        <i class="fa-solid fa-pen"></i>
-                                    </a>
-                                    <button type="button" onclick="confirmAdminDelete('/Orders/Delete/@item.OrderId', 'الطلب رقم #@item.OrderId')" class="btn btn-sm btn-outline-danger fw-bold px-2 rounded-3" title="حذف الطلب">
-                                        <i class="fa-solid fa-trash"></i>
-                                    </button>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-light border rounded-circle text-muted hover-elevate d-flex justify-content-center align-items-center" type="button" data-bs-toggle="dropdown" style="width: 35px; height: 35px;">
+                                            <i class="fa-solid fa-ellipsis-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu shadow-lg border-0 rounded-4 text-end p-2 mt-2">
+                                            <li>
+                                                <a href="/Orders/Edit/@item.OrderId" class="dropdown-item fw-bold text-dark rounded-3 mb-1">
+                                                    <i class="fa-solid fa-pen text-warning me-2"></i> تعديل الطلب
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <button type="button" onclick="confirmAdminDelete('/Orders/Delete/@item.OrderId', 'الطلب رقم #@item.OrderId')" class="dropdown-item fw-bold text-danger rounded-3">
+                                                    <i class="fa-solid fa-trash text-danger me-2"></i> حذف نهائي
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
                                 }
                             </div>
                         </td>
@@ -208,38 +232,49 @@
                 }
                 @if (!Model.Any())
                 {
-                    <tr><td colspan="8" class="text-muted fw-bold py-5">لا توجد طلبات مسجلة لعرضها.</td></tr>
+                    <tr>
+                        <td colspan="8" class="text-center p-5">
+                            <i class="fa-solid fa-box-open fs-1 text-muted opacity-25 mb-3 d-block"></i>
+                            <h6 class="text-muted fw-bold m-0">لا توجد طلبات مطابقة للبحث.</h6>
+                        </td>
+                    </tr>
                 }
             </tbody>
         </table>
     </div>
 </div>
 
+<!-- Modal تحديد موعد تركيب -->
 @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
 {
     <div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 rounded-4 shadow-lg">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-calendar-check me-2"></i> تحديد موعد تركيب النواقص</h5>
+            <div class="modal-content premium-modal border-0 shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+                    <h4 class="fw-bolder text-success m-0"><i class="fa-solid fa-calendar-check me-2"></i> تحديد موعد تركيب نواقص</h4>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form asp-action="ScheduleInstallation" method="post">
-                    <div class="modal-body py-4 text-start">
+                    <div class="modal-body p-4 text-start">
                         <input type="hidden" name="orderId" id="schedOrderId" value="" />
 
-                        <div class="alert alert-success py-2 small fw-bold mb-4">
-                            <i class="fa-solid fa-info-circle me-1"></i> القطعة المطلوبة متوفرة لطلب العميل: <span id="schedCustomerName" class="text-dark fs-6"></span>. حدد موعداً للذهاب وتركيبها.
+                        <div class="premium-alert success px-4 py-3 mb-4">
+                            <div class="icon-box" style="width:30px; height:30px; font-size:14px;"><i class="fa-solid fa-info"></i></div>
+                            <div class="content">
+                                <h6 class="fw-bolder m-0">القطعة المطلوبة متوفرة لطلب العميل:</h6>
+                                <span id="schedCustomerName" class="text-dark fw-bolder fs-6 d-block mt-1"></span>
+                                <p class="mb-0 mt-1 small">حدد موعداً للذهاب وتركيبها ليتم إنشاء زيارة جديدة.</p>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-dark">الموعد الجديد <span class="text-danger">*</span></label>
-                            <input type="datetime-local" name="scheduledDate" class="form-control fw-bold bg-light border-secondary" required />
+                        <div class="mb-4">
+                            <label class="premium-label">الموعد الجديد لزيارة التركيب <span class="text-danger">*</span></label>
+                            <input type="datetime-local" name="scheduledDate" class="premium-input form-control" required />
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-dark">تأكيد / تعيين الفني المنفذ <span class="text-danger">*</span></label>
-                            <select name="technicianId" id="schedTechId" class="form-select fw-bold border-secondary bg-light" required>
+                        <div class="mb-4">
+                            <label class="premium-label">تأكيد / تعيين الفني المنفذ للتركيب <span class="text-danger">*</span></label>
+                            <select name="technicianId" id="schedTechId" class="premium-input form-select fw-bold" required>
                                 <option value="">-- اختر الفني --</option>
                                 @if (techsList != null)
                                 {
@@ -251,24 +286,23 @@
                             </select>
                         </div>
 
-                        <!-- 📌 التحديث: السماح بتعديل أجور اليد للزيارة الثانية -->
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-dark">تحديث أجور اليد (رسوم الفحص + التركيب) <span class="text-danger">*</span></label>
+                        <div class="mb-4">
+                            <label class="premium-label">رسوم التركيب الإضافية (إن وجدت)</label>
                             <div class="input-group">
-                                <input type="number" step="0.01" name="updatedLaborFee" id="schedLaborFee" class="form-control fw-bold border-secondary bg-light" required />
-                                <span class="input-group-text bg-white fw-bold">ر.س</span>
+                                <input type="number" step="0.01" name="additionalInstallFee" id="schedLaborFee" class="premium-input form-control rounded-end" value="0" required />
+                                <span class="input-group-text bg-white border border-start-0 rounded-start fw-bold text-success px-4">ر.س</span>
                             </div>
-                            <small class="text-muted fw-bold d-block mt-1 lh-sm">ضع إجمالي أجور اليد المطلوبة. إذا دفع العميل الفحص مسبقاً، لا تنسى تسجيله كـ "مقدم" داخل الطلب لكي يُخصم من الإجمالي.</small>
+                            <small class="text-muted fw-bold d-block mt-2 lh-lg"><i class="fa-solid fa-lightbulb text-warning me-1"></i> النظام سيقوم بجمع أجرة التركيب هنا مع أجرة الفحص السابقة تلقائياً في الفاتورة النهائية.</small>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-dark">ملاحظات للفني (اختياري)</label>
-                            <input type="text" name="adminNotes" class="form-control fw-bold border-secondary bg-light" placeholder="مثال: يرجى الذهاب للتركيب وتجربة الجهاز" />
+                        <div class="mb-2">
+                            <label class="premium-label">ملاحظات توجيهية للفني <span class="text-muted fw-normal">(اختياري)</span></label>
+                            <textarea name="adminNotes" class="premium-input form-control" rows="2" placeholder="مثال: يرجى الذهاب للتركيب وتجربة الجهاز للتأكد..."></textarea>
                         </div>
                     </div>
-                    <div class="modal-footer border-top-0 pt-0">
-                        <button type="button" class="btn btn-light fw-bold px-4 rounded-3" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="submit" class="btn btn-success fw-bold px-4 rounded-3 fs-6">تأكيد الموعد للفني</button>
+                    <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                        <button type="button" class="btn btn-light fw-bold px-4 rounded-pill" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-success fw-bolder px-4 rounded-pill shadow-sm hover-elevate">تأكيد الجدولة <i class="fa-solid fa-check-double ms-1"></i></button>
                     </div>
                 </form>
             </div>
@@ -277,58 +311,280 @@
 }
 
 <style>
-    .ready-install-row {
-        background-color: rgba(25, 135, 84, 0.05) !important;
-        border-right: 4px solid #198754 !important;
-        transition: all 0.3s;
+    /* Premium Dashboard UI Styles (Shared with Details) */
+    :root {
+        --prem-bg: #f8f9fc;
+        --prem-surface: #ffffff;
+        --prem-border: #e2e8f0;
+        --prem-text: #1e293b;
+        --prem-muted: #64748b;
+        --prem-primary: #f1950b;
+        --prem-radius: 20px;
     }
 
-        .ready-install-row:hover {
-            background-color: rgba(25, 135, 84, 0.1) !important;
+    .fade-in-up {
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
         }
 
-    @@keyframes subtlePulse {
-        0%
-
-    {
-        transform: scale(1);
-        opacity: 1;
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
-    50% {
-        transform: scale(1.05);
-        opacity: 0.8;
+    .premium-card {
+        background: var(--prem-surface);
+        border-radius: var(--prem-radius);
+        border: 1px solid var(--prem-border);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        overflow: hidden;
     }
 
-    100% {
-        transform: scale(1);
-        opacity: 1;
+    .premium-label {
+        font-weight: 800;
+        color: var(--prem-muted);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        display: block;
     }
 
+    .premium-input {
+        background-color: #f8fafc;
+        border: 1px solid var(--prem-border);
+        border-radius: 12px;
+        padding: 14px 20px;
+        font-weight: 700;
+        color: var(--prem-text);
+        box-shadow: none !important;
+        transition: all 0.3s ease;
     }
 
-    .pulse-badge {
-        animation: subtlePulse 2s infinite;
-        box-shadow: 0 0 8px rgba(25, 135, 84, 0.4);
+        .premium-input:focus {
+            background-color: #fff;
+            border-color: var(--prem-primary);
+            box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1) !important;
+        }
+
+    /* Badges */
+    .premium-badge {
+        padding: 6px 16px;
+        border-radius: 30px;
+        font-size: 0.85rem;
+        font-weight: 800;
     }
+
+        .premium-badge.default {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+
+        .premium-badge.primary {
+            background: rgba(241,149,11,0.1);
+            color: var(--prem-primary);
+            border: 1px solid rgba(241,149,11,0.2);
+        }
+
+        .premium-badge.success {
+            background: #ecfdf5;
+            color: #198754;
+            border: 1px solid #d1e7dd;
+        }
+
+        .premium-badge.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .premium-badge.info {
+            background: #cff4fc;
+            color: #055160;
+            border: 1px solid #b6effb;
+        }
+
+        .premium-badge.danger {
+            background: #f8d7da;
+            color: #842029;
+            border: 1px solid #f5c2c7;
+        }
+
+        .premium-badge.dark {
+            background: #e2e3e5;
+            color: #41464b;
+            border: 1px solid #d3d6d8;
+        }
+
+        .premium-badge.primary-light {
+            background: #e0e7ff;
+            color: #4f46e5;
+        }
+
+    /* Alerts */
+    .premium-alert {
+        background: #fffbfa;
+        border: 1px solid #fee2e2;
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.05);
+    }
+
+        .premium-alert.info {
+            background: #f0f9ff;
+            border-color: #bae6fd;
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.05);
+        }
+
+            .premium-alert.info .icon-box {
+                background: #bae6fd;
+                color: #0284c7;
+            }
+
+        .premium-alert.success {
+            background: #f0fdf4;
+            border-color: #bbf7d0;
+        }
+
+            .premium-alert.success .icon-box {
+                background: #bbf7d0;
+                color: #16a34a;
+            }
+
+        .premium-alert .icon-box {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .premium-alert .content h5 {
+            color: #1e293b;
+        }
+
+        .premium-alert .content p {
+            color: #475569;
+        }
+
+    /* Tables */
+    .premium-table th {
+        font-weight: 800;
+        color: var(--prem-muted);
+        border-bottom: 2px solid var(--prem-border);
+        padding: 16px;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+    }
+
+    .premium-table td {
+        padding: 16px;
+        vertical-align: middle;
+    }
+
+    .premium-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .premium-table tr:hover td {
+        background-color: #f8fafc;
+    }
+
+    .ready-install-row td {
+        background-color: rgba(25, 135, 84, 0.02) !important;
+    }
+
+    .ready-install-row:hover td {
+        background-color: rgba(25, 135, 84, 0.05) !important;
+    }
+
+    /* Modals & Buttons */
+    .premium-modal {
+        border-radius: 24px;
+        overflow: hidden;
+    }
+
+    .hover-elevate {
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
+
+    .btn-whatsapp-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        background: #ecfdf5;
+        color: #10b981;
+        border-radius: 10px;
+        font-size: 18px;
+        transition: 0.3s;
+        text-decoration: none;
+    }
+
+        .btn-whatsapp-icon:hover {
+            background: #10b981;
+            color: #fff;
+            transform: scale(1.1);
+        }
 
     .hover-primary-text {
         transition: color 0.2s;
     }
 
         .hover-primary-text:hover {
-            color: var(--sys-primary) !important;
+            color: var(--prem-primary) !important;
         }
+
+    .payment-btn-pulse {
+        animation: pulseGreen 2s infinite;
+    }
+
+    @@keyframes pulseGreen {
+        0% {
+            box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.4);
+        }
+
+        70% {
+            box-shadow: 0 0 0 10px rgba(25, 135, 84, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
+        }
+    }
+
+    .premium-swal {
+        border-radius: 20px !important;
+    }
 </style>
 
 @section Scripts {
     <script>
-        function setupScheduleModal(orderId, customerName, currentTechId, currentFee) {
+        function setupScheduleModal(orderId, customerName, currentTechId) {
             document.getElementById('schedOrderId').value = orderId;
             document.getElementById('schedCustomerName').innerText = customerName;
 
-            // وضع أجور اليد القديمة كافتراضية لكي لا يبدأ من الصفر
-            document.getElementById('schedLaborFee').value = currentFee || 0;
+            // تصفير الرسوم ليدخل أجور التركيب فقط دون المساس بأجور الفحص السابقة
+            document.getElementById('schedLaborFee').value = 0;
 
             if(currentTechId && currentTechId > 0) {
                 document.getElementById('schedTechId').value = currentTechId;
@@ -340,7 +596,12 @@
         @if (TempData["SuccessMessage"] != null)
         {
                 var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
-                <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: @Html.Raw(msg), confirmButtonColor: '#f1950b' });</text>
+                <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'premium-swal' } });</text>
+        }
+        @if (TempData["ErrorMessage"] != null)
+        {
+                var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
+                <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
         }
     </script>
 }
