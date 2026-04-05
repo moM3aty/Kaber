@@ -25,12 +25,12 @@
             break;
     }
 
-    string qrRawData = $"شركة كابر\nINV-{Model.OrderId}\nالعميل: {Model.CustomerName}\nالمبلغ المطلوب: {remainingAmount} ر.س";
+    string qrRawData = $"مؤسسة كابر\nس.ت: 7037085128\nINV-{Model.OrderId}\nالعميل: {Model.CustomerName}\nالمبلغ المطلوب: {remainingAmount} ر.س";
     string qrUrl = $"https://api.qrserver.com/v1/create-qr-code/?size=130x130&data={Uri.EscapeDataString(qrRawData)}";
 
     string phone = Model.PhoneNumber.StartsWith("0") ? Model.PhoneNumber.Substring(1) : Model.PhoneNumber;
     string waNumber = "966" + phone;
-    string whatsappMessage = $"أهلاً بك عميلنا العزيز {Model.CustomerName}،\n\nفاتورتك (INV-#{Model.OrderId}):\nالإجمالي: {Model.FinalPrice} ريال\nالمدفوع مقدماً: {Model.AdvancePayment} ريال\n*المتبقي سداده:* {remainingAmount} ريال\n\nشكراً لتعاملك مع شركة كابر للصيانة والتكييف 🛠️.";
+    string whatsappMessage = $"أهلاً بك عميلنا العزيز {Model.CustomerName}،\n\nفاتورتك (INV-#{Model.OrderId}):\nالإجمالي: {Model.FinalPrice} ريال\nالمدفوع مقدماً: {Model.AdvancePayment} ريال\n*المتبقي سداده:* {remainingAmount} ريال\n\nشكراً لتعاملك مع مؤسسة كابر للصيانة والتكييف 🛠️.";
     string encodedMessage = Uri.EscapeDataString(whatsappMessage);
 }
 <!DOCTYPE html>
@@ -90,12 +90,14 @@
 
     <div class="invoice-box">
         <div class="row border-bottom pb-4 mb-4 align-items-center">
-            <div class="col-4">
+            <div class="col-5">
                 <img src="/images/logo.png" width="160px" style="border-radius:15px;" alt="Logo" />
-                <p class="text-muted mb-0 fw-bold mt-3">المنطقة الشرقية - الدمام</p>
-                <p class="text-muted fw-bold mt-1 mb-0">هاتف: 0541683466</p>
+                <p class="text-dark mb-0 fw-bolder mt-3">كابر لصيانة جميع الأجهزة الكهربائية</p>
+                <p class="text-muted fw-bold mt-1 mb-0 fs-6">سجل تجاري: 7037085128</p>
+                <p class="text-muted fw-bold mb-0">المنطقة الشرقية - الدمام</p>
+                <p class="text-muted fw-bold mt-1 mb-0" dir="rtl"><i class="fa-brands fa-whatsapp text-success me-1"></i> +966 55 579 4669</p>
             </div>
-            <div class="col-4 text-center">
+            <div class="col-3 text-center">
                 <img src="@qrUrl" alt="QR Code" width="110" height="110" class="border p-1 rounded" />
                 <p class="small text-muted fw-bold mt-1 mb-0">امسح الرمز للتحقق</p>
             </div>
@@ -193,7 +195,7 @@
         </div>
 
         <div class="text-center mt-5 pt-4 border-top">
-            <p class="fw-bold text-dark fs-5 mb-1">شكراً لثقتكم بخدمات شركة كابر للصيانة والتكييف.</p>
+            <p class="fw-bold text-dark fs-5 mb-1">شكراً لثقتكم بخدمات مؤسسة كابر.</p>
             <p class="text-muted small fw-bold mb-0">هذه الفاتورة معتمدة إلكترونياً ولا تحتاج إلى توقيع أو ختم.</p>
         </div>
     </div>

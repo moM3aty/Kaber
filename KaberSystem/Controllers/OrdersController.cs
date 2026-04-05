@@ -154,12 +154,29 @@ namespace KaberSystem.Controllers
         [HttpPost]
         [Authorize(Roles = "Admin,CallCenter")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Order order)
+        public async Task<IActionResult> Create(Order order, IFormFile deviceImage)
         {
             if (ModelState.IsValid)
             {
                 order.Status = order.TechnicianId.HasValue ? OrderStatus.Assigned : OrderStatus.New;
                 order.CreatedAt = DateTime.Now;
+
+                // 📌 كود حفظ صورة الجهاز المرفوعة
+                if (deviceImage != null && deviceImage.Length > 0)
+                {
+                    string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "orders");
+                    if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                    string uniqueFileName = Guid.NewGuid().ToString() + "_" + deviceImage.FileName;
+                    string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                    using (var fileStream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await deviceImage.CopyToAsync(fileStream);
+                    }
+                    order.DeviceImagePath = "/uploads/orders/" + uniqueFileName;
+                }
+
                 _context.Add(order);
                 await _context.SaveChangesAsync();
 
@@ -185,7 +202,6 @@ namespace KaberSystem.Controllers
             ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Technicians.Where(t => t.IsAvailable).ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
             return View(order);
         }
-
         [Authorize(Roles = "Admin,CallCenter")]
         public async Task<IActionResult> Assign(int? id)
         {

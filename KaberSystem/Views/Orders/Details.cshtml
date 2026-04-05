@@ -120,7 +120,7 @@
                             <span class="value">@Model.Address</span>
                             @if (!string.IsNullOrEmpty(Model.LocationMapUrl))
                             {
-                                <a href="@Model.LocationMapUrl" target="_blank" class="btn btn-sm btn-light border text-primary fw-bold rounded-pill px-3 shadow-sm hover-elevate mb-1">
+                                <a href="@Model.LocationMapUrl" target="_blank" class="btn btn-sm btn-light border text-primary fw-bold rounded-pill px-3 shadow-sm hover-elevate mb-1 mt-2 d-inline-block">
                                     <i class="fa-solid fa-map-location-dot text-danger me-1"></i> فتح الخريطة
                                 </a>
                             }
@@ -132,6 +132,17 @@
                     <div class="header-label"><i class="fa-solid fa-triangle-exclamation"></i> وصف المشكلة (شكوى العميل):</div>
                     <p>@Model.ProblemDescription</p>
                 </div>
+
+                <!-- 📌 عرض الصورة المرفقة إذا كانت موجودة -->
+                @if (!string.IsNullOrEmpty(Model.DeviceImagePath))
+                {
+                    <div class="mt-4 pt-3 border-top">
+                        <span class="fw-bolder text-dark mb-3 d-block"><i class="fa-solid fa-image text-primary me-2"></i> صورة الجهاز أو العطل المرفقة:</span>
+                        <a href="@Model.DeviceImagePath" target="_blank" class="d-inline-block">
+                            <img src="@Model.DeviceImagePath" class="img-thumbnail shadow-sm hover-elevate rounded-4" style="max-height: 250px; border: 2px solid #e2e8f0;" alt="صورة العطل" />
+                        </a>
+                    </div>
+                }
 
                 @if (!string.IsNullOrEmpty(Model.TechnicianNotes))
                 {
@@ -649,13 +660,13 @@
     <script>
         @if (TempData["SuccessMessage"] != null)
         {
-                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
-                <text>Swal.fire({ icon: 'success', title: 'تم بنجاح', text: @Html.Raw(msg), confirmButtonColor: '#f1950b', customClass: { popup: 'premium-swal' } });</text>
+                    var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                    <text>Swal.fire({ icon: 'success', title: 'تم بنجاح', text: @Html.Raw(msg), confirmButtonColor: '#f1950b', customClass: { popup: 'premium-swal' } });</text>
         }
         @if (TempData["ErrorMessage"] != null)
         {
-                var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
-                <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
+                    var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
+                    <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
         }
     </script>
 }

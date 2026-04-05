@@ -1,0 +1,88 @@
+﻿<!-- مسار الملف: Views/HR/Attendance.cshtml -->
+@{
+    ViewData["Title"] = "دفتر الحضور والانصراف";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+    var records = ViewBag.AttendanceList as IEnumerable<dynamic>;
+    string currentDate = ViewBag.CurrentDate;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bolder text-dark mb-1"><i class="fa-solid fa-calendar-check text-primary me-2"></i> دفتر الحضور والغياب اليومي</h2>
+        <p class="text-muted fw-bold mb-0">تسجيل ومراجعة أيام العمل للموظفين ليتم حساب الراتب بناءً عليها</p>
+    </div>
+    <div>
+        <form method="get" asp-action="Attendance" class="d-flex gap-2">
+            <input type="date" name="date" class="form-control fw-bold shadow-sm" value="@currentDate" onchange="this.form.submit()" />
+        </form>
+    </div>
+</div>
+
+<div class="card border-0 rounded-4 shadow-sm overflow-hidden bg-white">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle text-center mb-0 w-100">
+                <thead class="bg-light text-muted fw-bold">
+                    <tr>
+                        <th class="py-3 text-start ps-4">الموظف</th>
+                        <th class="py-3">القسم</th>
+                        <th class="py-3">حالة اليوم (@currentDate)</th>
+                        <th class="py-3">ملاحظات</th>
+                        <th class="py-3 pe-4">حفظ السجل</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (records != null)
+                    {
+                        foreach (var item in records)
+                        {
+                            <tr style="border-bottom: 1px solid #f8f9fa;">
+                                <form asp-action="SaveAttendance" method="post">
+                                    <input type="hidden" name="userId" value="@item.UserId" />
+                                    <input type="hidden" name="date" value="@currentDate" />
+
+                                <td class="text-start ps-4 py-3 fw-bold text-dark">@item.Username</td>
+                                <td><span class="badge bg-light text-dark border px-2 py-1 rounded-pill">@item.Role</span></td>
+                                <td style="width: 250px;">
+                                    <select name="status" class="form-select fw-bold @(item.Status == "Present" ? "border-success text-success" : (item.Status == "Absent" ? "border-danger text-danger" : ""))">
+                                        @if (item.Status == "None")
+                                        {
+                                            <option value="None" selected>-- لم يُسجل بعد --</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="None">-- مسح السجل --</option>
+                                        }
+                                        @if (item.Status == "Present")
+                                        {
+                                            <option value="Present" selected>🟢 حاضر</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="Present">🟢 حاضر</option>
+                                        }
+                                        @if (item.Status == "Absent")
+                                        {
+                                            <option value="Absent" selected>🔴 غائب</option>
+                                        }
+                                        else
+                                        {
+                                            <option value="Absent">🔴 غائب</option>
+                                        }
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="text" name="note" class="form-control text-center" value="@item.Note" placeholder="ملاحظات..." />
+                                </td>
+                                <td class="pe-4">
+                                    <button type="submit" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold shadow-sm">حفظ</button>
+                                </td>
+                                </form>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

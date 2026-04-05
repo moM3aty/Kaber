@@ -15,7 +15,7 @@
     </button>
 </div>
 
-<div class="card border-0 rounded-4 shadow-sm overflow-hidden">
+<div class="card border-0 rounded-4 shadow-sm overflow-hidden bg-white">
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table table-borderless table-hover align-middle text-center mb-0 w-100">
@@ -34,27 +34,26 @@
                     {
                         <tr style="border-bottom: 1px solid #f8f9fa;">
                             <td class="text-start ps-4 py-3 fw-bold text-dark">@l.User?.Username</td>
-                            <td>
-                                <span class="badge bg-info bg-opacity-10 text-dark border border-info rounded-pill px-3">@l.Type</span>
-                            </td>
-                            <td dir="ltr" class="small fw-bold text-muted">
-                                @l.StartDate.ToString("MM/dd") - @l.EndDate.ToString("MM/dd")
-                            </td>
+                            <td><span class="badge bg-info bg-opacity-10 text-dark border border-info rounded-pill px-3">@l.Type</span></td>
+                            <td dir="ltr" class="small fw-bold text-muted">@l.StartDate.ToString("MM/dd") - @l.EndDate.ToString("MM/dd")</td>
                             <td class="text-muted small">@l.Reason</td>
                             <td>
                                 @if (l.Status == KaberSystem.Models.LeaveStatus.Approved)
                                 {
                                     <span class="badge bg-success px-3 py-2 rounded-pill"><i class="fa-solid fa-check me-1"></i> مقبولة</span>
+                                    if (!l.IsReturned)
+                                    {
+
+                                        <div class="mt-1"><span class="badge bg-danger">في إجازة الآن</span></div>
+                                    }
                                 }
                                 else if (l.Status == KaberSystem.Models.LeaveStatus.Rejected)
                                 {
-
                                     <span class="badge bg-danger px-3 py-2 rounded-pill"><i class="fa-solid fa-xmark me-1"></i> مرفوضة</span>
                                 }
                                 else
                                 {
-
-                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold border border-warning"><i class="fa-solid fa-clock me-1"></i> قيد المراجعة</span>
+                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold border border-warning"><i class="fa-solid fa-clock me-1"></i> مراجعة</span>
                                 }
                             </td>
                             <td class="pe-4">
@@ -62,14 +61,21 @@
                                 {
                                     <div class="btn-group">
                                         <form asp-action="UpdateLeaveStatus" method="post" class="d-inline">
-                                            <input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="status" value="Approved" />
-                                            <button type="submit" class="btn btn-sm btn-success rounded-end px-3"><i class="fa-solid fa-check"></i></button>
+                                            <input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="status" value="Approved" /><input type="hidden" name="deductionAmount" value="0" />
+                                            <button type="submit" class="btn btn-sm btn-success rounded-end px-3" title="قبول (بدون خصم)"><i class="fa-solid fa-check"></i></button>
                                         </form>
                                         <form asp-action="UpdateLeaveStatus" method="post" class="d-inline">
                                             <input type="hidden" name="id" value="@l.Id" /><input type="hidden" name="status" value="Rejected" />
                                             <button type="submit" class="btn btn-sm btn-danger rounded-start px-3"><i class="fa-solid fa-xmark"></i></button>
                                         </form>
                                     </div>
+                                }
+                                else if (l.Status == KaberSystem.Models.LeaveStatus.Approved && !l.IsReturned && User.IsInRole("Admin"))
+                                {
+                                    <form asp-action="ReturnToWork" method="post" class="d-inline">
+                                        <input type="hidden" name="leaveId" value="@l.Id" />
+                                        <button type="submit" class="btn btn-sm btn-dark rounded-pill px-3 fw-bold shadow-sm">مباشرة عمل</button>
+                                    </form>
                                 }
                             </td>
                         </tr>
@@ -110,6 +116,7 @@
                             <option value="Annual">سنوية</option>
                             <option value="Sick">مرضية</option>
                             <option value="Emergency">اضطرارية</option>
+                            <option value="Unpaid">بدون أجر</option>
                         </select>
                     </div>
                     <div class="mb-0">
