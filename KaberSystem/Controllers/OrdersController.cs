@@ -44,8 +44,8 @@ namespace KaberSystem.Controllers
 
             if (User.IsInRole("Technician"))
             {
+                // 📌 التعديل هنا: تم إزالة OrderStatus.Completed ليظل الطلب ظاهراً للفني حتى يتم اعتماده نهائياً
                 query = query.Where(o => o.Technician.Name == User.Identity.Name
-                                      && o.Status != OrderStatus.Completed
                                       && o.Status != OrderStatus.Approved
                                       && o.Status != OrderStatus.Cancelled);
             }
@@ -293,11 +293,11 @@ namespace KaberSystem.Controllers
 
             if (User.IsInRole("Technician"))
             {
+                // 📌 التعديل هنا: السماح للفني بفتح الطلب المكتمل للطباعة، ومنعه فقط إذا كان (Approved)
                 if (order.Technician?.Name != User.Identity.Name ||
-                    order.Status == OrderStatus.Completed ||
                     order.Status == OrderStatus.Approved)
                 {
-                    TempData["ErrorMessage"] = "تم إغلاق هذا الطلب وتسليمه للإدارة للمراجعة، ولا يمكنك التعديل عليه.";
+                    TempData["ErrorMessage"] = "تم إغلاق هذا الطلب واعتماده نهائياً من الإدارة، ولا يمكنك التعديل عليه.";
                     return RedirectToAction(nameof(Index));
                 }
             }
@@ -478,7 +478,6 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Details), new { id = orderId });
         }
 
-        // 📌 التحديث الجذري: دورة استرداد رأس المال العامل الدوار (Working Capital Cycle)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ProcessPayment(int orderId, PaymentMethod paymentMethod, IFormFile paymentReceipt)
@@ -511,10 +510,8 @@ namespace KaberSystem.Controllers
 
             decimal remainingAmountToCollect = order.FinalPrice - order.AdvancePayment;
 
-            // 📌 السر هنا: لا يشترط أن يكون الدفع كاش، أي عملية تحصيل يجب أن ترد تكلفة القطعة للمشتريات
             if (remainingAmountToCollect > 0)
             {
-                // 1. حساب تكلفة القطع الفعلي (رأس المال) ورده لخزنة المشتريات الدوارة
                 decimal partsCost = order.UsedSpareParts?.Sum(p => p.QuantityUsed * (p.SparePart?.PurchasePrice ?? 0)) ?? 0;
 
                 if (partsCost > 0)
@@ -523,8 +520,8 @@ namespace KaberSystem.Controllers
                     {
                         Amount = partsCost,
                         Type = SafeTransactionType.Income,
-                        TargetSafe = SafeType.Purchasing, // 🌟 الدورة تكتمل هنا: رأس المال يعود للمشتريات
-                        PaymentMethod = paymentMethod, // حسب ما دفع العميل (كاش، بنك)
+                        TargetSafe = SafeType.Purchasing,
+                        PaymentMethod = paymentMethod,
                         Description = $"استرداد رأس مال قطع للطلب #{order.OrderId}",
                         OrderId = order.OrderId,
                         RecordedBy = User.Identity?.Name ?? "System",
@@ -532,7 +529,6 @@ namespace KaberSystem.Controllers
                     });
                 }
 
-                // 2. حساب الأرباح (أجور اليد + هامش ربح البضاعة) وتوجيهها للخزنة العامة
                 decimal generalProfit = remainingAmountToCollect - partsCost;
                 if (generalProfit > 0)
                 {
@@ -540,7 +536,7 @@ namespace KaberSystem.Controllers
                     {
                         Amount = generalProfit,
                         Type = SafeTransactionType.Income,
-                        TargetSafe = SafeType.General, // 🌟 الأرباح تذهب هنا
+                        TargetSafe = SafeType.General,
                         PaymentMethod = paymentMethod,
                         Description = $"تحصيل أجور وأرباح للطلب #{order.OrderId}",
                         OrderId = order.OrderId,

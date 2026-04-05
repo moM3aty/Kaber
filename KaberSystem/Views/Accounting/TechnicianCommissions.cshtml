@@ -13,8 +13,8 @@
             <i class="fa-solid fa-calculator"></i>
         </div>
         <div>
-            <h2 class="fw-bolder text-dark mb-1" style="letter-spacing: -0.5px;">حاسبة التصفية الشاملة</h2>
-            <p class="text-muted fw-bold mb-0">خصم (التكلفة + المصروفات) وحساب العمولة على صافي الأرباح</p>
+            <h2 class="fw-bolder text-dark mb-1" style="letter-spacing: -0.5px;">حاسبة التصفية والتوريد</h2>
+            <p class="text-muted fw-bold mb-0">استلام العهد النقدية اليومية، وتصفية العمولات نهاية الشهر</p>
         </div>
     </div>
 </div>
@@ -80,13 +80,57 @@
         <div class="col-md-3">
             <div class="premium-card bg-warning bg-opacity-10 border-0 h-100 p-4 text-center border-top border-4 border-warning">
                 <div class="icon-box bg-white text-warning mx-auto mb-3 shadow-sm"><i class="fa-solid fa-sack-dollar"></i></div>
-                <h6 class="fw-bold text-dark mb-2">الكاش المحصل (في يده)</h6>
-                <h3 class="fw-bolder text-dark m-0">@cashInHand.ToString("N2") <span class="fs-6">ر.س</span></h3>
-                <small class="text-danger fw-bold d-block mt-2">هذا المبلغ حصله نقداً ولم يورده.</small>
+                <h6 class="fw-bold text-dark mb-2">الكاش المحصل (مديونية)</h6>
+                <h3 class="fw-bolder text-dark m-0 mb-3">@cashInHand.ToString("N2") <span class="fs-6">ر.س</span></h3>
+
+                <!-- 📌 زر التوريد اليومي السريع -->
+                <button type="button" class="btn btn-sm btn-dark fw-bold rounded-pill px-3 shadow-sm hover-elevate w-100" data-bs-toggle="modal" data-bs-target="#receiveDailyCashModal">
+                    <i class="fa-solid fa-hand-holding-dollar me-1 text-warning"></i> استلام وتوريد كاش
+                </button>
             </div>
         </div>
     </div>
 
+    <!-- 📌 نافذة (Modal) الاستلام اليومي للكاش -->
+    <div class="modal fade" id="receiveDailyCashModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content premium-modal border-0 shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+                    <h5 class="modal-title fw-bolder text-success m-0"><i class="fa-solid fa-vault me-2"></i> استلام نقدية يومية من الفني</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form asp-action="ReceiveDailyCash" method="post">
+                    <div class="modal-body p-4 text-start">
+                        <input type="hidden" name="techId" value="@selectedTech.TechnicianId" />
+
+                        <div class="alert alert-warning py-3 small fw-bold mb-4 border-0 rounded-3 shadow-sm bg-warning bg-opacity-10 text-dark">
+                            <i class="fa-solid fa-circle-info text-warning me-1"></i>
+                            إجمالي العهدة المتبقية بيده حالياً: <b class="text-danger fs-6">@cashInHand.ToString("N2") ريال</b>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="premium-label">المبلغ المُستلم (لإيداعه بالدرج) <span class="text-danger">*</span></label>
+                            <div class="input-group input-group-lg rounded-4 overflow-hidden shadow-sm">
+                                <input type="number" step="0.01" name="amount" class="form-control fw-bolder border-0 bg-light text-success" max="@cashInHand" required />
+                                <span class="input-group-text bg-white border-0 fw-bolder px-4 text-success">ر.س</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="premium-label">ملاحظات (اختياري)</label>
+                            <input type="text" name="notes" class="premium-input form-control" placeholder="مثال: إيراد يوم الثلاثاء..." />
+                        </div>
+                    </div>
+                    <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                        <button type="button" class="btn btn-light fw-bold px-4 rounded-pill" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-success fw-bolder px-4 rounded-pill shadow-sm hover-elevate">تأكيد الاستلام والتوريد <i class="fa-solid fa-check-double ms-1"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- باقي الكود الخاص بحاسبة العمولات (لم يتغير لعدم الإطالة) -->
     <div class="row g-4 fade-in-up" style="animation-delay: 0.1s;">
         <div class="col-lg-6">
             <div class="premium-card h-100 border-primary border-top border-4">
@@ -130,7 +174,7 @@
         <div class="col-lg-6">
             <div class="premium-card h-100 border-success border-top border-4">
                 <div class="card-header-premium bg-light pb-3">
-                    <h5 class="fw-bolder text-success m-0"><i class="fa-solid fa-percent me-2"></i> 2. عمولة الفني والتصفية النهائية</h5>
+                    <h5 class="fw-bolder text-success m-0"><i class="fa-solid fa-percent me-2"></i> 2. عمولة الفني والتصفية النهائية (أخر الشهر)</h5>
                 </div>
                 <div class="card-body-premium">
 
@@ -161,16 +205,15 @@
                     </div>
 
                     <div class="p-4 bg-light rounded-4 border shadow-sm position-relative overflow-hidden">
-                        <!-- تصفية العهدة والسلف -->
                         <div class="d-flex justify-content-between mb-3">
                             <span class="text-primary fw-bold">أجرة الفني (العمولة المكتسبة):</span>
                             <span class="fw-bolder text-primary fs-4" id="breakdownGross">0.00 ر.س</span>
                         </div>
                         <div class="d-flex justify-content-between mb-3 pb-3 border-bottom text-danger border-secondary border-opacity-25">
-                            <span class="fw-bold">يخصم (كاش التحصيل الموجود بيده):</span>
+                            <span class="fw-bold">يخصم (كاش التحصيل المتبقي بيده):</span>
                             <span class="fw-bold fs-5">- @cashInHand.ToString("N2") ر.س</span>
                         </div>
-                        
+
                         <div class="text-center mt-4">
                             <p class="fw-bolder text-dark mb-2 fs-6" id="resultText">الصافي النهائي للتسوية:</p>
                             <h1 class="m-0 fw-bolder display-4 text-dark" id="finalNetPayout">0.00 <span class="fs-4">ر.س</span></h1>
@@ -187,7 +230,7 @@
         </div>
     </div>
 
-    <!-- 📌 نافذة تأكيد الإجراء المحاسبي (التوريد أو الصرف) -->
+    <!-- 📌 نافذة تأكيد الإجراء المحاسبي للتصفية الشهرية -->
     <div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content premium-modal border-0 shadow-lg">
@@ -210,7 +253,6 @@
                             </div>
                         </div>
 
-                        <!-- 📌 إضافة خيارات الدفع (كاش/فيزا/تحويل) داخل المودال -->
                         <div class="mb-4" id="paymentMethodSection">
                             <label class="premium-label text-dark mb-3">طريقة سداد / تحصيل المبلغ: <span class="text-danger">*</span></label>
                             <div class="d-flex flex-column gap-2">
@@ -243,7 +285,7 @@
         </div>
     </div>
 
-    <!-- 📌 تفاصيل الطلبات والخصومات -->
+    <!-- باقي الجداول للمعلومات -->
     <div class="row g-4 mt-2 fade-in-up" style="animation-delay: 0.3s;">
         <div class="col-lg-8">
             <div class="premium-card h-100">
@@ -301,42 +343,34 @@
         </div>
     </div>
 
-    <!-- 📌 سكربت الحساب الفوري الدقيق (ERP Logic) -->
     <script>
         function calculateNet() {
             var selectedBaseValue = parseFloat(document.querySelector('input[name="calcBase"]:checked').value) || 0;
             var isTotalSelected = document.getElementById('baseTotal').checked;
-            
+
             var partsCost = parseFloat('@partsCost') || 0;
-            
-            // المصروفات المتغيرة (الرواتب، التشغيل) التي يكتبها المحاسب
             var generalExpenses = parseFloat(document.getElementById('generalExpenses').value) || 0;
-            
             var percent = parseFloat(document.getElementById('commissionPercent').value) || 0;
-            
             var totalDeductions = parseFloat('@totalDeductions') || 0;
             var cashInHand = parseFloat('@cashInHand') || 0;
 
             document.getElementById('displayTotalRev').innerText = selectedBaseValue.toFixed(2) + ' ر.س';
 
-            // 1. حساب الوعاء (Base Amount) = الإيراد - المصروفات المسجلة - المصروفات اليدوية - تكلفة القطع (إن وجدت)
             var baseAmount = 0;
             if (isTotalSelected) {
                 baseAmount = selectedBaseValue - partsCost - totalDeductions - generalExpenses;
-                document.getElementById('partsCostRow').style.display = 'flex'; 
+                document.getElementById('partsCostRow').style.display = 'flex';
             } else {
                 baseAmount = selectedBaseValue - totalDeductions - generalExpenses;
-                document.getElementById('partsCostRow').style.display = 'none'; 
+                document.getElementById('partsCostRow').style.display = 'none';
             }
 
-            if(baseAmount < 0) baseAmount = 0; 
+            if(baseAmount < 0) baseAmount = 0;
             document.getElementById('baseAmountDisplay').innerHTML = baseAmount.toFixed(2) + ' <span class="fs-6 text-muted">ر.س</span>';
 
-            // 2. حساب العمولة المكتسبة
             var grossCommission = baseAmount * (percent / 100);
             document.getElementById('breakdownGross').innerText = grossCommission.toFixed(2) + ' ر.س';
 
-            // 3. التصفية النهائية (العمولة - الكاش الموجود بيده فقط) 
             var finalSettlement = grossCommission - cashInHand;
 
             var resultBox = document.getElementById('finalNetPayout');
@@ -346,67 +380,64 @@
             var btnSubmit = document.getElementById('btnSubmit');
             var modalTitle = document.getElementById('modalTitle');
             var modalDesc = document.getElementById('modalDesc');
-            var paymentSection = document.getElementById('paymentMethodSection'); // 📌 قسم طريقة الدفع في المودال
+            var paymentSection = document.getElementById('paymentMethodSection');
 
             if (finalSettlement > 0) {
                 resultBox.innerHTML = finalSettlement.toFixed(2) + ' <span class="fs-4">ر.س</span>';
                 resultBox.className = "m-0 fw-bolder display-4 text-success";
                 resultText.innerText = "الصافي المستحق (يُصرف للفني):";
-                
+
                 formFinalAmount.value = finalSettlement.toFixed(2);
                 formFinalAmount.className = "form-control form-control-lg fw-bolder border-0 bg-success bg-opacity-10 text-success";
                 settleType.value = "PayToTech";
-                paymentSection.style.display = 'block'; // إظهار طرق الدفع
-                
+                paymentSection.style.display = 'block';
+
                 btnSubmit.innerHTML = '<i class="fa-solid fa-hand-holding-dollar me-2"></i> صرف المبلغ للفني وتصفية الدفاتر';
                 btnSubmit.className = "btn btn-success fw-bolder py-3 rounded-pill shadow-sm fs-5 w-100 hover-elevate";
-                
+
                 modalTitle.innerHTML = '<i class="fa-solid fa-money-bill-transfer text-success me-2"></i> صرف مستحقات الفني';
                 modalDesc.innerHTML = 'تم حساب العمولة بعد خصم كافة التكاليف من الأرباح. سيتم <b class="text-success">صرف هذا المبلغ للفني</b>.';
-            } 
+            }
             else if (finalSettlement < 0) {
                 var owesCompany = Math.abs(finalSettlement);
                 resultBox.innerHTML = owesCompany.toFixed(2) + ' <span class="fs-4">ر.س</span>';
                 resultBox.className = "m-0 fw-bolder display-4 text-danger";
                 resultText.innerText = "المطلوب توريده (يُستلم من الفني):";
-                
+
                 formFinalAmount.value = owesCompany.toFixed(2);
                 formFinalAmount.className = "form-control form-control-lg fw-bolder border-0 bg-danger bg-opacity-10 text-danger";
                 settleType.value = "ReceiveFromTech";
-                paymentSection.style.display = 'block'; // إظهار طرق الدفع
-                
+                paymentSection.style.display = 'block';
+
                 btnSubmit.innerHTML = '<i class="fa-solid fa-vault me-2"></i> استلام وتوريد للصندوق/البنك';
                 btnSubmit.className = "btn btn-danger fw-bolder py-3 rounded-pill shadow-sm fs-5 w-100 hover-elevate";
-                
+
                 modalTitle.innerHTML = '<i class="fa-solid fa-vault text-danger me-2"></i> استلام وتوريد كاش من الفني';
                 modalDesc.innerHTML = 'الكاش الذي بعهدة الفني أكبر من عمولته. سيتم <b class="text-danger">استلام هذا الفارق منه وإيداعه بالخزنة أو البنك</b>.';
-            } 
+            }
             else {
                 resultBox.innerHTML = '0.00 <span class="fs-4">ر.س</span>';
                 resultBox.className = "m-0 fw-bolder display-4 text-dark";
                 resultText.innerText = "مخالصة تامة (الحساب مصفر):";
-                
+
                 formFinalAmount.value = 0;
                 formFinalAmount.className = "form-control form-control-lg fw-bolder border-0 bg-light text-dark";
                 settleType.value = "Zero";
-                paymentSection.style.display = 'none'; // 📌 إخفاء خيارات الدفع لأن المبلغ صفر
-                
+                paymentSection.style.display = 'none';
+
                 btnSubmit.innerHTML = '<i class="fa-solid fa-check-double me-2"></i> إغلاق وتصفير الدفاتر';
                 btnSubmit.className = "btn btn-dark fw-bolder py-3 rounded-pill shadow-sm fs-5 w-100 hover-elevate";
-                
+
                 modalTitle.innerHTML = '<i class="fa-solid fa-check-double text-dark me-2"></i> تصفير الحسابات';
                 modalDesc.innerHTML = 'الحسابات متطابقة ولا يوجد مبالغ مستحقة للصرف أو الاستلام. سيتم تصفير الدفاتر واعتبار الكاش مسدداً للعمولات.';
             }
         }
 
-        document.addEventListener("DOMContentLoaded", function() {
-            calculateNet();
-        });
+        document.addEventListener("DOMContentLoaded", function() { calculateNet(); });
     </script>
 }
 
 <style>
-    /* Premium Dashboard UI Styles */
     :root {
         --prem-surface: #ffffff;
         --prem-border: #e2e8f0;
@@ -415,30 +446,126 @@
         --prem-radius: 20px;
     }
 
-    .fade-in-up { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    @@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .fade-in-up {
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
 
-    .premium-card { background: var(--prem-surface); border-radius: var(--prem-radius); box-shadow: 0 10px 30px rgba(0,0,0,0.02); overflow: hidden; }
-    .card-header-premium { padding: 20px 24px; border-bottom: 1px solid var(--prem-border); }
-    .card-body-premium { padding: 24px; }
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
 
-    .icon-box { width: 45px; height: 45px; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 20px; flex-shrink: 0; }
-    
-    .premium-label { font-weight: 800; color: var(--prem-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
-    .premium-input { background-color: #f8fafc; border: 1px solid var(--prem-border); border-radius: 12px; padding: 14px 20px; font-weight: 700; color: var(--prem-text); transition: all 0.3s ease; }
-    .premium-input:focus { background-color: #fff; box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1) !important; }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 
-    .hover-elevate { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
-    .hover-elevate:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important; }
-    
-    .border-dashed { border: 2px dashed #cbd5e1; }
+    .premium-card {
+        background: var(--prem-surface);
+        border-radius: var(--prem-radius);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        overflow: hidden;
+    }
 
-    .btn-outline-primary:hover, .btn-outline-info:hover { color: #fff !important; }
-    .btn-check:checked + .btn-outline-primary { background-color: #eff6ff; color: #3b82f6; border-color: #3b82f6; }
-    .btn-check:checked + .btn-outline-info { background-color: #f0f9ff; color: #0ea5e9; border-color: #0ea5e9; }
-    label.btn { transition: all 0.2s ease; cursor: pointer; }
-    
-    .premium-modal { border-radius: 24px; overflow: hidden; }
-    .premium-table th { font-weight: 800; color: var(--prem-muted); border-bottom: 2px solid var(--prem-border); padding: 16px; font-size: 0.85rem; text-transform: uppercase; }
-    .premium-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .card-header-premium {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--prem-border);
+    }
+
+    .card-body-premium {
+        padding: 24px;
+    }
+
+    .icon-box {
+        width: 45px;
+        height: 45px;
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 20px;
+        flex-shrink: 0;
+    }
+
+    .premium-label {
+        font-weight: 800;
+        color: var(--prem-muted);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .premium-input {
+        background-color: #f8fafc;
+        border: 1px solid var(--prem-border);
+        border-radius: 12px;
+        padding: 14px 20px;
+        font-weight: 700;
+        color: var(--prem-text);
+        transition: all 0.3s ease;
+    }
+
+        .premium-input:focus {
+            background-color: #fff;
+            box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1) !important;
+        }
+
+    .hover-elevate {
+        transition: transform 0.2s, box-shadow 0.2s;
+        cursor: pointer;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
+
+    .border-dashed {
+        border: 2px dashed #cbd5e1;
+    }
+
+    .btn-outline-primary:hover, .btn-outline-info:hover {
+        color: #fff !important;
+    }
+
+    .btn-check:checked + .btn-outline-primary {
+        background-color: #eff6ff;
+        color: #3b82f6;
+        border-color: #3b82f6;
+    }
+
+    .btn-check:checked + .btn-outline-info {
+        background-color: #f0f9ff;
+        color: #0ea5e9;
+        border-color: #0ea5e9;
+    }
+
+    label.btn {
+        transition: all 0.2s ease;
+        cursor: pointer;
+    }
+
+    .premium-modal {
+        border-radius: 24px;
+        overflow: hidden;
+    }
+
+    .premium-table th {
+        font-weight: 800;
+        color: var(--prem-muted);
+        border-bottom: 2px solid var(--prem-border);
+        padding: 16px;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+    }
+
+    .premium-table td {
+        padding: 16px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
 </style>

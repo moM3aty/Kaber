@@ -3,26 +3,29 @@
     ViewData["Title"] = "التقرير المالي العام";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 
-    decimal totalRevenue = ViewBag.TotalRevenue ?? 0;
-    decimal cogs = ViewBag.COGS ?? 0;
-    decimal grossProfit = ViewBag.GrossProfit ?? 0;
-    decimal allExpenses = ViewBag.AllExpenses ?? 0;
-    decimal netProfit = ViewBag.NetProfit ?? 0;
-    
-    decimal totalPurchasesOutflow = ViewBag.TotalPurchasesOutflow ?? 0;
-    decimal totalCashOutflow = ViewBag.TotalCashOutflow ?? 0;
+    decimal totalRevenue = ViewBag.TotalRevenue ?? 0m;
+    decimal cogs = ViewBag.COGS ?? 0m;
+    decimal grossProfit = ViewBag.GrossProfit ?? 0m;
+    decimal allExpenses = ViewBag.AllExpenses ?? 0m;
+    decimal netProfit = ViewBag.NetProfit ?? 0m;
 
-    decimal inventoryValue = ViewBag.InventoryValue ?? 0;
-    decimal purchasingSafe = ViewBag.PurchasingSafeBalance ?? 0;
-    decimal generalSafe = ViewBag.GeneralSafeBalance ?? 0;
-    decimal bankBalance = ViewBag.BankBalance ?? 0;
-    decimal totalCashWithTechs = ViewBag.TotalCashWithTechs ?? 0;
+    decimal cashExpenses = ViewBag.CashExpenses ?? 0m;
+    decimal bankExpenses = ViewBag.BankExpenses ?? 0m;
+
+    decimal totalPurchasesOutflow = ViewBag.TotalPurchasesOutflow ?? 0m;
+    decimal totalCashOutflow = ViewBag.TotalCashOutflow ?? 0m;
+
+    decimal inventoryValue = ViewBag.InventoryValue ?? 0m;
+    decimal purchasingSafe = ViewBag.PurchasingSafeBalance ?? 0m;
+    decimal generalSafe = ViewBag.GeneralSafeBalance ?? 0m;
+    decimal bankBalance = ViewBag.BankBalance ?? 0m;
+    decimal totalCashWithTechs = ViewBag.TotalCashWithTechs ?? 0m;
 
     string currentMonthYear = ViewBag.CurrentMonthYear;
     string monthName = ViewBag.MonthName;
-    
-    decimal totalPartnersShare = ViewBag.TotalPartnersShare ?? 0;
-    decimal remainingShare = 100 - totalPartnersShare;
+
+    decimal totalPartnersShare = ViewBag.TotalPartnersShare ?? 0m;
+    decimal remainingShare = 100m - totalPartnersShare;
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
@@ -49,7 +52,7 @@
 <!-- ========================================================= -->
 <!-- 📌 1. قسم الأرباح والخسائر (هل نحن نربح أم نخسر؟) -->
 <!-- ========================================================= -->
-<h5 class="fw-bolder text-dark mb-3 fade-in-up"><i class="fa-solid fa-scale-balanced text-primary me-2"></i> 1. قائمة الدخل والأرباح (P&L)</h5>
+<h5 class="fw-bolder text-dark mb-3 fade-in-up"><i class="fa-solid fa-scale-balanced text-primary me-2"></i> 1. قائمة الدخل والأرباح (لشهر @monthName)</h5>
 <div class="row g-4 mb-5 fade-in-up" style="animation-delay: 0.1s;">
     <div class="col-md-3">
         <div class="premium-card h-100 p-4 border-top border-4 border-info">
@@ -57,7 +60,7 @@
                 <h6 class="fw-bold text-muted m-0">إجمالي المبيعات (الإيراد)</h6>
                 <div class="icon-box bg-info bg-opacity-10 text-info"><i class="fa-solid fa-money-bill-trend-up"></i></div>
             </div>
-            <h3 class="fw-bolder text-dark m-0">@totalRevenue.ToString("N0") <span class="fs-6 text-muted">ر.س</span></h3>
+            <h3 class="fw-bolder text-dark m-0">@totalRevenue.ToString("N2") <span class="fs-6 text-muted">ر.س</span></h3>
             <p class="small text-muted fw-bold mt-2 mb-0">جميع الفواتير المدفوعة (أجور + قطع).</p>
         </div>
     </div>
@@ -68,7 +71,7 @@
                 <h6 class="fw-bold text-muted m-0">تكلفة القطع المباعة (COGS)</h6>
                 <div class="icon-box bg-warning bg-opacity-10 text-warning"><i class="fa-solid fa-boxes-stacked"></i></div>
             </div>
-            <h3 class="fw-bolder text-warning m-0">- @cogs.ToString("N0") <span class="fs-6 text-muted">ر.س</span></h3>
+            <h3 class="fw-bolder text-warning m-0">- @cogs.ToString("N2") <span class="fs-6 text-muted">ر.س</span></h3>
             <p class="small text-muted fw-bold mt-2 mb-0">سعر الشراء للقطع التي تم استهلاكها بالطلبات.</p>
         </div>
     </div>
@@ -76,11 +79,16 @@
     <div class="col-md-3">
         <div class="premium-card h-100 p-4 border-top border-4 border-danger d-flex flex-column">
             <div class="d-flex justify-content-between align-items-start mb-3">
-                <h6 class="fw-bold text-muted m-0">مصاريف ورواتب وعمولات</h6>
+                <h6 class="fw-bold text-muted m-0">المصاريف، الرواتب والسلف</h6>
                 <div class="icon-box bg-danger bg-opacity-10 text-danger"><i class="fa-solid fa-arrow-trend-down"></i></div>
             </div>
-            <h3 class="fw-bolder text-danger m-0">- @allExpenses.ToString("N0") <span class="fs-6 text-muted">ر.س</span></h3>
-            <p class="small text-muted fw-bold mt-2 mb-0 lh-sm">رواتب، إيجار، وعمولات صُرفت للفنيين.</p>
+            <h3 class="fw-bolder text-danger m-0">- @allExpenses.ToString("N2") <span class="fs-6 text-muted">ر.س</span></h3>
+            <p class="small text-muted fw-bold mt-2 mb-0 lh-sm">مصروفات تشغيلية، رواتب، سلف للموظفين، وعمولات.</p>
+
+            <div class="mt-auto pt-3 border-top border-danger border-opacity-25 d-flex justify-content-between">
+                <span class="small fw-bold text-muted"><i class="fa-solid fa-money-bills text-success me-1"></i> كاش: <span class="text-dark">@cashExpenses.ToString("N2")</span></span>
+                <span class="small fw-bold text-muted"><i class="fa-solid fa-credit-card text-primary me-1"></i> بنك: <span class="text-dark">@bankExpenses.ToString("N2")</span></span>
+            </div>
         </div>
     </div>
 
@@ -89,7 +97,7 @@
             <i class="fa-solid fa-sack-dollar position-absolute text-success" style="font-size: 100px; opacity: 0.1; left: -10px; bottom: -10px;"></i>
             <div class="position-relative z-1 text-end">
                 <h6 class="fw-bolder text-success mb-3">صافي الربح الفعلي (Net Profit)</h6>
-                <h2 class="fw-bolder text-success m-0 display-6">@netProfit.ToString("N0") <span class="fs-5">ر.س</span></h2>
+                <h2 class="fw-bolder text-success m-0 display-6">@netProfit.ToString("N2") <span class="fs-5">ر.س</span></h2>
                 <p class="small text-success fw-bold mt-3 mb-0"><i class="fa-solid fa-check-double me-1"></i> الربح الجاهز للتوزيع على الشركاء.</p>
             </div>
         </div>
@@ -99,7 +107,7 @@
 <!-- ========================================================= -->
 <!-- 📌 2. قسم حركة السيولة والمشتريات (أين ذهبت الأموال؟) -->
 <!-- ========================================================= -->
-<h5 class="fw-bolder text-dark mb-3 fade-in-up" style="animation-delay: 0.2s;"><i class="fa-solid fa-money-bill-transfer text-primary me-2"></i> 2. ملخص المدفوعات والمشتريات (Cash Flow)</h5>
+<h5 class="fw-bolder text-dark mb-3 fade-in-up" style="animation-delay: 0.2s;"><i class="fa-solid fa-money-bill-transfer text-primary me-2"></i> 2. ملخص المدفوعات والمشتريات (لشهر @monthName)</h5>
 <div class="row g-4 mb-5 fade-in-up" style="animation-delay: 0.2s;">
     <div class="col-md-6">
         <div class="premium-card p-4 d-flex justify-content-between align-items-center bg-light border">
@@ -107,16 +115,16 @@
                 <h6 class="fw-bold text-muted mb-1">المدفوعات لشراء بضاعة ونواقص (Purchases)</h6>
                 <p class="small text-muted fw-bold m-0">السيولة التي تحولت لبضاعة (مخزن/فواتير).</p>
             </div>
-            <h3 class="fw-bolder text-dark m-0">@totalPurchasesOutflow.ToString("N0") <span class="fs-6 text-muted">ر.س</span></h3>
+            <h3 class="fw-bolder text-dark m-0">@totalPurchasesOutflow.ToString("N2") <span class="fs-6 text-muted">ر.س</span></h3>
         </div>
     </div>
     <div class="col-md-6">
         <div class="premium-card p-4 d-flex justify-content-between align-items-center bg-danger bg-opacity-10 border border-danger border-opacity-25">
             <div>
                 <h6 class="fw-bold text-danger mb-1"><i class="fa-solid fa-arrow-right-from-bracket me-1"></i> إجمالي التدفقات الخارجة (Total Outflow)</h6>
-                <p class="small text-danger fw-bold m-0 opacity-75">مجموع (كل المصروفات + כל المشتريات).</p>
+                <p class="small text-danger fw-bold m-0 opacity-75">مجموع (كل المصروفات والرواتب والسلف + المشتريات).</p>
             </div>
-            <h3 class="fw-bolder text-danger m-0">- @totalCashOutflow.ToString("N0") <span class="fs-6">ر.س</span></h3>
+            <h3 class="fw-bolder text-danger m-0">- @totalCashOutflow.ToString("N2") <span class="fs-6">ر.س</span></h3>
         </div>
     </div>
 </div>
@@ -124,7 +132,7 @@
 <!-- ========================================================= -->
 <!-- 📌 3. الأصول والصناديق (كم نمتلك الآن؟) -->
 <!-- ========================================================= -->
-<h5 class="fw-bolder text-dark mb-3 fade-in-up" style="animation-delay: 0.3s;"><i class="fa-solid fa-vault text-warning me-2"></i> 3. الأصول، الخزنات، وحسابات البنوك (Assets & Funds)</h5>
+<h5 class="fw-bolder text-dark mb-3 fade-in-up" style="animation-delay: 0.3s;"><i class="fa-solid fa-vault text-warning me-2"></i> 3. الأصول، الخزنات، وحسابات البنوك (تراكمي دائم)</h5>
 <div class="row g-4 mb-5 fade-in-up" style="animation-delay: 0.3s;">
     <div class="col-lg-7">
         <div class="premium-card h-100">
@@ -136,7 +144,10 @@
                         <div class="bg-primary text-white rounded-3 d-flex justify-content-center align-items-center shadow-sm" style="width: 45px; height: 45px; font-size: 18px;"><i class="fa-solid fa-rotate"></i></div>
                         <div>
                             <h6 class="fw-bolder text-dark mb-1">خزنة المشتريات النقدية</h6>
-                            @if (purchasingSafe < 0) { <small class="text-danger fw-bold m-0"><i class="fa-solid fa-triangle-exclamation me-1"></i> الخزنة مدانة (تم السحب من العام لشراء بضاعة).</small> }
+                            @if (purchasingSafe < 0)
+                            {
+                                <small class="text-danger fw-bold m-0"><i class="fa-solid fa-triangle-exclamation me-1"></i> الخزنة مدانة (تم السحب من العام لشراء بضاعة).</small>
+                            }
                         </div>
                     </div>
                     <div class="text-end">
@@ -193,72 +204,44 @@
         </div>
     </div>
 
-
-    <!-- 📌 3. توزيع نسب الشركاء -->
+    <!-- 📌 إدارة الشركاء -->
     <div class="col-lg-5">
         <div class="premium-card h-100">
             <div class="card-header-premium bg-dark text-white d-flex justify-content-between align-items-center">
-                <h5 class="fw-bolder text-white m-0"><i class="fa-solid fa-users-viewfinder text-warning me-2"></i> إدارة وتوزيع أرباح الشركاء</h5>
+                <h6 class="fw-bolder text-white m-0"><i class="fa-solid fa-users-viewfinder text-warning me-2"></i> توزيع أرباح شهر (@monthName)</h6>
                 @if (remainingShare > 0)
                 {
-                    <button type="button" class="btn btn-sm btn-outline-light rounded-pill fw-bold" data-bs-toggle="modal" data-bs-target="#addPartnerModal">
-                        <i class="fa-solid fa-plus me-1"></i> إضافة شريك
-                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-light rounded-pill fw-bold" data-bs-toggle="modal" data-bs-target="#addPartnerModal"><i class="fa-solid fa-plus me-1"></i> شريك</button>
                 }
             </div>
-            <div class="card-body-premium">
-                <p class="text-muted fw-bold mb-4">يتم احتساب نصيب كل شريك بناءً على (صافي الربح الفعلي) بعد استقطاع كافة الرواتب والمصاريف والتوالف للمكان.</p>
-
+            <div class="card-body-premium p-3">
                 @if (netProfit > 0 && ViewBag.Partners != null)
                 {
-                    <div class="d-flex flex-column gap-3">
+                    <div class="d-flex flex-column gap-2">
                         @foreach (var partner in ViewBag.Partners)
                         {
                             <div class="p-3 border rounded-3 bg-light hover-elevate">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div class="d-flex align-items-center gap-3">
-                                        <div class="avatar-sm bg-dark text-white fw-bold shadow-sm">@partner.Name.Substring(0, 1)</div>
-                                        <h6 class="fw-bolder text-dark m-0">@partner.Name</h6>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div class="avatar-sm bg-dark text-white fw-bold shadow-sm" style="width: 30px; height:30px; font-size:12px;">@partner.Name.Substring(0, 1)</div>
+                                        <h6 class="fw-bolder text-dark m-0 fs-6">@partner.Name</h6>
                                     </div>
-                                    <div class="text-end">
-                                        <span class="badge bg-warning text-dark mb-1">@partner.Share %</span>
-                                    </div>
+                                    <span class="badge bg-warning text-dark">@partner.Share %</span>
                                 </div>
-                                <div class="d-flex justify-content-between align-items-end mt-3 border-top pt-3">
-                                    <div>
-                                        <h5 class="fw-bolder text-success m-0">@partner.Amount.ToString("N2") <span class="fs-6 text-muted fw-normal">ر.س</span></h5>
-                                    </div>
+                                <div class="d-flex justify-content-between align-items-end mt-2">
+                                    <h5 class="fw-bolder text-success m-0">@partner.Amount.ToString("N2")</h5>
                                     <div class="d-flex gap-2">
-                                        @if (netProfit > 0)
-                                        {
-                                            <button type="button" class="btn btn-sm btn-dark rounded-pill fw-bold px-3 shadow-sm" onclick="openSettlePartnerModal(@partner.Id, '@partner.Name', @partner.Amount, '@monthName')">
-                                                <i class="fa-solid fa-money-bill-transfer text-warning me-1"></i> اعتماد وصرف
-                                            </button>
-                                        }
-                                        <form asp-action="DeletePartner" method="post" onsubmit="return confirm('تأكيد إزالة الشريك من جدول التوزيع المستقبلي؟');">
-                                            <input type="hidden" name="id" value="@partner.Id" />
-                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-circle border shadow-sm" style="width:32px; height:32px;" title="حذف الشريك"><i class="fa-solid fa-trash-can"></i></button>
-                                        </form>
+                                        <button type="button" class="btn btn-sm btn-dark rounded-pill fw-bold px-3 shadow-sm" onclick="openSettlePartnerModal(@partner.Id, '@partner.Name', @partner.Amount, '@monthName')">صرف</button>
+                                        <form asp-action="DeletePartner" method="post" onsubmit="return confirm('حذف الشريك؟');"><input type="hidden" name="id" value="@partner.Id" /><button type="submit" class="btn btn-sm btn-outline-danger rounded-circle" style="width:30px; height:30px;"><i class="fa-solid fa-trash-can"></i></button></form>
                                     </div>
                                 </div>
-                            </div>
-                        }
-                        
-                        @if (remainingShare > 0)
-                        {
-                            <div class="alert alert-warning py-2 text-center small fw-bold mt-2 mb-0">
-                                <i class="fa-solid fa-triangle-exclamation text-danger me-1"></i> 
-                                متبقي <b class="text-danger">@remainingShare%</b> من إجمالي الأسهم غير موزعة على شركاء.
                             </div>
                         }
                     </div>
                 }
                 else
                 {
-                    <div class="alert alert-danger fw-bold text-center p-4 rounded-4 shadow-sm border-0">
-                        <i class="fa-solid fa-triangle-exclamation fs-1 d-block mb-3 text-danger opacity-75"></i>
-                        عفواً، لا يوجد صافي ربح للتوزيع هذا الشهر. (المصاريف تجاوزت مجمل الربح).
-                    </div>
+                    <div class="alert alert-danger fw-bold text-center p-4 rounded-4 border-0">عفواً، لا يوجد صافي ربح للتوزيع.</div>
                 }
             </div>
         </div>
@@ -355,9 +338,9 @@
                     <input type="hidden" name="partnerId" id="modalSettlePartnerId" />
                     <input type="hidden" name="partnerName" id="modalSettlePartnerNameInput" />
                     <input type="hidden" name="monthYearName" value="@monthName" />
-                    
+
                     <div class="alert alert-success py-3 small fw-bold mb-4 border-0 rounded-3 shadow-sm bg-success bg-opacity-10 text-dark">
-                        <i class="fa-solid fa-circle-info text-success me-1"></i> 
+                        <i class="fa-solid fa-circle-info text-success me-1"></i>
                         أنت تقوم بتسجيل واعتماد صرف أرباح الشريك <b id="modalSettlePartnerName" class="text-dark fs-6"></b> عن شهر (@monthName).
                     </div>
 
@@ -403,10 +386,10 @@
             <form asp-action="AdjustSafeBalance" method="post">
                 <div class="modal-body p-4 text-start">
                     <input type="hidden" name="targetSafe" id="modalTargetSafe" value="" />
-                    
+
                     <div class="alert alert-info py-2 small fw-bold mb-4 border-0 rounded-3 shadow-sm bg-info bg-opacity-10 text-dark">
-                        <i class="fa-solid fa-circle-info text-info me-1"></i> 
-                        أنت تقوم بتعديل الرصيد النقدي لـ <b id="modalSafeNameName" class="text-primary"></b>.<br> 
+                        <i class="fa-solid fa-circle-info text-info me-1"></i>
+                        أنت تقوم بتعديل الرصيد النقدي لـ <b id="modalSafeNameName" class="text-primary"></b>.<br>
                         الرصيد المُسجل بالنظام حالياً هو: <b class="text-danger" id="modalCurrentBalance"></b> ريال.
                     </div>
 
@@ -434,32 +417,148 @@
 
 <style>
     /* Premium Dashboard UI Styles */
-    :root { --prem-surface: #ffffff; --prem-border: #e2e8f0; --prem-text: #1e293b; --prem-muted: #64748b; --prem-radius: 20px; --prem-primary: #f1950b; }
-    .fade-in-up { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    @@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    :root {
+        --prem-surface: #ffffff;
+        --prem-border: #e2e8f0;
+        --prem-text: #1e293b;
+        --prem-muted: #64748b;
+        --prem-radius: 20px;
+        --prem-primary: #f1950b;
+    }
 
-    .premium-card { background: var(--prem-surface); border-radius: var(--prem-radius); border: 1px solid var(--prem-border); box-shadow: 0 10px 30px rgba(0,0,0,0.02); overflow: hidden; }
-    .card-header-premium { padding: 24px; border-bottom: 1px solid var(--prem-border); }
-    .card-body-premium { padding: 24px; }
-    .icon-box { width: 45px; height: 45px; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 20px; }
-    .avatar-sm { width: 35px; height: 35px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
+    .fade-in-up {
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
 
-    .hover-elevate { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s; cursor: pointer; }
-    .hover-elevate:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.05) !important; border-color: #cbd5e1 !important; }
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
 
-    .edit-btn { opacity: 0; transition: opacity 0.3s; position: absolute; left: 20px; top: 50%; transform: translateY(-50%); }
-    .group-hover:hover .edit-btn { opacity: 1; }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 
-    .premium-label { font-weight: 800; color: var(--prem-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
-    .premium-input { background-color: #f8fafc; border: 1px solid var(--prem-border); border-radius: 12px; padding: 14px 20px; font-weight: 700; color: var(--prem-text); box-shadow: none !important; transition: all 0.3s ease; }
-    .premium-input:focus { background-color: #fff; border-color: var(--prem-primary); box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1) !important; }
-    
-    .premium-table th { font-weight: 800; color: var(--prem-muted); border-bottom: 2px solid var(--prem-border); padding: 16px; font-size: 0.85rem; text-transform: uppercase; }
-    .premium-table td { padding: 16px; vertical-align: middle; }
-    .premium-modal { border-radius: 24px; overflow: hidden; }
+    .premium-card {
+        background: var(--prem-surface);
+        border-radius: var(--prem-radius);
+        border: 1px solid var(--prem-border);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        overflow: hidden;
+    }
 
-    .btn-check:checked + .btn-outline-success { background-color: #ecfdf5; color: #10b981; border-color: #10b981; }
-    .btn-check:checked + .btn-outline-primary { background-color: #eff6ff; color: #3b82f6; border-color: #3b82f6; }
+    .card-header-premium {
+        padding: 24px;
+        border-bottom: 1px solid var(--prem-border);
+    }
+
+    .card-body-premium {
+        padding: 24px;
+    }
+
+    .icon-box {
+        width: 45px;
+        height: 45px;
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 20px;
+    }
+
+    .avatar-sm {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .hover-elevate {
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+        cursor: pointer;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.05) !important;
+            border-color: #cbd5e1 !important;
+        }
+
+    .edit-btn {
+        opacity: 0;
+        transition: opacity 0.3s;
+        position: absolute;
+        left: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+
+    .group-hover:hover .edit-btn {
+        opacity: 1;
+    }
+
+    .premium-label {
+        font-weight: 800;
+        color: var(--prem-muted);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .premium-input {
+        background-color: #f8fafc;
+        border: 1px solid var(--prem-border);
+        border-radius: 12px;
+        padding: 14px 20px;
+        font-weight: 700;
+        color: var(--prem-text);
+        box-shadow: none !important;
+        transition: all 0.3s ease;
+    }
+
+        .premium-input:focus {
+            background-color: #fff;
+            border-color: var(--prem-primary);
+            box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1) !important;
+        }
+
+    .premium-table th {
+        font-weight: 800;
+        color: var(--prem-muted);
+        border-bottom: 2px solid var(--prem-border);
+        padding: 16px;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+    }
+
+    .premium-table td {
+        padding: 16px;
+        vertical-align: middle;
+    }
+
+    .premium-modal {
+        border-radius: 24px;
+        overflow: hidden;
+    }
+
+    .btn-check:checked + .btn-outline-success {
+        background-color: #ecfdf5;
+        color: #10b981;
+        border-color: #10b981;
+    }
+
+    .btn-check:checked + .btn-outline-primary {
+        background-color: #eff6ff;
+        color: #3b82f6;
+        border-color: #3b82f6;
+    }
 </style>
 
 @section Scripts {
@@ -473,26 +572,25 @@
             myModal.show();
         }
 
-        // 📌 دالة لفتح نافذة صرف أرباح الشريك
         function openSettlePartnerModal(id, name, amount, month) {
             document.getElementById('modalSettlePartnerId').value = id;
             document.getElementById('modalSettlePartnerNameInput').value = name;
             document.getElementById('modalSettlePartnerName').innerText = name;
             document.getElementById('modalSettleAmount').value = amount.toFixed(2);
-            
+
             var myModal = new bootstrap.Modal(document.getElementById('settlePartnerModal'));
             myModal.show();
         }
 
         @if (TempData["SuccessMessage"] != null)
         {
-            var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
-            <text>Swal.fire({ icon: 'success', title: 'تم بنجاح', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'rounded-4' } });</text>
+                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                <text>Swal.fire({ icon: 'success', title: 'تم بنجاح', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'rounded-4' } });</text>
         }
         @if (TempData["ErrorMessage"] != null)
         {
-            var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
-            <text>Swal.fire({ icon: 'error', title: 'خطأ', text: @Html.Raw(errMsg), confirmButtonColor: '#dc3545', customClass: { popup: 'rounded-4' } });</text>
+                var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
+                <text>Swal.fire({ icon: 'error', title: 'خطأ', text: @Html.Raw(errMsg), confirmButtonColor: '#dc3545', customClass: { popup: 'rounded-4' } });</text>
         }
     </script>
 }
