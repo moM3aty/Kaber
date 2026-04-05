@@ -1,13 +1,12 @@
-﻿// مسار الملف: Controllers/AccountingController.cs
-using System;
-using System.Linq;
-using System.Threading.Tasks;
+﻿using KaberSystem.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using KaberSystem.Models;
-using Microsoft.AspNetCore.Authorization;
+using System;
 using System.Collections.Generic;
 using System.Dynamic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace KaberSystem.Controllers
 {
@@ -33,88 +32,219 @@ namespace KaberSystem.Controllers
             });
         }
 
-        // 📌 1. تقرير الأرباح (قائمة الدخل)
+        // 📌 1. التقرير المالي المتقدم (اللوحة الشاملة ERP Dashboard)
         public async Task<IActionResult> Index(string monthYear)
         {
             DateTime targetDate = string.IsNullOrEmpty(monthYear) ? DateTime.Now : DateTime.Parse(monthYear + "-01");
             ViewBag.CurrentMonthYear = targetDate.ToString("yyyy-MM");
             ViewBag.MonthName = targetDate.ToString("MMMM yyyy");
 
-            // جلب الطلبات المدفوعة في هذا الشهر
+            // =================================================================
+            // 1. قسم الأرباح والخسائر (P&L) - هل أنا كسبان أم خسران؟
+            // =================================================================
+
+            // أ. الإيرادات الكلية من الطلبات المدفوعة
             var monthlyOrders = await _context.Orders
-                .Include(o => o.UsedSpareParts)
-                    .ThenInclude(p => p.SparePart)
+                .Include(o => o.UsedSpareParts).ThenInclude(p => p.SparePart)
                 .Where(o => o.IsPaid && o.CreatedAt.Year == targetDate.Year && o.CreatedAt.Month == targetDate.Month)
                 .ToListAsync();
 
-            // 1. الإيرادات (إجمالي الفواتير)
             decimal totalRevenue = monthlyOrders.Sum(o => o.FinalPrice);
 
-            // 2. تكلفة البضاعة المباعة (سعر الشراء للقطع المستهلكة)
-            decimal cogs = monthlyOrders.SelectMany(o => o.UsedSpareParts)
-                .Sum(p => p.QuantityUsed * (p.SparePart?.PurchasePrice ?? 0));
+            // ب. تكلفة البضاعة المباعة (القطع التي تم استهلاكها في الفواتير فقط)
+            decimal cogs = monthlyOrders.SelectMany(o => o.UsedSpareParts).Sum(p => p.QuantityUsed * (p.SparePart?.PurchasePrice ?? 0));
 
-            // 3. مجمل الربح
+            // ج. إجمالي الربح المبدئي (الإيرادات - تكلفة القطع)
             decimal grossProfit = totalRevenue - cogs;
 
-            // 4. المصروفات الخاصة بالشركة هذا الشهر (تستثنى مديونيات الفنيين)
-            decimal companyExpenses = await _context.Expenses
+            // د. المصروفات التشغيلية الحقيقية (إيجار، رواتب، توالف، بنزين)
+            var opExpensesList = await _context.Expenses
                 .Where(e => e.Date.Year == targetDate.Year && e.Date.Month == targetDate.Month && e.DeductionFrom == DeductionSource.Company)
-                .SumAsync(e => e.Amount);
+                .ToListAsync();
+            decimal totalOpExpenses = opExpensesList.Sum(e => e.Amount);
 
-            // 5. التوالف هذا الشهر
             decimal damagesCost = await _context.DamagedParts
                 .Where(d => d.Date.Year == targetDate.Year && d.Date.Month == targetDate.Month)
                 .SumAsync(d => d.TotalLoss);
 
-            // 6. صافي الربح
-            decimal netProfit = grossProfit - companyExpenses - damagesCost;
+            // هـ. عمولات الفنيين التي تم صرفها (تعتبر مصروف تشغيلي يقلل الربح)
+            decimal techCommissionsPaid = await _context.SafeTransactions
+                .Where(t => t.Date.Year == targetDate.Year && t.Date.Month == targetDate.Month
+                         && t.Type == SafeTransactionType.DepositToBank
+                         && t.Description.Contains("صرف صافي عمولة الفني"))
+                .SumAsync(t => t.Amount);
 
-            ViewBag.TotalRevenue = totalRevenue;
-            ViewBag.CostOfGoodsSold = cogs;
-            ViewBag.GrossProfit = grossProfit;
-            ViewBag.TotalExpenses = companyExpenses;
-            ViewBag.TotalDamagesCost = damagesCost;
-            ViewBag.NetCompanyProfit = netProfit;
+            decimal allExpenses = totalOpExpenses + damagesCost + techCommissionsPaid;
 
-            // 📌 إحصائيات الفنيين
-            var technicians = await _context.Technicians
-                .Include(t => t.AssignedOrders)
-                    .ThenInclude(o => o.UsedSpareParts)
-                .Include(t => t.Expenses)
+            // و. صافي الربح الحقيقي للشركة
+            decimal netProfit = grossProfit - allExpenses;
+
+
+            // =================================================================
+            // 2. قسم التدفقات النقدية (Cash Flow) - أين ذهبت السيولة؟
+            // =================================================================
+
+            // حساب قيمة البضائع المشتراة (للمخزن + نواقص الفنيين)
+            var purchasesTransactions = await _context.SafeTransactions
+                .Where(t => t.Date.Year == targetDate.Year && t.Date.Month == targetDate.Month
+                         && t.Type == SafeTransactionType.DepositToBank
+                         && (t.TargetSafe == SafeType.Purchasing || t.Description.Contains("سلفة نقدية من العام لشراء")))
                 .ToListAsync();
 
-            var techReports = technicians.Select(t => {
+            decimal totalPurchasesOutflow = purchasesTransactions.Sum(t => t.Amount);
+
+            // إجمالي الأموال الخارجة (مصاريف + عمولات + مشتريات بضاعة)
+            decimal totalCashOutflow = allExpenses + totalPurchasesOutflow;
+
+
+            // =================================================================
+            // 3. قسم الأصول والخزنات (Assets & Funds) - كم أمتلك الآن؟
+            // =================================================================
+
+            // أ. قيمة المخزن الفعلي (باستثناء القطع المحجوزة للعملاء)
+            decimal rawInventoryValue = await _context.SpareParts.SumAsync(p => p.MainStockQuantity * p.PurchasePrice);
+            decimal reservedInOrders = await _context.UsedSpareParts.Include(u => u.Order).Include(u => u.SparePart).Where(u => u.Order != null && !u.Order.IsPaid).SumAsync(u => u.QuantityUsed * (u.SparePart != null ? u.SparePart.PurchasePrice : 0));
+            decimal reservedMissingParts = await _context.OrderPartRequests.Include(pr => pr.SparePart).Include(pr => pr.Order).Where(pr => pr.RequestType == PartRequestType.PurchaseNew && pr.Status == PartRequestStatus.ReadyForInstallation && pr.Order != null && !pr.Order.IsPaid).SumAsync(pr => pr.Quantity * (pr.SparePart != null ? pr.SparePart.PurchasePrice : 0));
+            decimal inventoryValue = rawInventoryValue - reservedInOrders - reservedMissingParts;
+            if (inventoryValue < 0) inventoryValue = 0;
+
+            // ب. الخزنات النقدية
+            var cashTransactions = await _context.SafeTransactions.Where(s => s.PaymentMethod == PaymentMethod.Cash || s.PaymentMethod == PaymentMethod.None).ToListAsync();
+            decimal purchasingSafeBalance = cashTransactions.Where(t => t.TargetSafe == SafeType.Purchasing && t.Type == SafeTransactionType.Income).Sum(t => t.Amount) - cashTransactions.Where(t => t.TargetSafe == SafeType.Purchasing && t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+            decimal generalSafeBalance = cashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income).Sum(t => t.Amount) - cashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+
+            // ج. البنك
+            var bankTransactions = await _context.SafeTransactions.Where(s => s.PaymentMethod == PaymentMethod.POS || s.PaymentMethod == PaymentMethod.BankTransfer).ToListAsync();
+            decimal bankBalance = bankTransactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount) - bankTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+
+            // د. ديون الفنيين (العهد النقدية التي في جيوبهم ولم تورد)
+            var techsWalletData = await _context.Technicians
+                .Select(t => new {
+                    TotalCashOrders = t.AssignedOrders.Where(o => o.IsPaid && o.PaymentMethod == PaymentMethod.Cash).Sum(o => o.FinalPrice),
+                    TotalIncome = t.TotalIncome
+                }).ToListAsync();
+
+            decimal totalCashWithTechs = techsWalletData.Sum(t => t.TotalCashOrders - t.TotalIncome);
+
+
+            // =================================================================
+            // 4. إرسال البيانات للواجهة
+            // =================================================================
+            ViewBag.TotalRevenue = totalRevenue;
+            ViewBag.COGS = cogs;
+            ViewBag.GrossProfit = grossProfit;
+            ViewBag.AllExpenses = allExpenses;
+            ViewBag.NetProfit = netProfit;
+
+            ViewBag.TotalPurchasesOutflow = totalPurchasesOutflow;
+            ViewBag.TotalCashOutflow = totalCashOutflow;
+
+            ViewBag.InventoryValue = inventoryValue;
+            ViewBag.PurchasingSafeBalance = purchasingSafeBalance;
+            ViewBag.GeneralSafeBalance = generalSafeBalance;
+            ViewBag.BankBalance = bankBalance;
+            ViewBag.TotalCashWithTechs = totalCashWithTechs > 0 ? totalCashWithTechs : 0;
+
+            // الشركاء
+            var partnersList = await _context.Partners.ToListAsync();
+            ViewBag.TotalPartnersShare = partnersList.Sum(p => p.SharePercentage);
+            ViewBag.Partners = partnersList.Select(p => new { Id = p.Id, Name = p.Name, Share = p.SharePercentage, Amount = netProfit > 0 ? (netProfit * (p.SharePercentage / 100m)) : 0 }).ToList();
+
+            // الفنيين
+            var technicians = await _context.Technicians.Include(t => t.AssignedOrders).ThenInclude(o => o.UsedSpareParts).ThenInclude(p => p.SparePart).Include(t => t.Expenses).ToListAsync();
+            ViewBag.TechnicianReports = technicians.Select(t => {
                 var currentMonthOrders = t.AssignedOrders.Where(o => o.IsPaid && o.CreatedAt.Year == targetDate.Year && o.CreatedAt.Month == targetDate.Month).ToList();
-
-                decimal totalSales = currentMonthOrders.Sum(o => o.FinalPrice);
-                decimal partsSales = currentMonthOrders.SelectMany(o => o.UsedSpareParts).Sum(p => p.QuantityUsed * p.SellingPriceAtTime);
-                decimal laborSales = totalSales - partsSales; // أجور اليد
-
-                // حساب الكاش المحصل بيده (كل الطلبات الكاش التي لم تورد)
-                decimal wallet = t.AssignedOrders.Where(o => o.IsPaid && o.PaymentMethod == PaymentMethod.Cash).Sum(o => o.FinalPrice) - t.TotalIncome; // TotalIncome تستخدم هنا كتسديد عهدة مجازاً
-
-                // حساب السلف والخصومات
-                decimal allTimeDeductions = t.Expenses?.Where(e => e.DeductionFrom == DeductionSource.Technician).Sum(e => e.Amount) ?? 0;
-
+                decimal wallet = t.AssignedOrders.Where(o => o.IsPaid && o.PaymentMethod == PaymentMethod.Cash).Sum(o => o.FinalPrice) - t.TotalIncome;
                 dynamic expando = new ExpandoObject();
                 expando.Id = t.TechnicianId;
                 expando.Name = t.Name;
-                expando.TotalIncome = totalSales;
-                expando.LaborSales = laborSales;
-                expando.PartsSales = partsSales;
-                expando.AllTimeDeductions = allTimeDeductions;
+                expando.TotalSales = currentMonthOrders.Sum(o => o.FinalPrice);
+                expando.PartsCost = currentMonthOrders.SelectMany(o => o.UsedSpareParts).Sum(p => p.QuantityUsed * (p.SparePart?.PurchasePrice ?? 0));
+                expando.AllTimeDeductions = t.Expenses?.Where(e => e.DeductionFrom == DeductionSource.Technician).Sum(e => e.Amount) ?? 0;
                 expando.WalletBalance = wallet < 0 ? 0 : wallet;
-
                 return expando;
             }).ToList();
-
-            ViewBag.TechnicianReports = techReports;
 
             return View();
         }
 
-        // 📌 2. إدارة الفواتير
+        [HttpPost]
+        public async Task<IActionResult> AdjustSafeBalance(SafeType targetSafe, decimal actualBalance, string notes)
+        {
+            var transactions = await _context.SafeTransactions.Where(s => s.TargetSafe == targetSafe && (s.PaymentMethod == PaymentMethod.Cash || s.PaymentMethod == PaymentMethod.None)).ToListAsync();
+            decimal currentBalance = transactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount)
+                                   - transactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+            decimal difference = actualBalance - currentBalance;
+
+            if (difference != 0)
+            {
+                _context.SafeTransactions.Add(new SafeTransaction
+                {
+                    Amount = Math.Abs(difference),
+                    Type = difference > 0 ? SafeTransactionType.Income : SafeTransactionType.DepositToBank,
+                    TargetSafe = targetSafe,
+                    PaymentMethod = PaymentMethod.Cash,
+                    Description = $"[تسوية جردية يدوية للدرج]: {notes}",
+                    RecordedBy = User.Identity?.Name ?? "System",
+                    Date = DateTime.Now
+                });
+                string safeName = targetSafe == SafeType.General ? "الخزنة العامة" : "خزنة المشتريات";
+                LogAction("تسوية خزنة", $"تم تعديل رصيد {safeName} يدوياً ليصبح {actualBalance} ريال.");
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = $"تم تسوية رصيد {safeName} بنجاح ليصبح {actualBalance} ريال.";
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> AddPartner(string name, decimal sharePercentage)
+        {
+            decimal currentTotalShares = await _context.Partners.SumAsync(p => p.SharePercentage);
+            if (currentTotalShares + sharePercentage > 100)
+            {
+                TempData["ErrorMessage"] = "مجموع نسب الشركاء يتجاوز 100%."; return RedirectToAction(nameof(Index));
+            }
+            _context.Partners.Add(new Partner { Name = name, SharePercentage = sharePercentage });
+            await _context.SaveChangesAsync();
+            TempData["SuccessMessage"] = "تم الإضافة بنجاح.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> DeletePartner(int id)
+        {
+            var partner = await _context.Partners.FindAsync(id);
+            if (partner != null)
+            {
+                _context.Partners.Remove(partner);
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = "تم إزالة الشريك بنجاح.";
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> SettlePartnerShare(int partnerId, string partnerName, decimal amount, string monthYearName, PaymentMethod paymentMethod)
+        {
+            if (amount > 0)
+            {
+                _context.SafeTransactions.Add(new SafeTransaction
+                {
+                    Amount = amount,
+                    Type = SafeTransactionType.DepositToBank,
+                    TargetSafe = SafeType.General,
+                    PaymentMethod = paymentMethod,
+                    Description = $"توزيع وصرف أرباح الشريك ({partnerName})",
+                    RecordedBy = User.Identity?.Name ?? "System",
+                    Date = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = $"تم صرف أرباح الشريك بنجاح.";
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        // 📌 إدارة الفواتير
         public async Task<IActionResult> Invoices(string monthYear)
         {
             DateTime targetDate = string.IsNullOrEmpty(monthYear) ? DateTime.Now : DateTime.Parse(monthYear + "-01");
@@ -157,13 +287,13 @@ namespace KaberSystem.Controllers
                     invoice.Order.IsPaid = false;
                     _context.Update(invoice.Order);
 
-                    // عكس القيد في الخزنة
                     if (invoice.Order.PaymentMethod == PaymentMethod.Cash)
                     {
                         _context.SafeTransactions.Add(new SafeTransaction
                         {
                             Amount = invoice.Amount,
-                            Type = SafeTransactionType.DepositToBank, // نستخدم هذا النوع كمسحوبات/مستردات
+                            Type = SafeTransactionType.DepositToBank,
+                            TargetSafe = SafeType.General,
                             Description = $"استرداد فاتورة ملغاة #{invoiceId}. السبب: {refundReason}",
                             RecordedBy = User.Identity?.Name ?? "System",
                             Date = DateTime.Now
@@ -180,7 +310,7 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Invoices));
         }
 
-        // 📌 3. شاشة العمولات (مربوطة مع الـ JS في View)
+        // 📌 3. شاشة العمولات الذكية
         public async Task<IActionResult> TechnicianCommissions(int? techId, string monthYear)
         {
             DateTime targetDate = string.IsNullOrEmpty(monthYear) ? DateTime.Now : DateTime.Parse(monthYear + "-01");
@@ -193,6 +323,7 @@ namespace KaberSystem.Controllers
                 var tech = await _context.Technicians
                     .Include(t => t.AssignedOrders)
                         .ThenInclude(o => o.UsedSpareParts)
+                            .ThenInclude(p => p.SparePart)
                     .Include(t => t.Expenses)
                     .FirstOrDefaultAsync(t => t.TechnicianId == techId);
 
@@ -201,16 +332,15 @@ namespace KaberSystem.Controllers
                     var monthOrders = tech.AssignedOrders.Where(o => o.IsPaid && o.CreatedAt.Year == targetDate.Year && o.CreatedAt.Month == targetDate.Month).ToList();
 
                     decimal totalRev = monthOrders.Sum(o => o.FinalPrice);
-                    decimal partsRev = monthOrders.SelectMany(o => o.UsedSpareParts).Sum(p => p.QuantityUsed * p.SellingPriceAtTime);
-                    decimal laborRev = totalRev - partsRev;
+                    decimal laborRev = monthOrders.Sum(o => o.IsFeeApplied ? o.EstimatedPrice : 0);
+                    decimal partsCost = monthOrders.SelectMany(o => o.UsedSpareParts).Sum(p => p.QuantityUsed * (p.SparePart?.PurchasePrice ?? 0));
                     decimal deductions = tech.Expenses?.Where(e => e.DeductionFrom == DeductionSource.Technician).Sum(e => e.Amount) ?? 0;
-
                     decimal cashInHand = tech.AssignedOrders.Where(o => o.IsPaid && o.PaymentMethod == PaymentMethod.Cash).Sum(o => o.FinalPrice) - tech.TotalIncome;
 
                     ViewBag.Technician = tech;
                     ViewBag.TotalRevenue = totalRev;
                     ViewBag.LaborRevenue = laborRev;
-                    ViewBag.PartsRevenue = partsRev;
+                    ViewBag.PartsCost = partsCost;
                     ViewBag.TotalDeductions = deductions;
                     ViewBag.CashInHand = cashInHand < 0 ? 0 : cashInHand;
                     ViewBag.TechOrders = monthOrders;
@@ -221,64 +351,62 @@ namespace KaberSystem.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> PayCommission(int techId, string monthYearName, decimal deductionAmount, decimal finalAmount, string notes)
+        public async Task<IActionResult> PayCommission(int techId, string monthYearName, decimal finalAmount, string settleType, string notes, PaymentMethod paymentMethod)
         {
-            var tech = await _context.Technicians.Include(t => t.Expenses).FirstOrDefaultAsync(t => t.TechnicianId == techId);
+            var tech = await _context.Technicians
+                .Include(t => t.Expenses)
+                .Include(t => t.AssignedOrders)
+                .FirstOrDefaultAsync(t => t.TechnicianId == techId);
+
             if (tech != null)
             {
-                // تصفية السلف (حذفها لأنها خُصمت)
                 if (tech.Expenses != null && tech.Expenses.Any())
                 {
                     var techExpenses = tech.Expenses.Where(e => e.DeductionFrom == DeductionSource.Technician).ToList();
                     _context.Expenses.RemoveRange(techExpenses);
                 }
 
-                // تسجيل منصرف الخزنة (الراتب/العمولة)
+                var cashOrdersTotal = tech.AssignedOrders.Where(o => o.IsPaid && o.PaymentMethod == PaymentMethod.Cash).Sum(o => o.FinalPrice);
+                tech.TotalIncome = cashOrdersTotal;
+                _context.Update(tech);
+
                 if (finalAmount > 0)
                 {
-                    _context.SafeTransactions.Add(new SafeTransaction
+                    if (settleType == "PayToTech")
                     {
-                        Amount = finalAmount,
-                        Type = SafeTransactionType.DepositToBank, // كمصروف/سحب من الخزنة
-                        Description = $"صرف عمولة الفني ({tech.Name}) عن شهر {monthYearName}. {notes}",
-                        RecordedBy = User.Identity?.Name ?? "System",
-                        Date = DateTime.Now
-                    });
+                        _context.SafeTransactions.Add(new SafeTransaction
+                        {
+                            Amount = finalAmount,
+                            Type = SafeTransactionType.DepositToBank,
+                            TargetSafe = SafeType.General,
+                            PaymentMethod = paymentMethod,
+                            Description = $"صرف صافي عمولة الفني ({tech.Name}) عن شهر {monthYearName}. {notes}",
+                            RecordedBy = User.Identity?.Name ?? "System",
+                            Date = DateTime.Now
+                        });
+                    }
+                    else if (settleType == "ReceiveFromTech")
+                    {
+                        _context.SafeTransactions.Add(new SafeTransaction
+                        {
+                            Amount = finalAmount,
+                            Type = SafeTransactionType.Income,
+                            TargetSafe = SafeType.General,
+                            PaymentMethod = paymentMethod,
+                            Description = $"استلام وتوريد كاش (بعد التصفية) من الفني ({tech.Name}) عن شهر {monthYearName}. {notes}",
+                            RecordedBy = User.Identity?.Name ?? "System",
+                            Date = DateTime.Now
+                        });
+                    }
                 }
 
-                LogAction("صرف عمولات", $"تم تصفية وصرف مستحقات الفني {tech.Name} بصافي {finalAmount} ريال.");
+                LogAction("تصفية حساب فني", $"تم تصفية حساب الفني {tech.Name} بنجاح.");
                 await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم تصفية مستحقات الفني وتصفير السلف بنجاح.";
+                TempData["SuccessMessage"] = "تم التصفية وتوريد/صرف المبالغ بنجاح.";
             }
             return RedirectToAction(nameof(TechnicianCommissions), new { techId = techId });
         }
 
-        [HttpPost]
-        public async Task<IActionResult> SettleTechCash(int techId, decimal amount, string note)
-        {
-            var tech = await _context.Technicians.FindAsync(techId);
-            if (tech != null)
-            {
-                tech.TotalIncome += amount; // هذا الحقل يُستخدم كـ (مجموع الكاش المُورد من الفني للشركة)
-                _context.Update(tech);
-
-                _context.SafeTransactions.Add(new SafeTransaction
-                {
-                    Amount = amount,
-                    Type = SafeTransactionType.Income,
-                    Description = $"توريد كاش من الفني ({tech.Name}). {note}",
-                    RecordedBy = User.Identity?.Name ?? "System",
-                    Date = DateTime.Now
-                });
-
-                LogAction("توريد كاش فني", $"قام الفني {tech.Name} بتوريد كاش للخزنة بقيمة {amount} ريال.");
-                await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم استلام الكاش من الفني وإيداعه بالخزنة بنجاح.";
-            }
-            return RedirectToAction(nameof(Index));
-        }
-
-        // 📌 4. دفتر الأستاذ (Master Ledger)
         public async Task<IActionResult> MasterLedger(string monthYear)
         {
             DateTime targetDate = string.IsNullOrEmpty(monthYear) ? DateTime.Now : DateTime.Parse(monthYear + "-01");
@@ -296,7 +424,6 @@ namespace KaberSystem.Controllers
             return View(orders);
         }
 
-        // 📌 5. المصروفات (تم دمجها هنا لمركزية العمليات)
         public async Task<IActionResult> Expenses(string monthYear)
         {
             DateTime targetDate = string.IsNullOrEmpty(monthYear) ? DateTime.Now : DateTime.Parse(monthYear + "-01");
@@ -319,18 +446,20 @@ namespace KaberSystem.Controllers
             expense.RecordedBy = User.Identity?.Name ?? "System";
             _context.Expenses.Add(expense);
 
-            // سحب من الخزنة
             _context.SafeTransactions.Add(new SafeTransaction
             {
                 Amount = expense.Amount,
                 Type = SafeTransactionType.DepositToBank,
-                Description = $"مصروف: {expense.Description}",
+                TargetSafe = SafeType.General,
+                PaymentMethod = expense.PaymentMethod,
+                Description = $"مصروف ({expense.PaymentMethod}): {expense.Description}",
                 RecordedBy = expense.RecordedBy,
                 Date = DateTime.Now
             });
 
             await _context.SaveChangesAsync();
-            TempData["SuccessMessage"] = "تم تسجيل المصروف وخصمه من الخزنة.";
+            string msg = expense.PaymentMethod == PaymentMethod.Cash ? "وخصمه من الدرج (الكاش)" : "وتسجيله كخصم بنكي";
+            TempData["SuccessMessage"] = $"تم تسجيل المصروف {msg} بنجاح.";
             return RedirectToAction(nameof(Expenses));
         }
 

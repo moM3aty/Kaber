@@ -1,25 +1,22 @@
-﻿@using KaberSystem.Models
+﻿<!-- مسار الملف: Views/Shared/_SystemLayout.cshtml -->
+@using KaberSystem.Models
 @using Microsoft.EntityFrameworkCore
 @inject ApplicationDbContext DbContext
 @{
-    // تحديد الصفحة الحالية لتفعيل الـ Active Link في القائمة
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
     var userName = User.Identity?.Name ?? "الموظف";
     var userRole = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "Guest";
 
-    // 📌 النظام الذكي للإشعارات (يعمل في كافة صفحات النظام بشكل دائم)
     int techNewOrdersCount = 0;
     int adminReadyPartsCount = 0;
 
     if (userRole == "Technician")
     {
-        // إشعار الفني: طلبات جديدة أو معادة
         techNewOrdersCount = DbContext.Orders.Count(o => o.Technician.Name == userName && (o.Status == OrderStatus.Assigned || o.Status == OrderStatus.Returned));
     }
     else if (userRole == "Admin" || userRole == "CallCenter")
     {
-        // إشعار الإدارة: نواقص توفرت وجاهزة للتركيب
         adminReadyPartsCount = DbContext.OrderPartRequests.Count(pr => pr.Status == PartRequestStatus.ReadyForInstallation);
     }
 }
@@ -31,7 +28,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@ViewData["Title"] - لوحة تحكم كابر</title>
 
-    <!-- الخطوط والأيقونات -->
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -40,7 +36,6 @@
     <link href="/images/logo.png" type="image/x-icon" rel="icon" />
 
     <style>
-        /* 📌 إخفاء القائمة الجانبية تماماً وجعل الشاشة بعرض كامل */
         #mainSidebar {
             display: none !important;
         }
@@ -50,7 +45,6 @@
             width: 100% !important;
         }
 
-        /* 📌 تصميم الأيقونات المنفصلة (Top Navigation App Icons) */
         .top-icon-nav {
             display: flex;
             align-items: center;
@@ -107,7 +101,6 @@
                 box-shadow: inset 0 0 0 1px rgba(241, 149, 11, 0.1);
             }
 
-        /* 📌 شارة إشعارات الأيقونات (Notifications Badge) */
         .sys-badge-count {
             position: absolute;
             top: 5px;
@@ -125,44 +118,38 @@
             background-color: #198754 !important;
         }
 
-        /* 📌 تأثير النبض للإشعارات المهمة */
         @@keyframes notifyPulse {
-            0%
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(238, 93, 80, 0.7);
+            }
 
-        {
-            transform: scale(1);
-            box-shadow: 0 0 0 0 rgba(238, 93, 80, 0.7);
+            70% {
+                transform: scale(1.1);
+                box-shadow: 0 0 0 6px rgba(238, 93, 80, 0);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(238, 93, 80, 0);
+            }
         }
 
-        70% {
-            transform: scale(1.1);
-            box-shadow: 0 0 0 6px rgba(238, 93, 80, 0);
-        }
-
-        100% {
-            transform: scale(1);
-            box-shadow: 0 0 0 0 rgba(238, 93, 80, 0);
-        }
-
-        }
         @@keyframes notifyPulseSuccess {
-            0%
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
+            }
 
-        {
-            transform: scale(1);
-            box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
-        }
+            70% {
+                transform: scale(1.1);
+                box-shadow: 0 0 0 6px rgba(25, 135, 84, 0);
+            }
 
-        70% {
-            transform: scale(1.1);
-            box-shadow: 0 0 0 6px rgba(25, 135, 84, 0);
-        }
-
-        100% {
-            transform: scale(1);
-            box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
-        }
-
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
+            }
         }
 
         .pulse-danger {
@@ -208,27 +195,17 @@
 
     <div class="sys-wrapper">
         <main class="sys-main expanded" id="mainContent">
-
-            <!-- 📌 الشريط العلوي الموحد (Navigation Header) -->
             <header class="sys-header shadow-sm border-bottom" style="height: auto; min-height: 95px; padding: 10px 30px;">
-
-                <!-- لوجو المؤسسة -->
                 <a href="/" class="text-decoration-none d-flex align-items-center me-4 d-none d-xl-flex">
                     <img src="/images/logo.png" width="90" style="border-radius: 10px; object-fit: cover;" alt="Kaber" />
                 </a>
 
-                <!-- 📌 منطقة الأيقونات المنفصلة حسب الصلاحية -->
                 <div class="top-icon-nav flex-grow-1 justify-content-start justify-content-lg-center">
-
-                    <!-- 1. الرئيسية (Dashboard) -->
                     @if (userRole == "Admin" || userRole == "Accounting")
                     {
-                        <a href="/Dashboard" class="nav-app-icon @(currentController == "Dashboard" ? "active" : "")">
-                            <i class="fa-solid fa-chart-pie"></i><span>الرئيسية</span>
-                        </a>
+                        <a href="/Dashboard" class="nav-app-icon @(currentController == "Dashboard" ? "active" : "")"><i class="fa-solid fa-chart-pie"></i><span>الرئيسية</span></a>
                     }
 
-                    <!-- 2. الطلبات (Orders) + 📌 الإشعارات الحية -->
                     <a href="/Orders" class="nav-app-icon @(currentController == "Orders" ? "active" : "")">
                         <i class="fa-solid fa-headset"></i><span>الطلبات</span>
                         @if (techNewOrdersCount > 0 && currentController != "Orders")
@@ -241,21 +218,15 @@
                         }
                     </a>
 
-                    <!-- 3. الفنيين (Technicians) -->
                     @if (userRole == "Admin" || userRole == "CallCenter")
                     {
-                        <a href="/Technicians" class="nav-app-icon @(currentController == "Technicians" ? "active" : "")">
-                            <i class="fa-solid fa-users-gear"></i><span>الفنيين</span>
-                        </a>
+                        <a href="/Technicians" class="nav-app-icon @(currentController == "Technicians" ? "active" : "")"><i class="fa-solid fa-users-gear"></i><span>الفنيين</span></a>
                     }
 
-                    <!-- 4. المخزون والتوالف (Inventory) -->
                     @if (userRole == "Admin" || userRole == "Store")
                     {
                         <div class="dropdown">
-                            <a href="#" class="nav-app-icon @(currentController == "Inventory" ? "active" : "")" data-bs-toggle="dropdown">
-                                <i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span>
-                            </a>
+                            <a href="#" class="nav-app-icon @(currentController == "Inventory" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span></a>
                             <ul class="dropdown-menu text-end">
                                 <li><a class="dropdown-item" href="/Inventory"><i class="fa-solid fa-box-open text-primary me-2"></i> المستودع العام</a></li>
                                 <li><a class="dropdown-item" href="/Inventory/DamagedParts"><i class="fa-solid fa-trash-can text-danger me-2"></i> سجل التوالف</a></li>
@@ -263,13 +234,10 @@
                         </div>
                     }
 
-                    <!-- 5. المشتريات والتسعير (Purchases) -->
                     @if (userRole == "Admin" || userRole.Contains("Purchasing") || userRole == "Store")
                     {
                         <div class="dropdown">
-                            <a href="#" class="nav-app-icon @(currentController == "Purchases" ? "active" : "")" data-bs-toggle="dropdown">
-                                <i class="fa-solid fa-cart-shopping"></i><span>المشتريات</span>
-                            </a>
+                            <a href="#" class="nav-app-icon @(currentController == "Purchases" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-cart-shopping"></i><span>المشتريات</span></a>
                             <ul class="dropdown-menu text-end">
                                 <li><a class="dropdown-item" href="/Purchases"><i class="fa-solid fa-truck-fast text-primary me-2"></i> سجل المشتريات</a></li>
                                 <li><a class="dropdown-item" href="/Purchases/PartRequests"><i class="fa-solid fa-screwdriver-wrench text-warning me-2"></i> نواقص الفنيين</a></li>
@@ -281,18 +249,14 @@
                         </div>
                     }
 
-                    <!-- 6. المالية والحسابات (Accounting) -->
                     @if (userRole == "Admin" || userRole == "Accounting")
                     {
                         <div class="dropdown">
-                            <a href="#" class="nav-app-icon @(currentController == "Accounting" || currentController == "Safe" ? "active" : "")" data-bs-toggle="dropdown">
-                                <i class="fa-solid fa-calculator"></i><span>الحسابات</span>
-                            </a>
+                            <a href="#" class="nav-app-icon @(currentController == "Accounting" || currentController == "Safe" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-calculator"></i><span>الحسابات</span></a>
                             <ul class="dropdown-menu text-end shadow-lg border-0">
                                 <li><a class="dropdown-item fw-bold" href="/Accounting/Index"><i class="fa-solid fa-chart-line text-success me-2"></i> تقارير الأرباح</a></li>
                                 <li><a class="dropdown-item fw-bold" href="/Accounting/Invoices"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i> إدارة الفواتير</a></li>
                                 <li><a class="dropdown-item fw-bold" href="/Accounting/Expenses"><i class="fa-solid fa-money-bill-transfer text-danger me-2"></i> الرواتب والمصروفات</a></li>
-                                <!-- 📌 تمت إضافة زر عمولات الفنيين هنا بنجاح -->
                                 <li><a class="dropdown-item fw-bold" href="/Accounting/TechnicianCommissions"><i class="fa-solid fa-percent text-info me-2"></i> عمولات وتصفية الفنيين</a></li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item fw-bold" href="/Safe"><i class="fa-solid fa-vault text-warning me-2"></i> الخزنة النقدية</a></li>
@@ -300,13 +264,10 @@
                         </div>
                     }
 
-                    <!-- 7. الموارد البشرية (HR) -->
                     @if (userRole == "Admin" || userRole == "HR")
                     {
                         <div class="dropdown">
-                            <a href="#" class="nav-app-icon @(currentController == "HR" ? "active" : "")" data-bs-toggle="dropdown">
-                                <i class="fa-solid fa-id-card"></i><span>HR</span>
-                            </a>
+                            <a href="#" class="nav-app-icon @(currentController == "HR" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-id-card"></i><span>HR</span></a>
                             <ul class="dropdown-menu text-end">
                                 <li><a class="dropdown-item" href="/HR"><i class="fa-solid fa-users text-primary me-2"></i> سجل الموظفين</a></li>
                                 <li><a class="dropdown-item" href="/HR/Leaves"><i class="fa-solid fa-umbrella-beach text-warning me-2"></i> الإجازات والغياب</a></li>
@@ -315,31 +276,23 @@
                         </div>
                     }
 
-                    <!-- 8. العملاء (CRM) -->
                     @if (userRole == "Admin" || userRole == "CallCenter")
                     {
-                        <a href="/Customers" class="nav-app-icon @(currentController == "Customers" ? "active" : "")">
-                            <i class="fa-solid fa-users-viewfinder"></i><span>العملاء</span>
-                        </a>
+                        <a href="/Customers" class="nav-app-icon @(currentController == "Customers" ? "active" : "")"><i class="fa-solid fa-users-viewfinder"></i><span>العملاء</span></a>
                     }
 
-                    <!-- 9. الإدارة وصلاحيات المستخدمين (Admin) -->
                     @if (userRole == "Admin")
                     {
                         <div class="dropdown">
-                            <a href="#" class="nav-app-icon @(currentController == "Users" ? "active" : "")" data-bs-toggle="dropdown">
-                                <i class="fa-solid fa-shield-halved"></i><span>الإدارة</span>
-                            </a>
+                            <a href="#" class="nav-app-icon @(currentController == "Users" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-shield-halved"></i><span>الإدارة</span></a>
                             <ul class="dropdown-menu text-end">
                                 <li><a class="dropdown-item" href="/Users"><i class="fa-solid fa-user-shield text-primary me-2"></i> إدارة المستخدمين</a></li>
                                 <li><a class="dropdown-item" href="/Users/SystemLogs"><i class="fa-solid fa-clock-rotate-left text-muted me-2"></i> سجل العمليات</a></li>
                             </ul>
                         </div>
                     }
-
                 </div>
 
-                <!-- 📌 منطقة الملف الشخصي وتسجيل الخروج -->
                 <div class="sys-user-area ms-3 ms-lg-4 d-flex align-items-center gap-2 border-start ps-3">
                     <div class="sys-profile border-0 pe-0 m-0">
                         <div class="sys-profile-info text-end d-none d-md-block pe-2">
@@ -352,14 +305,11 @@
                         <i class="fa-solid fa-arrow-right-from-bracket m-0 fs-5"></i>
                     </a>
                 </div>
-
             </header>
 
-            <!-- 📌 منطقة عرض المحتوى (Page Content) -->
             <div class="sys-content" style="padding: 40px;">
                 @RenderBody()
             </div>
-
         </main>
     </div>
 
@@ -370,8 +320,28 @@
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- دالة الحذف الموحدة للإدارة (SweetAlert2) -->
+    <!-- 📌 التحديث الأهم: حماية النظام بالكامل من النقر المزدوج المزعج وتكرار الطلبات -->
     <script>
+        $(document).ready(function () {
+            $('form').on('submit', function () {
+                var $form = $(this);
+
+                // لو الفورم فيها حاجة ناقصة متقفلش الزرار خلي المتصفح يطلع الأخطاء
+                if ($form[0].checkValidity && !$form[0].checkValidity()) {
+                    return;
+                }
+
+                var $btn = $form.find('button[type="submit"]');
+
+                // استخدام Timeout صغير جداً بيخلي الفورم تتبعت للسيرفر أولاً وبعدين يعطل الزر
+                setTimeout(function() {
+                    $btn.prop('disabled', true);
+                    $btn.html('<i class="fa-solid fa-spinner fa-spin me-2"></i> جاري المعالجة...');
+                }, 10);
+            });
+        });
+
+        // دالة الحذف للإدارة
         function confirmAdminDelete(deleteUrl, itemName) {
             Swal.fire({
                 title: 'تأكيد الحذف النهائي؟',

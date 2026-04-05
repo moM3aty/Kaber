@@ -4,7 +4,7 @@
 @inject ApplicationDbContext DbContext
 @model IEnumerable<KaberSystem.Models.Order>
 @{
-    ViewData["Title"] = "إدارة الطلبات";
+    ViewData["Title"] = "إدارة الطلبات والمواعيد";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 
     var ordersWithReadyParts = ViewBag.OrdersWithReadyParts as List<int> ?? new List<int>();
@@ -15,17 +15,27 @@
     {
         techAlertCount = DbContext.Orders.Count(o => o.Technician.Name == User.Identity.Name && (o.Status == OrderStatus.Assigned || o.Status == OrderStatus.Returned));
     }
+
+    // 📌 تقسيم المواعيد بذكاء
+    var activeOrders = Model.Where(o => o.Status != OrderStatus.Completed && o.Status != OrderStatus.Approved && o.Status != OrderStatus.Cancelled).ToList();
+    var pastOrders = Model.Where(o => o.Status == OrderStatus.Completed || o.Status == OrderStatus.Approved || o.Status == OrderStatus.Cancelled).ToList();
+
+    // مواعيد اليوم (تشمل المواعيد السابقة غير المنجزة، ومواعيد اليوم، والطلبات الجديدة بدون موعد)
+    var todayOrders = activeOrders.Where(o => o.ScheduledDate?.Date <= DateTime.Today || o.ScheduledDate == null).ToList();
+
+    // مواعيد المستقبل
+    var futureOrders = activeOrders.Where(o => o.ScheduledDate?.Date > DateTime.Today).ToList();
 }
 
 <!-- الرأس العلوي -->
-<div class="d-flex justify-content-between align-items-center mb-5 fade-in-up">
+<div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
     <div class="d-flex align-items-center gap-3">
         <div class="bg-white text-primary rounded-circle d-flex justify-content-center align-items-center shadow-sm" style="width: 55px; height: 55px; font-size: 22px;">
             <i class="fa-solid fa-headset"></i>
         </div>
         <div>
-            <h2 class="fw-bolder text-dark mb-1" style="letter-spacing: -0.5px;">الطلبات الواردة</h2>
-            <p class="text-muted fw-bold mb-0">إدارة جميع طلبات الصيانة ومراجعتها وتتبع حالتها بدقة</p>
+            <h2 class="fw-bolder text-dark mb-1" style="letter-spacing: -0.5px;">الطلبات وجدولة المواعيد</h2>
+            <p class="text-muted fw-bold mb-0">إدارة جميع طلبات الصيانة، متابعة الفنيين، وتتبع حالة المواعيد</p>
         </div>
     </div>
     @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
@@ -38,7 +48,7 @@
 
 @if (User.IsInRole("Technician") && techAlertCount > 0)
 {
-    <div class="premium-alert info fade-in-up">
+    <div class="premium-alert info fade-in-up mb-4">
         <div class="icon-box"><i class="fa-solid fa-bell fa-shake"></i></div>
         <div class="content">
             <h5 class="fw-bolder mb-1">لديك مهام بانتظارك!</h5>
@@ -48,7 +58,7 @@
 }
 
 <!-- الفلترة والبحث -->
-<div class="premium-card mb-4 fade-in-up border-0 bg-transparent shadow-none" style="animation-delay: 0.1s;">
+<div class="premium-card mb-4 fade-in-up border-0 bg-transparent shadow-none">
     <form method="get" asp-action="Index" class="row g-3">
         <div class="col-md-9">
             <div class="position-relative">
@@ -64,183 +74,503 @@
     </form>
 </div>
 
-<!-- جدول الطلبات -->
-<div class="premium-card fade-in-up" style="animation-delay: 0.2s;">
-    <div class="table-responsive p-0">
-        <table class="table premium-table align-middle text-center mb-0 w-100">
-            <thead>
-                <tr>
-                    <th class="text-start ps-4">رقم الطلب</th>
-                    <th class="text-start">اسم العميل</th>
-                    <th>التواصل</th>
-                    <th>نوع الطلب</th>
-                    <th>تاريخ الطلب</th>
-                    @if (!User.IsInRole("Technician"))
-                    {
-                        <th>الفني المختص</th>
-                    }
-                    <th>حالة الطلب</th>
-                    <th>إجراءات</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var item in Model)
-                {
-                    string phoneStr = item.PhoneNumber.StartsWith("0") ? item.PhoneNumber.Substring(1) : item.PhoneNumber;
-                    string whatsappNumber = "966" + phoneStr;
+<!-- 📌 نظام التبويبات (Tabs) لتقسيم المواعيد -->
+<div class="premium-card fade-in-up">
+    <div class="card-header-premium bg-white pb-0 border-bottom-0">
+        <ul class="nav nav-pills premium-tabs mb-3 gap-2" id="ordersTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active fw-bold px-4 rounded-pill" id="today-tab" data-bs-toggle="tab" data-bs-target="#today" type="button" role="tab">
+                    <i class="fa-solid fa-calendar-day me-1"></i> مهام اليوم والعاجلة <span class="badge bg-white text-primary ms-2 shadow-sm">@todayOrders.Count</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold px-4 rounded-pill" id="future-tab" data-bs-toggle="tab" data-bs-target="#future" type="button" role="tab">
+                    <i class="fa-solid fa-calendar-days me-1"></i> مواعيد الغد والمستقبل <span class="badge bg-white text-muted ms-2 shadow-sm">@futureOrders.Count</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link fw-bold px-4 rounded-pill" id="past-tab" data-bs-toggle="tab" data-bs-target="#past" type="button" role="tab">
+                    <i class="fa-solid fa-check-double me-1"></i> السجل والتنفيذ <span class="badge bg-white text-muted ms-2 shadow-sm">@pastOrders.Count</span>
+                </button>
+            </li>
+        </ul>
+    </div>
 
-                    bool isReadyForInstall = ordersWithReadyParts.Contains(item.OrderId);
-                    string rowClass = isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")) ? "ready-install-row" : "";
+    <div class="card-body-premium p-0">
+        <div class="tab-content" id="ordersTabsContent">
 
-                    <tr class="@rowClass">
-                        <td class="text-start ps-4">
-                            <span class="premium-badge default fs-6">#@item.OrderId</span>
-                        </td>
-                        <td class="fw-bolder text-dark text-start">
-                            @item.CustomerName
-                            @if (isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")))
-                            {
-                                <div class="mt-2">
-                                    <span class="premium-badge success shadow-sm payment-btn-pulse"><i class="fa-solid fa-box-open me-1"></i> القطعة متوفرة وجاهزة</span>
-                                </div>
-                            }
-                        </td>
-
-                        <td dir="ltr" class="fw-bold">
-                            <div class="d-flex align-items-center justify-content-center gap-3">
-                                <a href="tel:@item.PhoneNumber" class="text-decoration-none text-muted hover-primary-text">@item.PhoneNumber</a>
-                                <a href="https://wa.me/@whatsappNumber" target="_blank" class="btn-whatsapp-icon shadow-sm" title="محادثة واتساب">
-                                    <i class="fa-brands fa-whatsapp"></i>
-                                </a>
-                            </div>
-                        </td>
-
-                        <td>
-                            @switch (item.Type)
-                            {
-                                case KaberSystem.Models.OrderType.Maintenance:
-                                    <span class="premium-badge primary-light"><i class="fa-solid fa-wrench me-1"></i> صيانة</span>
-                                    break;
-                                case KaberSystem.Models.OrderType.NewInstallation:
-                                    <span class="premium-badge success"><i class="fa-solid fa-plug me-1"></i> تركيب جديد</span>
-                                    break;
-                                case KaberSystem.Models.OrderType.Warranty:
-                                    <span class="premium-badge warning"><i class="fa-solid fa-shield me-1"></i> ضمان</span>
-                                    break;
-                                case KaberSystem.Models.OrderType.ACWashing:
-                                    <span class="premium-badge info"><i class="fa-solid fa-shower me-1"></i> غسيل مكيفات</span>
-                                    break;
-                            }
-                        </td>
-                        <td class="text-muted fw-bold small">@item.CreatedAt.ToString("yyyy-MM-dd hh:mm tt")</td>
-
-                        @if (!User.IsInRole("Technician"))
-                        {
-                            <td>
-                                @if (item.Technician != null)
+            <!-- 📌 1. تبويب مواعيد اليوم -->
+            <div class="tab-pane fade show active" id="today" role="tabpanel">
+                <div class="table-responsive p-0">
+                    <table class="table premium-table align-middle text-center mb-0 w-100">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="text-start ps-4">رقم الطلب</th>
+                                <th class="text-start">اسم العميل والتواصل</th>
+                                <th>نوع الطلب</th>
+                                <th>موعد الزيارة (الجدولة)</th>
+                                @if (!User.IsInRole("Technician"))
                                 {
-                                    <div class="d-inline-flex align-items-center bg-light border rounded-pill px-3 py-1">
-                                        <i class="fa-solid fa-user-gear text-primary me-2 small"></i>
-                                        <span class="text-dark fw-bold small">@item.Technician.Name</span>
-                                    </div>
+                                    <th>الفني المختص</th>
                                 }
-                                else
-                                {
-                                    <span class="premium-badge warning"><i class="fa-solid fa-clock me-1"></i> بانتظار التعيين</span>
-                                }
-                            </td>
-                        }
-
-                        <td>
-                            @switch (item.Status)
+                                <th>حالة الطلب</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in todayOrders)
                             {
-                                case KaberSystem.Models.OrderStatus.New:
-                                    <span class="premium-badge default shadow-sm">جديد</span>
-                                    break;
-                                case KaberSystem.Models.OrderStatus.Assigned:
-                                    <span class="premium-badge primary shadow-sm">تم التعيين</span>
-                                    break;
-                                case KaberSystem.Models.OrderStatus.Confirmed:
-                                    <span class="premium-badge warning shadow-sm">مؤكد</span>
-                                    break;
-                                case KaberSystem.Models.OrderStatus.InProgress:
-                                    <span class="premium-badge info shadow-sm">قيد التنفيذ</span>
-                                    break;
-                                case KaberSystem.Models.OrderStatus.Completed:
-                                    <span class="premium-badge dark shadow-sm"><i class="fa-solid fa-clock me-1"></i> للمراجعة</span>
-                                    break;
-                                case KaberSystem.Models.OrderStatus.Approved:
-                                    <span class="premium-badge success shadow-sm"><i class="fa-solid fa-check-double me-1"></i> معتمد نهائي</span>
-                                    break;
-                                case KaberSystem.Models.OrderStatus.Returned:
-                                    <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-rotate-left me-1"></i> مُرجع للفني</span>
-                                    break;
-                                case KaberSystem.Models.OrderStatus.Cancelled:
-                                    <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-ban me-1"></i> ملغي</span>
-                                    break;
-                            }
-                        </td>
-                        <td>
-                            <div class="d-flex gap-2 justify-content-center align-items-center">
-                                <a href="/Orders/Details/@item.OrderId" class="btn btn-sm btn-light border text-primary fw-bold px-3 rounded-pill hover-elevate" title="الاستلام والمراجعة">
-                                    <i class="fa-solid fa-folder-open me-1"></i> فتح
-                                </a>
+                                string phoneStr = item.PhoneNumber.StartsWith("0") ? item.PhoneNumber.Substring(1) : item.PhoneNumber;
+                                string whatsappNumber = "966" + phoneStr;
+                                bool isReadyForInstall = ordersWithReadyParts.Contains(item.OrderId);
+                                string rowClass = isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")) ? "ready-install-row" : "";
 
-                                @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
-                                {
-                                    @if (item.Status == KaberSystem.Models.OrderStatus.New)
+                                <tr class="@rowClass" style="border-bottom: 1px solid #f1f5f9;">
+                                    <td class="text-start ps-4"><span class="premium-badge default fs-6 shadow-sm border">#@item.OrderId</span></td>
+                                    <td class="text-start">
+                                        <span class="fw-bolder text-dark d-block">@item.CustomerName</span>
+                                        <div class="d-flex align-items-center gap-2 mt-1">
+                                            <a href="tel:@item.PhoneNumber" class="text-decoration-none text-muted fw-bold small hover-primary-text" dir="ltr">@item.PhoneNumber</a>
+                                            <a href="https://wa.me/@whatsappNumber" target="_blank" class="text-success hover-elevate" title="محادثة واتساب"><i class="fa-brands fa-whatsapp fs-5"></i></a>
+                                        </div>
+                                        @if (isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")))
+                                        {
+                                            <div class="mt-2"><span class="premium-badge success payment-btn-pulse px-2 py-1" style="font-size:11px;"><i class="fa-solid fa-box-open me-1"></i> القطعة جاهزة</span></div>
+                                        }
+                                    </td>
+                                    <td>
+                                        @switch (item.Type)
+                                        {
+                                            case KaberSystem.Models.OrderType.Maintenance:
+                                                <span class="premium-badge primary-light"><i class="fa-solid fa-wrench me-1"></i> صيانة</span>
+                                                break;
+                                            case KaberSystem.Models.OrderType.NewInstallation:
+
+                                                <span class="premium-badge success"><i class="fa-solid fa-plug me-1"></i> تركيب</span>
+                                                break;
+                                            case KaberSystem.Models.OrderType.Warranty:
+
+                                                <span class="premium-badge warning"><i class="fa-solid fa-shield me-1"></i> ضمان</span>
+                                                break;
+                                            case KaberSystem.Models.OrderType.ACWashing:
+
+                                                <span class="premium-badge info"><i class="fa-solid fa-shower me-1"></i> غسيل</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (item.ScheduledDate.HasValue)
+                                        {
+                                            <div class="fw-bolder text-primary fs-6" dir="ltr">@item.ScheduledDate.Value.ToString("yyyy-MM-dd")</div>
+                                            <div class="fw-bold text-dark small mt-1" dir="ltr"><i class="fa-regular fa-clock text-warning me-1"></i> @item.ScheduledDate.Value.ToString("hh:mm tt")</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-light text-danger border border-danger px-2 py-1 rounded-pill"><i class="fa-solid fa-triangle-exclamation me-1"></i> لم يحدد موعد</span>
+                                        }
+                                        <div class="text-muted small mt-2" style="font-size: 10px;">أُنشئ: @item.CreatedAt.ToString("MM/dd")</div>
+                                    </td>
+                                    @if (!User.IsInRole("Technician"))
                                     {
-                                        <a href="/Orders/Assign/@item.OrderId" class="btn btn-sm btn-primary fw-bold text-white rounded-circle hover-elevate d-flex justify-content-center align-items-center shadow-sm" style="width: 35px; height: 35px;" title="تعيين فني">
-                                            <i class="fa-solid fa-user-plus"></i>
-                                        </a>
+                                        <td>
+                                            @if (item.Technician != null)
+                                            {
+                                                <div class="d-inline-flex align-items-center bg-light border rounded-pill px-3 py-1 shadow-sm"><i class="fa-solid fa-user-gear text-primary me-2 small"></i><span class="text-dark fw-bold small">@item.Technician.Name</span></div>
+                                            }
+                                            else
+                                            {
+                                                <span class="premium-badge warning"><i class="fa-solid fa-clock me-1"></i> بانتظار التعيين</span>
+                                            }
+                                        </td>
                                     }
+                                    <td>
+                                        @switch (item.Status)
+                                        {
+                                            case KaberSystem.Models.OrderStatus.New:
+                                                <span class="premium-badge default shadow-sm">جديد</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Assigned:
 
-                                    @if (isReadyForInstall)
-                                    {
-                                        <button type="button" class="btn btn-sm btn-success fw-bold px-3 rounded-pill text-white hover-elevate shadow-sm"
-                                                title="تحديد موعد للتركيب"
-                                                data-bs-toggle="modal" data-bs-target="#scheduleModal"
-                                                onclick="setupScheduleModal(@item.OrderId, '@Html.Raw(item.CustomerName.Replace("'", "\\'"))', @(item.TechnicianId ?? 0))">
-                                            <i class="fa-solid fa-calendar-plus me-1"></i> موعد جديد
-                                        </button>
-                                    }
-                                }
+                                                <span class="premium-badge primary shadow-sm">تم التعيين</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Confirmed:
 
-                                @if (User.IsInRole("Admin"))
+                                                <span class="premium-badge warning shadow-sm">مؤكد</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.InProgress:
+
+                                                <span class="premium-badge info shadow-sm">قيد التنفيذ</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Completed:
+
+                                                <span class="premium-badge dark shadow-sm"><i class="fa-solid fa-clock me-1"></i> للمراجعة</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Approved:
+
+                                                <span class="premium-badge success shadow-sm"><i class="fa-solid fa-check-double me-1"></i> معتمد نهائي</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Returned:
+
+                                                <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-rotate-left me-1"></i> مُرجع للفني</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Cancelled:
+
+                                                <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-ban me-1"></i> ملغي</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-2 justify-content-center align-items-center">
+                                            <a href="/Orders/Details/@item.OrderId" class="btn btn-sm btn-light border text-primary fw-bold px-3 rounded-pill hover-elevate"><i class="fa-solid fa-folder-open me-1"></i> فتح</a>
+                                            @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
+                                            {
+                                                @if (item.Status == KaberSystem.Models.OrderStatus.New)
+                                                {
+                                                    <a href="/Orders/Assign/@item.OrderId" class="btn btn-sm btn-primary fw-bold text-white rounded-circle hover-elevate d-flex justify-content-center align-items-center shadow-sm" style="width: 35px; height: 35px;"><i class="fa-solid fa-user-plus"></i></a>
+                                                }
+                                                @if (isReadyForInstall)
+                                                {
+                                                    <button type="button" class="btn btn-sm btn-success fw-bold px-3 rounded-pill text-white hover-elevate shadow-sm" data-bs-toggle="modal" data-bs-target="#scheduleModal" onclick="setupScheduleModal(@item.OrderId, '@Html.Raw(item.CustomerName.Replace("'", "\\'"))', @(item.TechnicianId ?? 0))"><i class="fa-solid fa-calendar-plus me-1"></i> موعد تركيب</button>
+                                                }
+                                            }
+                                            @if (User.IsInRole("Admin"))
+                                            {
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-light border rounded-circle text-muted hover-elevate d-flex justify-content-center align-items-center" type="button" data-bs-toggle="dropdown" style="width: 35px; height: 35px;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                                                    <ul class="dropdown-menu shadow-lg border-0 rounded-4 text-end p-2 mt-2">
+                                                        <li><a href="/Orders/Edit/@item.OrderId" class="dropdown-item fw-bold text-dark rounded-3 mb-1"><i class="fa-solid fa-pen text-warning me-2"></i> تعديل الطلب</a></li>
+                                                        <li><button type="button" onclick="confirmAdminDelete('/Orders/Delete/@item.OrderId', 'الطلب رقم #@item.OrderId')" class="dropdown-item fw-bold text-danger rounded-3"><i class="fa-solid fa-trash text-danger me-2"></i> حذف نهائي</button></li>
+                                                    </ul>
+                                                </div>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!todayOrders.Any())
+                            {
+                                <tr><td colspan="8" class="text-center py-5"><div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 80px; height: 80px;"><i class="fa-solid fa-box-open fs-2 text-muted opacity-50"></i></div><h6 class="text-muted fw-bold m-0">لا توجد طلبات هنا حالياً.</h6></td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 📌 2. تبويب مواعيد المستقبل -->
+            <div class="tab-pane fade" id="future" role="tabpanel">
+                <div class="table-responsive p-0">
+                    <table class="table premium-table align-middle text-center mb-0 w-100">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="text-start ps-4">رقم الطلب</th>
+                                <th class="text-start">اسم العميل والتواصل</th>
+                                <th>نوع الطلب</th>
+                                <th>موعد الزيارة (الجدولة)</th>
+                                @if (!User.IsInRole("Technician"))
                                 {
-                                    <div class="dropdown">
-                                        <button class="btn btn-sm btn-light border rounded-circle text-muted hover-elevate d-flex justify-content-center align-items-center" type="button" data-bs-toggle="dropdown" style="width: 35px; height: 35px;">
-                                            <i class="fa-solid fa-ellipsis-vertical"></i>
-                                        </button>
-                                        <ul class="dropdown-menu shadow-lg border-0 rounded-4 text-end p-2 mt-2">
-                                            <li>
-                                                <a href="/Orders/Edit/@item.OrderId" class="dropdown-item fw-bold text-dark rounded-3 mb-1">
-                                                    <i class="fa-solid fa-pen text-warning me-2"></i> تعديل الطلب
-                                                </a>
-                                            </li>
-                                            <li>
-                                                <button type="button" onclick="confirmAdminDelete('/Orders/Delete/@item.OrderId', 'الطلب رقم #@item.OrderId')" class="dropdown-item fw-bold text-danger rounded-3">
-                                                    <i class="fa-solid fa-trash text-danger me-2"></i> حذف نهائي
-                                                </button>
-                                            </li>
-                                        </ul>
-                                    </div>
+                                    <th>الفني المختص</th>
                                 }
-                            </div>
-                        </td>
-                    </tr>
-                }
-                @if (!Model.Any())
-                {
-                    <tr>
-                        <td colspan="8" class="text-center p-5">
-                            <i class="fa-solid fa-box-open fs-1 text-muted opacity-25 mb-3 d-block"></i>
-                            <h6 class="text-muted fw-bold m-0">لا توجد طلبات مطابقة للبحث.</h6>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                                <th>حالة الطلب</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in futureOrders)
+                            {
+                                string phoneStr = item.PhoneNumber.StartsWith("0") ? item.PhoneNumber.Substring(1) : item.PhoneNumber;
+                                string whatsappNumber = "966" + phoneStr;
+                                bool isReadyForInstall = ordersWithReadyParts.Contains(item.OrderId);
+                                string rowClass = isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")) ? "ready-install-row" : "";
+
+                                <tr class="@rowClass" style="border-bottom: 1px solid #f1f5f9;">
+                                    <td class="text-start ps-4"><span class="premium-badge default fs-6 shadow-sm border">#@item.OrderId</span></td>
+                                    <td class="text-start">
+                                        <span class="fw-bolder text-dark d-block">@item.CustomerName</span>
+                                        <div class="d-flex align-items-center gap-2 mt-1">
+                                            <a href="tel:@item.PhoneNumber" class="text-decoration-none text-muted fw-bold small hover-primary-text" dir="ltr">@item.PhoneNumber</a>
+                                            <a href="https://wa.me/@whatsappNumber" target="_blank" class="text-success hover-elevate" title="محادثة واتساب"><i class="fa-brands fa-whatsapp fs-5"></i></a>
+                                        </div>
+                                        @if (isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")))
+                                        {
+                                            <div class="mt-2"><span class="premium-badge success payment-btn-pulse px-2 py-1" style="font-size:11px;"><i class="fa-solid fa-box-open me-1"></i> القطعة جاهزة</span></div>
+                                        }
+                                    </td>
+                                    <td>
+                                        @switch (item.Type)
+                                        {
+                                            case KaberSystem.Models.OrderType.Maintenance:
+                                                <span class="premium-badge primary-light"><i class="fa-solid fa-wrench me-1"></i> صيانة</span>
+                                                break;
+                                            case KaberSystem.Models.OrderType.NewInstallation:
+
+                                                <span class="premium-badge success"><i class="fa-solid fa-plug me-1"></i> تركيب</span>
+                                                break;
+                                            case KaberSystem.Models.OrderType.Warranty:
+
+                                                <span class="premium-badge warning"><i class="fa-solid fa-shield me-1"></i> ضمان</span>
+                                                break;
+                                            case KaberSystem.Models.OrderType.ACWashing:
+
+                                                <span class="premium-badge info"><i class="fa-solid fa-shower me-1"></i> غسيل</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (item.ScheduledDate.HasValue)
+                                        {
+                                            <div class="fw-bolder text-primary fs-6" dir="ltr">@item.ScheduledDate.Value.ToString("yyyy-MM-dd")</div>
+                                            <div class="fw-bold text-dark small mt-1" dir="ltr"><i class="fa-regular fa-clock text-warning me-1"></i> @item.ScheduledDate.Value.ToString("hh:mm tt")</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-light text-danger border border-danger px-2 py-1 rounded-pill"><i class="fa-solid fa-triangle-exclamation me-1"></i> لم يحدد موعد</span>
+                                        }
+                                        <div class="text-muted small mt-2" style="font-size: 10px;">أُنشئ: @item.CreatedAt.ToString("MM/dd")</div>
+                                    </td>
+                                    @if (!User.IsInRole("Technician"))
+                                    {
+                                        <td>
+                                            @if (item.Technician != null)
+                                            {
+                                                <div class="d-inline-flex align-items-center bg-light border rounded-pill px-3 py-1 shadow-sm"><i class="fa-solid fa-user-gear text-primary me-2 small"></i><span class="text-dark fw-bold small">@item.Technician.Name</span></div>
+                                            }
+                                            else
+                                            {
+                                                <span class="premium-badge warning"><i class="fa-solid fa-clock me-1"></i> بانتظار التعيين</span>
+                                            }
+                                        </td>
+                                    }
+                                    <td>
+                                        @switch (item.Status)
+                                        {
+                                            case KaberSystem.Models.OrderStatus.New:
+                                                <span class="premium-badge default shadow-sm">جديد</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Assigned:
+
+                                                <span class="premium-badge primary shadow-sm">تم التعيين</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Confirmed:
+
+                                                <span class="premium-badge warning shadow-sm">مؤكد</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.InProgress:
+
+                                                <span class="premium-badge info shadow-sm">قيد التنفيذ</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Completed:
+
+                                                <span class="premium-badge dark shadow-sm"><i class="fa-solid fa-clock me-1"></i> للمراجعة</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Approved:
+
+                                                <span class="premium-badge success shadow-sm"><i class="fa-solid fa-check-double me-1"></i> معتمد نهائي</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Returned:
+
+                                                <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-rotate-left me-1"></i> مُرجع للفني</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Cancelled:
+
+                                                <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-ban me-1"></i> ملغي</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-2 justify-content-center align-items-center">
+                                            <a href="/Orders/Details/@item.OrderId" class="btn btn-sm btn-light border text-primary fw-bold px-3 rounded-pill hover-elevate"><i class="fa-solid fa-folder-open me-1"></i> فتح</a>
+                                            @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
+                                            {
+                                                @if (item.Status == KaberSystem.Models.OrderStatus.New)
+                                                {
+                                                    <a href="/Orders/Assign/@item.OrderId" class="btn btn-sm btn-primary fw-bold text-white rounded-circle hover-elevate d-flex justify-content-center align-items-center shadow-sm" style="width: 35px; height: 35px;"><i class="fa-solid fa-user-plus"></i></a>
+                                                }
+                                                @if (isReadyForInstall)
+                                                {
+                                                    <button type="button" class="btn btn-sm btn-success fw-bold px-3 rounded-pill text-white hover-elevate shadow-sm" data-bs-toggle="modal" data-bs-target="#scheduleModal" onclick="setupScheduleModal(@item.OrderId, '@Html.Raw(item.CustomerName.Replace("'", "\\'"))', @(item.TechnicianId ?? 0))"><i class="fa-solid fa-calendar-plus me-1"></i> موعد تركيب</button>
+                                                }
+                                            }
+                                            @if (User.IsInRole("Admin"))
+                                            {
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-light border rounded-circle text-muted hover-elevate d-flex justify-content-center align-items-center" type="button" data-bs-toggle="dropdown" style="width: 35px; height: 35px;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                                                    <ul class="dropdown-menu shadow-lg border-0 rounded-4 text-end p-2 mt-2">
+                                                        <li><a href="/Orders/Edit/@item.OrderId" class="dropdown-item fw-bold text-dark rounded-3 mb-1"><i class="fa-solid fa-pen text-warning me-2"></i> تعديل الطلب</a></li>
+                                                        <li><button type="button" onclick="confirmAdminDelete('/Orders/Delete/@item.OrderId', 'الطلب رقم #@item.OrderId')" class="dropdown-item fw-bold text-danger rounded-3"><i class="fa-solid fa-trash text-danger me-2"></i> حذف نهائي</button></li>
+                                                    </ul>
+                                                </div>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!futureOrders.Any())
+                            {
+                                <tr><td colspan="8" class="text-center py-5"><div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 80px; height: 80px;"><i class="fa-solid fa-box-open fs-2 text-muted opacity-50"></i></div><h6 class="text-muted fw-bold m-0">لا توجد طلبات هنا حالياً.</h6></td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 📌 3. تبويب السجل الماضي (تم تنفيذها) -->
+            <div class="tab-pane fade" id="past" role="tabpanel">
+                <div class="table-responsive p-0">
+                    <table class="table premium-table align-middle text-center mb-0 w-100">
+                        <thead class="bg-light">
+                            <tr>
+                                <th class="text-start ps-4">رقم الطلب</th>
+                                <th class="text-start">اسم العميل والتواصل</th>
+                                <th>نوع الطلب</th>
+                                <th>موعد الزيارة (الجدولة)</th>
+                                @if (!User.IsInRole("Technician"))
+                                {
+                                    <th>الفني المختص</th>
+                                }
+                                <th>حالة الطلب</th>
+                                <th>إجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in pastOrders)
+                            {
+                                string phoneStr = item.PhoneNumber.StartsWith("0") ? item.PhoneNumber.Substring(1) : item.PhoneNumber;
+                                string whatsappNumber = "966" + phoneStr;
+                                bool isReadyForInstall = ordersWithReadyParts.Contains(item.OrderId);
+                                string rowClass = isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")) ? "ready-install-row" : "";
+
+                                <tr class="@rowClass" style="border-bottom: 1px solid #f1f5f9;">
+                                    <td class="text-start ps-4"><span class="premium-badge default fs-6 shadow-sm border">#@item.OrderId</span></td>
+                                    <td class="text-start">
+                                        <span class="fw-bolder text-dark d-block">@item.CustomerName</span>
+                                        <div class="d-flex align-items-center gap-2 mt-1">
+                                            <a href="tel:@item.PhoneNumber" class="text-decoration-none text-muted fw-bold small hover-primary-text" dir="ltr">@item.PhoneNumber</a>
+                                            <a href="https://wa.me/@whatsappNumber" target="_blank" class="text-success hover-elevate" title="محادثة واتساب"><i class="fa-brands fa-whatsapp fs-5"></i></a>
+                                        </div>
+                                        @if (isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")))
+                                        {
+                                            <div class="mt-2"><span class="premium-badge success payment-btn-pulse px-2 py-1" style="font-size:11px;"><i class="fa-solid fa-box-open me-1"></i> القطعة جاهزة</span></div>
+                                        }
+                                    </td>
+                                    <td>
+                                        @switch (item.Type)
+                                        {
+                                            case KaberSystem.Models.OrderType.Maintenance:
+                                                <span class="premium-badge primary-light"><i class="fa-solid fa-wrench me-1"></i> صيانة</span>
+                                                break;
+                                            case KaberSystem.Models.OrderType.NewInstallation:
+
+                                                <span class="premium-badge success"><i class="fa-solid fa-plug me-1"></i> تركيب</span>
+                                                break;
+                                            case KaberSystem.Models.OrderType.Warranty:
+
+                                                <span class="premium-badge warning"><i class="fa-solid fa-shield me-1"></i> ضمان</span>
+                                                break;
+                                            case KaberSystem.Models.OrderType.ACWashing:
+
+                                                <span class="premium-badge info"><i class="fa-solid fa-shower me-1"></i> غسيل</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (item.ScheduledDate.HasValue)
+                                        {
+                                            <div class="fw-bolder text-primary fs-6" dir="ltr">@item.ScheduledDate.Value.ToString("yyyy-MM-dd")</div>
+                                            <div class="fw-bold text-dark small mt-1" dir="ltr"><i class="fa-regular fa-clock text-warning me-1"></i> @item.ScheduledDate.Value.ToString("hh:mm tt")</div>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-light text-danger border border-danger px-2 py-1 rounded-pill"><i class="fa-solid fa-triangle-exclamation me-1"></i> لم يحدد موعد</span>
+                                        }
+                                        <div class="text-muted small mt-2" style="font-size: 10px;">أُنشئ: @item.CreatedAt.ToString("MM/dd")</div>
+                                    </td>
+                                    @if (!User.IsInRole("Technician"))
+                                    {
+                                        <td>
+                                            @if (item.Technician != null)
+                                            {
+                                                <div class="d-inline-flex align-items-center bg-light border rounded-pill px-3 py-1 shadow-sm"><i class="fa-solid fa-user-gear text-primary me-2 small"></i><span class="text-dark fw-bold small">@item.Technician.Name</span></div>
+                                            }
+                                            else
+                                            {
+                                                <span class="premium-badge warning"><i class="fa-solid fa-clock me-1"></i> بانتظار التعيين</span>
+                                            }
+                                        </td>
+                                    }
+                                    <td>
+                                        @switch (item.Status)
+                                        {
+                                            case KaberSystem.Models.OrderStatus.New:
+                                                <span class="premium-badge default shadow-sm">جديد</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Assigned:
+
+                                                <span class="premium-badge primary shadow-sm">تم التعيين</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Confirmed:
+
+                                                <span class="premium-badge warning shadow-sm">مؤكد</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.InProgress:
+
+                                                <span class="premium-badge info shadow-sm">قيد التنفيذ</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Completed:
+
+                                                <span class="premium-badge dark shadow-sm"><i class="fa-solid fa-clock me-1"></i> للمراجعة</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Approved:
+
+                                                <span class="premium-badge success shadow-sm"><i class="fa-solid fa-check-double me-1"></i> معتمد نهائي</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Returned:
+
+                                                <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-rotate-left me-1"></i> مُرجع للفني</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Cancelled:
+
+                                                <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-ban me-1"></i> ملغي</span>
+                                                break;
+                                        }
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-2 justify-content-center align-items-center">
+                                            <a href="/Orders/Details/@item.OrderId" class="btn btn-sm btn-light border text-primary fw-bold px-3 rounded-pill hover-elevate"><i class="fa-solid fa-folder-open me-1"></i> فتح</a>
+                                            @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
+                                            {
+                                                @if (item.Status == KaberSystem.Models.OrderStatus.New)
+                                                {
+                                                    <a href="/Orders/Assign/@item.OrderId" class="btn btn-sm btn-primary fw-bold text-white rounded-circle hover-elevate d-flex justify-content-center align-items-center shadow-sm" style="width: 35px; height: 35px;"><i class="fa-solid fa-user-plus"></i></a>
+                                                }
+                                                @if (isReadyForInstall)
+                                                {
+                                                    <button type="button" class="btn btn-sm btn-success fw-bold px-3 rounded-pill text-white hover-elevate shadow-sm" data-bs-toggle="modal" data-bs-target="#scheduleModal" onclick="setupScheduleModal(@item.OrderId, '@Html.Raw(item.CustomerName.Replace("'", "\\'"))', @(item.TechnicianId ?? 0))"><i class="fa-solid fa-calendar-plus me-1"></i> موعد تركيب</button>
+                                                }
+                                            }
+                                            @if (User.IsInRole("Admin"))
+                                            {
+                                                <div class="dropdown">
+                                                    <button class="btn btn-sm btn-light border rounded-circle text-muted hover-elevate d-flex justify-content-center align-items-center" type="button" data-bs-toggle="dropdown" style="width: 35px; height: 35px;"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+                                                    <ul class="dropdown-menu shadow-lg border-0 rounded-4 text-end p-2 mt-2">
+                                                        <li><a href="/Orders/Edit/@item.OrderId" class="dropdown-item fw-bold text-dark rounded-3 mb-1"><i class="fa-solid fa-pen text-warning me-2"></i> تعديل الطلب</a></li>
+                                                        <li><button type="button" onclick="confirmAdminDelete('/Orders/Delete/@item.OrderId', 'الطلب رقم #@item.OrderId')" class="dropdown-item fw-bold text-danger rounded-3"><i class="fa-solid fa-trash text-danger me-2"></i> حذف نهائي</button></li>
+                                                    </ul>
+                                                </div>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                            @if (!pastOrders.Any())
+                            {
+                                <tr><td colspan="8" class="text-center py-5"><div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 80px; height: 80px;"><i class="fa-solid fa-box-open fs-2 text-muted opacity-50"></i></div><h6 class="text-muted fw-bold m-0">لا توجد طلبات هنا حالياً.</h6></td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
     </div>
 </div>
 
@@ -288,16 +618,15 @@
 
                         <div class="mb-4">
                             <label class="premium-label">رسوم التركيب الإضافية (إن وجدت)</label>
-                            <div class="input-group">
-                                <input type="number" step="0.01" name="additionalInstallFee" id="schedLaborFee" class="premium-input form-control rounded-end" value="0" required />
-                                <span class="input-group-text bg-white border border-start-0 rounded-start fw-bold text-success px-4">ر.س</span>
+                            <div class="input-group shadow-sm">
+                                <input type="number" step="0.01" name="additionalInstallFee" id="schedLaborFee" class="premium-input form-control border-0 bg-light rounded-end" value="0" required />
+                                <span class="input-group-text bg-white border-0 rounded-start fw-bolder text-success px-4">ر.س</span>
                             </div>
-                            <small class="text-muted fw-bold d-block mt-2 lh-lg"><i class="fa-solid fa-lightbulb text-warning me-1"></i> النظام سيقوم بجمع أجرة التركيب هنا مع أجرة الفحص السابقة تلقائياً في الفاتورة النهائية.</small>
                         </div>
 
                         <div class="mb-2">
                             <label class="premium-label">ملاحظات توجيهية للفني <span class="text-muted fw-normal">(اختياري)</span></label>
-                            <textarea name="adminNotes" class="premium-input form-control" rows="2" placeholder="مثال: يرجى الذهاب للتركيب وتجربة الجهاز للتأكد..."></textarea>
+                            <textarea name="adminNotes" class="premium-input form-control" rows="2" placeholder="مثال: يرجى الذهاب للتركيب وتجربة الجهاز..."></textarea>
                         </div>
                     </div>
                     <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
@@ -311,9 +640,7 @@
 }
 
 <style>
-    /* Premium Dashboard UI Styles (Shared with Details) */
     :root {
-        --prem-bg: #f8f9fc;
         --prem-surface: #ffffff;
         --prem-border: #e2e8f0;
         --prem-text: #1e293b;
@@ -345,6 +672,40 @@
         box-shadow: 0 10px 30px rgba(0,0,0,0.02);
         overflow: hidden;
     }
+
+    .card-header-premium {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--prem-border);
+    }
+
+    .card-body-premium {
+        padding: 24px;
+    }
+
+    /* Premium Tabs Style */
+    .premium-tabs .nav-link {
+        color: var(--prem-muted);
+        transition: 0.3s ease;
+        border: 1px solid transparent;
+        background: #f8fafc;
+        margin-bottom: 5px;
+    }
+
+        .premium-tabs .nav-link:hover {
+            background: #f1f5f9;
+            border-color: var(--prem-border);
+            color: var(--prem-text);
+        }
+
+        .premium-tabs .nav-link.active {
+            background: var(--prem-primary);
+            color: white !important;
+            box-shadow: 0 4px 15px rgba(241,149,11,0.2);
+        }
+
+            .premium-tabs .nav-link.active .badge {
+                color: var(--prem-primary) !important;
+            }
 
     .premium-label {
         font-weight: 800;
@@ -428,7 +789,6 @@
             color: #4f46e5;
         }
 
-    /* Alerts */
     .premium-alert {
         background: #fffbfa;
         border: 1px solid #fee2e2;
@@ -472,15 +832,6 @@
             flex-shrink: 0;
         }
 
-        .premium-alert .content h5 {
-            color: #1e293b;
-        }
-
-        .premium-alert .content p {
-            color: #475569;
-        }
-
-    /* Tables */
     .premium-table th {
         font-weight: 800;
         color: var(--prem-muted);
@@ -495,10 +846,6 @@
         vertical-align: middle;
     }
 
-    .premium-table tr:last-child td {
-        border-bottom: none;
-    }
-
     .premium-table tr:hover td {
         background-color: #f8fafc;
     }
@@ -511,7 +858,6 @@
         background-color: rgba(25, 135, 84, 0.05) !important;
     }
 
-    /* Modals & Buttons */
     .premium-modal {
         border-radius: 24px;
         overflow: hidden;
@@ -571,10 +917,6 @@
             box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
         }
     }
-
-    .premium-swal {
-        border-radius: 20px !important;
-    }
 </style>
 
 @section Scripts {
@@ -582,10 +924,7 @@
         function setupScheduleModal(orderId, customerName, currentTechId) {
             document.getElementById('schedOrderId').value = orderId;
             document.getElementById('schedCustomerName').innerText = customerName;
-
-            // تصفير الرسوم ليدخل أجور التركيب فقط دون المساس بأجور الفحص السابقة
             document.getElementById('schedLaborFee').value = 0;
-
             if(currentTechId && currentTechId > 0) {
                 document.getElementById('schedTechId').value = currentTechId;
             } else {
@@ -596,12 +935,12 @@
         @if (TempData["SuccessMessage"] != null)
         {
                 var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
-                <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'premium-swal' } });</text>
+                <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'rounded-4' } });</text>
         }
         @if (TempData["ErrorMessage"] != null)
         {
                 var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
-                <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
+                <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'rounded-4' } });</text>
         }
     </script>
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿// مسار الملف: Controllers/PurchasesController.cs
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -35,6 +36,67 @@ namespace KaberSystem.Controllers
             });
         }
 
+        // 📌 التحديث الجذري: دالة خصم قيمة الشراء وتطبيق لوجيك "تمويل العجز" من الخزنة العامة
+        private async Task DeductPurchaseCostAsync(decimal totalCost, string itemName, PaymentMethod paymentMethod)
+        {
+            // نحسب رصيد خزنة المشتريات الحالي للطريقة اللي الدفع بيها (لو كاش نشوف كاش المشتريات، لو شبكة نشوف بنك المشتريات)
+            var purchasingTransactions = await _context.SafeTransactions
+                .Where(s => s.TargetSafe == SafeType.Purchasing && s.PaymentMethod == paymentMethod)
+                .ToListAsync();
+
+            decimal purchasingBalance = purchasingTransactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount)
+                                      - purchasingTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+
+            // 1. لو رصيد المشتريات يغطي التكلفة بالكامل -> يتم الخصم منه فوراً
+            if (purchasingBalance >= totalCost)
+            {
+                _context.SafeTransactions.Add(new SafeTransaction
+                {
+                    Amount = totalCost,
+                    Type = SafeTransactionType.DepositToBank,
+                    TargetSafe = SafeType.Purchasing,
+                    PaymentMethod = paymentMethod,
+                    Description = $"شراء قطع غيار: {itemName}",
+                    RecordedBy = User.Identity?.Name ?? "System",
+                    Date = DateTime.Now
+                });
+            }
+            else
+            {
+                // 2. لو رصيد المشتريات لا يكفي -> نسحب كل المتاح فيه، وناخد الباقي "سلفة" من الأرباح العامة
+                decimal deficit = totalCost - purchasingBalance;
+
+                // أ. سحب وتصفير ما تبقى في خزنة المشتريات (إن وجد)
+                if (purchasingBalance > 0)
+                {
+                    _context.SafeTransactions.Add(new SafeTransaction
+                    {
+                        Amount = purchasingBalance,
+                        Type = SafeTransactionType.DepositToBank,
+                        TargetSafe = SafeType.Purchasing,
+                        PaymentMethod = paymentMethod,
+                        Description = $"سحب كامل الرصيد لتغطية جزء من شراء: {itemName}",
+                        RecordedBy = User.Identity?.Name ?? "System",
+                        Date = DateTime.Now
+                    });
+                }
+
+                // ب. سحب العجز من الخزنة العامة كتمويل
+                _context.SafeTransactions.Add(new SafeTransaction
+                {
+                    Amount = deficit,
+                    Type = SafeTransactionType.DepositToBank,
+                    TargetSafe = SafeType.General, // 🌟 العجز يُخصم من أرباح المؤسسة كتمويل
+                    PaymentMethod = paymentMethod,
+                    Description = $"سلفة لتمويل عجز المشتريات لشراء: {itemName}",
+                    RecordedBy = User.Identity?.Name ?? "System",
+                    Date = DateTime.Now
+                });
+
+                LogAction("تمويل عجز مشتريات", $"تم سحب سلفة بقيمة {deficit} من الخزنة العامة لإتمام شراء {itemName}");
+            }
+        }
+
         [Authorize(Roles = "Admin,PurchasingManager,PurchasingRep,Store")]
         public async Task<IActionResult> Index()
         {
@@ -53,17 +115,22 @@ namespace KaberSystem.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,PurchasingRep")]
-        public async Task<IActionResult> Create([Bind("ItemName,Quantity,PurchasePrice,SupplierName,SupplierPhone,SupplierLocation")] PurchaseOrder purchaseOrder)
+        public async Task<IActionResult> Create([Bind("ItemName,Quantity,PurchasePrice,SupplierName,SupplierPhone,SupplierLocation,PaymentMethod")] PurchaseOrder purchaseOrder)
         {
             if (ModelState.IsValid)
             {
                 purchaseOrder.PurchaseDate = DateTime.Now;
                 purchaseOrder.IsReceivedByStore = false;
 
+                // 📌 استدعاء دالة الخصم الذكية
+                decimal totalPurchaseCost = purchaseOrder.Quantity * purchaseOrder.PurchasePrice;
+                await DeductPurchaseCostAsync(totalPurchaseCost, purchaseOrder.ItemName, purchaseOrder.PaymentMethod);
+
                 _context.Add(purchaseOrder);
-                LogAction("إنشاء أمر شراء", $"تم طلب شراء {purchaseOrder.Quantity} من {purchaseOrder.ItemName}");
+                LogAction("إنشاء أمر شراء", $"تم طلب شراء {purchaseOrder.Quantity} من {purchaseOrder.ItemName} عبر {purchaseOrder.PaymentMethod}");
                 await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم تسجيل المشتريات بنجاح. بانتظار اعتماد أمين المخزن.";
+
+                TempData["SuccessMessage"] = "تم تسجيل المشتريات وخصم التكلفة بنجاح.";
                 return RedirectToAction(nameof(Index));
             }
             return View(purchaseOrder);
@@ -84,8 +151,6 @@ namespace KaberSystem.Controllers
                     existingPart.MainStockQuantity += purchase.Quantity;
                     existingPart.PurchasePrice = purchase.PurchasePrice;
 
-                    // 📌 الإصلاح 1: وضع سعر البيع المبدئي ليكون مساوياً لسعر الشراء حتى يتم تسعيره من الإدارة
-                    // لأن PurchaseOrder لا يحتوي على SellingPrice
                     if (existingPart.SellingPrice < purchase.PurchasePrice)
                     {
                         existingPart.SellingPrice = purchase.PurchasePrice;
@@ -93,8 +158,6 @@ namespace KaberSystem.Controllers
 
                     if (!string.IsNullOrEmpty(purchase.SupplierName)) existingPart.SupplierName = purchase.SupplierName;
                     if (!string.IsNullOrEmpty(purchase.SupplierPhone)) existingPart.SupplierPhone = purchase.SupplierPhone;
-
-                    // 📌 الإصلاح 2: استخدام SupplierLocation بدلاً من Location
                     if (!string.IsNullOrEmpty(purchase.SupplierLocation)) existingPart.SupplierLocation = purchase.SupplierLocation;
 
                     purchase.Barcode = existingPart.PartCode;
@@ -110,10 +173,10 @@ namespace KaberSystem.Controllers
                         Barcode = generatedBarcode,
                         Name = purchase.ItemName,
                         PurchasePrice = purchase.PurchasePrice,
-                        SellingPrice = purchase.PurchasePrice, // سعر البيع الافتراضي = التكلفة
+                        SellingPrice = purchase.PurchasePrice,
                         SupplierName = purchase.SupplierName,
                         SupplierPhone = purchase.SupplierPhone,
-                        SupplierLocation = purchase.SupplierLocation, // 📌 الإصلاح 3
+                        SupplierLocation = purchase.SupplierLocation,
                         MainStockQuantity = purchase.Quantity
                     };
                     _context.SpareParts.Add(newPart);
@@ -121,10 +184,9 @@ namespace KaberSystem.Controllers
                 }
 
                 _context.Update(purchase);
-
-                LogAction("استلام بضاعة بالمخزن", $"تم استلام بضاعة: {purchase.ItemName} وإضافتها للمخزن الفعلي");
+                LogAction("استلام بضاعة بالمخزن", $"تم استلام بضاعة: {purchase.ItemName}");
                 await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم استلام البضاعة وإضافتها للمخزون العام بنجاح.";
+                TempData["SuccessMessage"] = "تم استلام البضاعة وإضافتها لأصول المخزون العام بنجاح.";
             }
             return RedirectToAction(nameof(Index));
         }
@@ -155,11 +217,10 @@ namespace KaberSystem.Controllers
                 }
 
                 _context.Update(purchase);
-
-                LogAction("تسعير منتج", $"تم تسعير المنتج {purchase.ItemName} بـ {sellingPrice} ريال للعميل");
+                LogAction("تسعير منتج", $"تم تسعير المنتج {purchase.ItemName} بـ {sellingPrice} ريال");
 
                 await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم تسعير المنتج واعتماد هامش الربح بنجاح!";
+                TempData["SuccessMessage"] = "تم تسعير المنتج بنجاح!";
             }
             return RedirectToAction(nameof(Pricing));
         }
@@ -198,7 +259,7 @@ namespace KaberSystem.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,PurchasingManager,PurchasingRep,Store")]
-        public async Task<IActionResult> ConfirmPurchase(int requestId, decimal purchasePrice, decimal sellingPrice, string supplierName)
+        public async Task<IActionResult> ConfirmPurchase(int requestId, decimal purchasePrice, decimal sellingPrice, string supplierName, PaymentMethod paymentMethod)
         {
             var request = await _context.OrderPartRequests.Include(r => r.Order).FirstOrDefaultAsync(r => r.Id == requestId);
 
@@ -207,6 +268,10 @@ namespace KaberSystem.Controllers
                 TempData["ErrorMessage"] = "الطلب غير موجود أو تمت معالجته مسبقاً.";
                 return RedirectToAction(nameof(PartRequests));
             }
+
+            // 📌 استدعاء دالة الخصم الذكية عند شراء النواقص لتسوية الخزنات
+            decimal totalPurchaseCost = request.Quantity * purchasePrice;
+            await DeductPurchaseCostAsync(totalPurchaseCost, request.NewPartName, paymentMethod);
 
             string generatedBarcode = "KBR" + new Random().Next(1000000, 9999999).ToString();
 
@@ -226,7 +291,7 @@ namespace KaberSystem.Controllers
             _context.SpareParts.Add(newPart);
             await _context.SaveChangesAsync();
 
-            var existingPartByName = await _context.SpareParts.FirstOrDefaultAsync(p => p.Name == request.NewPartName);
+            var existingPartByName = await _context.SpareParts.FirstOrDefaultAsync(p => p.Name == request.NewPartName && p.PartId != newPart.PartId);
             if (existingPartByName != null)
             {
                 existingPartByName.SellingPrice = sellingPrice;
@@ -236,7 +301,6 @@ namespace KaberSystem.Controllers
 
             request.PartId = newPart.PartId;
             request.Status = PartRequestStatus.ReadyForInstallation;
-
             _context.Update(request);
 
             if (request.Order != null)
@@ -245,10 +309,10 @@ namespace KaberSystem.Controllers
                 _context.Update(request.Order);
             }
 
-            LogAction("توفير نواقص", $"تم إتمام شراء قطعة ناقصة ({request.NewPartName}) للطلب #{request.OrderId}");
+            LogAction("توفير نواقص", $"تم إتمام شراء قطعة ناقصة ({request.NewPartName}) للطلب #{request.OrderId} وتسوية الخزنات.");
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "تم الشراء والتكويد بنجاح! تم إشعار الكول سنتر لتحديد موعد التركيب.";
+            TempData["SuccessMessage"] = "تم الشراء والتكويد بنجاح وخصم المبلغ! تم إشعار الإدارة.";
             return RedirectToAction(nameof(PartRequests));
         }
 

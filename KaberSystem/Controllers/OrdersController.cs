@@ -77,43 +77,69 @@ namespace KaberSystem.Controllers
             return View(orders);
         }
 
-        // 📌 اللوجيك المنطقي الصحيح: جدولة الزيارة الثانية على نفس الطلب وجمع الرسوم
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,CallCenter")]
         public async Task<IActionResult> ScheduleInstallation(int orderId, int technicianId, DateTime scheduledDate, decimal additionalInstallFee, string adminNotes)
         {
-            var order = await _context.Orders.FindAsync(orderId);
-            if (order != null)
+            var oldOrder = await _context.Orders.FindAsync(orderId);
+            if (oldOrder != null)
             {
-                // 1. تحديث الموعد والفني لنفس الطلب
-                order.TechnicianId = technicianId;
-                order.ScheduledDate = scheduledDate;
+                oldOrder.Status = OrderStatus.Completed;
+                string noteHeader = string.IsNullOrEmpty(oldOrder.TechnicianNotes) ? "" : "\n----------------\n";
+                oldOrder.TechnicianNotes += $"{noteHeader}[النظام المحاسبي]: تم إنهاء هذا الطلب (زيارة فحص)، وتم إنشاء طلب (تركيب نواقص) جديد منفصل للموعد الجديد.";
+                _context.Update(oldOrder);
 
-                // 2. إضافة رسوم التركيب على رسوم الفحص السابقة لتصبح (إجمالي أجور اليد)
-                order.EstimatedPrice += additionalInstallFee;
-                order.IsFeeApplied = order.EstimatedPrice > 0;
-
-                // 3. إرجاع الطلب لحالة (تم التعيين) ليظهر في شاشة الفني من جديد
-                order.Status = OrderStatus.Assigned;
-
-                // 4. توثيق الحركة في التقرير الفني للرجوع إليها
-                string noteHeader = string.IsNullOrEmpty(order.TechnicianNotes) ? "" : "\n----------------\n";
-                order.TechnicianNotes += $"{noteHeader}[زيارة تركيب - {DateTime.Now:yyyy/MM/dd}]: تم جدولة موعد لتركيب النواقص يوم {scheduledDate:yyyy/MM/dd hh:mm tt}. تمت إضافة رسوم تركيب: {additionalInstallFee} ريال. ملاحظات الإدارة: {adminNotes}";
-
-                // 5. تحديث الفاتورة المبدئية لتعكس إجمالي الأجور الجديد
-                var advanceInvoice = await _context.Invoices.FirstOrDefaultAsync(i => i.OrderId == orderId && i.Type == InvoiceType.Advance);
-                if (advanceInvoice != null)
+                var newOrder = new Order
                 {
-                    advanceInvoice.Amount = order.EstimatedPrice;
-                    _context.Update(advanceInvoice);
-                }
+                    CustomerName = oldOrder.CustomerName,
+                    PhoneNumber = oldOrder.PhoneNumber,
+                    Address = oldOrder.Address,
+                    LocationMapUrl = oldOrder.LocationMapUrl,
+                    DeviceName = oldOrder.DeviceName,
+                    ProblemDescription = $"[متابعة تركيب نواقص للطلب القديم #{oldOrder.OrderId}]\nملاحظات الإدارة: {adminNotes}",
+                    Type = OrderType.Maintenance,
+                    Status = OrderStatus.Assigned,
+                    CreatedAt = DateTime.Now,
+                    ScheduledDate = scheduledDate,
+                    TechnicianId = technicianId,
+                    EstimatedPrice = additionalInstallFee,
+                    IsFeeApplied = additionalInstallFee > 0,
+                    AdvancePayment = 0,
+                    FinalPrice = additionalInstallFee
+                };
 
-                _context.Update(order);
-                LogAction("جدولة زيارة تركيب", $"تم تحديد موعد زيارة ثانية (تركيب) للطلب #{orderId}، وإضافة أجرة تركيب {additionalInstallFee} ريال للإجمالي.");
+                _context.Orders.Add(newOrder);
                 await _context.SaveChangesAsync();
 
-                TempData["SuccessMessage"] = "تم جدولة موعد التركيب للفني، وإضافة رسوم التركيب للفاتورة بنجاح!";
+                if (additionalInstallFee > 0)
+                {
+                    var invoice = new Invoice
+                    {
+                        OrderId = newOrder.OrderId,
+                        Amount = additionalInstallFee,
+                        Type = InvoiceType.Advance,
+                        Status = InvoiceStatus.NotReceived,
+                        IssuedAt = DateTime.Now
+                    };
+                    _context.Invoices.Add(invoice);
+                }
+
+                var pendingPartRequests = await _context.OrderPartRequests
+                    .Where(pr => pr.OrderId == orderId && pr.Status == PartRequestStatus.ReadyForInstallation)
+                    .ToListAsync();
+
+                foreach (var req in pendingPartRequests)
+                {
+                    req.OrderId = newOrder.OrderId;
+                    req.Status = PartRequestStatus.Installed;
+                    _context.Update(req);
+                }
+
+                LogAction("جدولة زيارة تركيب منفصلة", $"تم إغلاق الطلب #{orderId} وإنشاء طلب جديد #{newOrder.OrderId} لزيارة التركيب بأجرة {additionalInstallFee} ريال ونقل النواقص إليه.");
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = $"تم إغلاق طلب الفحص، وإنشاء طلب جديد برقم #{newOrder.OrderId} لزيارة التركيب بنجاح!";
             }
             return RedirectToAction(nameof(Index));
         }
@@ -212,20 +238,19 @@ namespace KaberSystem.Controllers
             if (order != null)
             {
                 order.ScheduledDate = scheduledDate;
-                order.EstimatedPrice = estimatedPrice; // هذه أجرة الفحص الأولية
+                order.EstimatedPrice = estimatedPrice;
                 order.AdvancePayment = advancePayment;
                 order.Status = OrderStatus.Confirmed;
-
                 order.FinalPrice = estimatedPrice;
 
-                // تسجيل العربون في الخزنة كإيراد فعلي
                 if (advancePayment > 0)
                 {
                     _context.SafeTransactions.Add(new SafeTransaction
                     {
                         Amount = advancePayment,
                         Type = SafeTransactionType.Income,
-                        Description = $"دفعة مقدمة (عربون فحص) لطلب صيانة #{order.OrderId} للعميل {order.CustomerName}",
+                        TargetSafe = SafeType.General,
+                        Description = $"دفعة مقدمة (عربون) لطلب #{order.OrderId} للعميل {order.CustomerName}",
                         OrderId = order.OrderId,
                         RecordedBy = User.Identity?.Name ?? "System",
                         Date = DateTime.Now
@@ -311,7 +336,6 @@ namespace KaberSystem.Controllers
                 decimal partsTotal = order.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
                 decimal appliedFee = order.IsFeeApplied ? order.EstimatedPrice : 0;
 
-                // 📌 إجمالي الفاتورة = إجمالي أجور اليد (فحص+تركيب) + إجمالي القطع (لا نطرح العربون هنا)
                 order.FinalPrice = appliedFee + partsTotal;
 
                 if (newStatus == OrderStatus.Approved)
@@ -454,11 +478,17 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Details), new { id = orderId });
         }
 
+        // 📌 التحديث الجذري: دورة استرداد رأس المال العامل الدوار (Working Capital Cycle)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> ProcessPayment(int orderId, PaymentMethod paymentMethod, IFormFile paymentReceipt)
         {
-            var order = await _context.Orders.Include(o => o.Invoices).FirstOrDefaultAsync(o => o.OrderId == orderId);
+            var order = await _context.Orders
+                .Include(o => o.Invoices)
+                .Include(o => o.UsedSpareParts)
+                    .ThenInclude(p => p.SparePart)
+                .FirstOrDefaultAsync(o => o.OrderId == orderId);
+
             if (order == null) return NotFound();
 
             order.PaymentMethod = paymentMethod;
@@ -468,7 +498,6 @@ namespace KaberSystem.Controllers
             {
                 string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "receipts");
                 if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-
                 string uniqueFileName = Guid.NewGuid().ToString() + "_" + paymentReceipt.FileName;
                 string filePath = Path.Combine(uploadsFolder, uniqueFileName);
                 using (var fileStream = new FileStream(filePath, FileMode.Create)) { await paymentReceipt.CopyToAsync(fileStream); }
@@ -480,32 +509,55 @@ namespace KaberSystem.Controllers
                 foreach (var invoice in order.Invoices) { invoice.Status = InvoiceStatus.Paid; }
             }
 
-            // 📌 المتبقي للتحصيل = إجمالي الفاتورة - العربون
             decimal remainingAmountToCollect = order.FinalPrice - order.AdvancePayment;
 
-            if (paymentMethod == PaymentMethod.Cash && remainingAmountToCollect > 0)
+            // 📌 السر هنا: لا يشترط أن يكون الدفع كاش، أي عملية تحصيل يجب أن ترد تكلفة القطعة للمشتريات
+            if (remainingAmountToCollect > 0)
             {
-                _context.SafeTransactions.Add(new SafeTransaction
+                // 1. حساب تكلفة القطع الفعلي (رأس المال) ورده لخزنة المشتريات الدوارة
+                decimal partsCost = order.UsedSpareParts?.Sum(p => p.QuantityUsed * (p.SparePart?.PurchasePrice ?? 0)) ?? 0;
+
+                if (partsCost > 0)
                 {
-                    Amount = remainingAmountToCollect,
-                    Type = SafeTransactionType.Income,
-                    Description = $"تحصيل باقي مستحقات فاتورة صيانة للعميل {order.CustomerName}",
-                    OrderId = order.OrderId,
-                    RecordedBy = User.Identity?.Name ?? "System",
-                    Date = DateTime.Now
-                });
-                LogAction("إيداع كاش في الخزنة", $"تم توريد المتبقي {remainingAmountToCollect} ريال (باقي الفاتورة #{orderId}) إلى الخزنة");
+                    _context.SafeTransactions.Add(new SafeTransaction
+                    {
+                        Amount = partsCost,
+                        Type = SafeTransactionType.Income,
+                        TargetSafe = SafeType.Purchasing, // 🌟 الدورة تكتمل هنا: رأس المال يعود للمشتريات
+                        PaymentMethod = paymentMethod, // حسب ما دفع العميل (كاش، بنك)
+                        Description = $"استرداد رأس مال قطع للطلب #{order.OrderId}",
+                        OrderId = order.OrderId,
+                        RecordedBy = User.Identity?.Name ?? "System",
+                        Date = DateTime.Now
+                    });
+                }
+
+                // 2. حساب الأرباح (أجور اليد + هامش ربح البضاعة) وتوجيهها للخزنة العامة
+                decimal generalProfit = remainingAmountToCollect - partsCost;
+                if (generalProfit > 0)
+                {
+                    _context.SafeTransactions.Add(new SafeTransaction
+                    {
+                        Amount = generalProfit,
+                        Type = SafeTransactionType.Income,
+                        TargetSafe = SafeType.General, // 🌟 الأرباح تذهب هنا
+                        PaymentMethod = paymentMethod,
+                        Description = $"تحصيل أجور وأرباح للطلب #{order.OrderId}",
+                        OrderId = order.OrderId,
+                        RecordedBy = User.Identity?.Name ?? "System",
+                        Date = DateTime.Now
+                    });
+                }
+
+                LogAction("تحصيل مقسم للخزنات", $"تم تحصيل {remainingAmountToCollect} (منها {partsCost} للمشتريات و {generalProfit} أرباح عامة). طريقة الدفع: {paymentMethod}");
             }
 
             _context.Update(order);
-            LogAction("تحصيل فاتورة", $"تم إغلاق وتحصيل الفاتورة النهائية للطلب #{orderId} بطريقة ({paymentMethod})");
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "تم تأكيد التحصيل بنجاح وتحديث الفواتير والخزنة.";
+            TempData["SuccessMessage"] = "تم تأكيد التحصيل بنجاح وتوجيه الأرباح ورأس المال للخزنات المختصة.";
             return RedirectToAction(nameof(Details), new { id = orderId });
         }
-
-        // ... بقية الدوال (RequestFromWarehouse, RequestPurchase, PrintInvoice وغيرها كما هي)
 
         [HttpPost]
         [ValidateAntiForgeryToken]

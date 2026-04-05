@@ -1,75 +1,83 @@
-﻿@model IEnumerable<KaberSystem.Models.Technician>
+﻿<!-- مسار الملف: Views/Technicians/Index.cshtml -->
+@model IEnumerable<KaberSystem.Models.Technician>
 @{
     ViewData["Title"] = "إدارة المهندسين والفنيين";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 }
 
-<div class="sys-page-header">
-    <div>
-        <h1 class="sys-page-title">فريق المهندسين والفنيين</h1>
-        <p class="sys-page-desc">إدارة فريق الصيانة، متابعة التوفر، ومراقبة الطلبات المسندة لكل فني</p>
+<div class="d-flex justify-content-between align-items-center mb-5 fade-in-up">
+    <div class="d-flex align-items-center gap-3">
+        <div class="bg-white text-primary rounded-circle d-flex justify-content-center align-items-center shadow-sm" style="width: 55px; height: 55px; font-size: 22px;">
+            <i class="fa-solid fa-users-gear"></i>
+        </div>
+        <div>
+            <h2 class="fw-bolder text-dark mb-1" style="letter-spacing: -0.5px;">فريق المهندسين والفنيين</h2>
+            <p class="text-muted fw-bold mb-0">إدارة فريق الصيانة، متابعة التوفر، ومراقبة إنجازات كل فني</p>
+        </div>
     </div>
     @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
     {
-        <a href="/Technicians/Create" class="sys-btn sys-btn-primary">
-            <i class="fa-solid fa-user-plus"></i> إضافة فني جديد
+        <a href="/Technicians/Create" class="btn btn-primary fw-bolder px-4 rounded-pill shadow-sm hover-elevate py-2">
+            <i class="fa-solid fa-user-plus me-1"></i> إضافة فني جديد
         </a>
     }
 </div>
 
-<div class="row g-4">
+<div class="row g-4 fade-in-up" style="animation-delay: 0.1s;">
     @foreach (var tech in Model)
     {
         <div class="col-xl-3 col-lg-4 col-md-6">
-            <div class="sys-card text-center position-relative overflow-hidden h-100 p-0" style="transition: transform 0.3s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div class="premium-card text-center position-relative overflow-hidden h-100 p-0 border-0 hover-elevate">
 
-                <!-- شريط الحالة العلوي -->
+                <!-- خلفية الكارت العلوية -->
+                <div class="position-absolute top-0 start-0 w-100" style="height: 110px; background: linear-gradient(135deg, rgba(241, 149, 11, 0.15), rgba(241, 149, 11, 0.02)); z-index: 0;"></div>
+
+                <!-- شريط الحالة -->
                 @if (tech.IsAvailable)
                 {
-                    <div class="bg-success text-white py-2 fw-bold text-center w-100 position-absolute top-0 start-0 z-1" style="font-size: 13px; letter-spacing: 1px;">
-                        <i class="fa-solid fa-check-circle me-1"></i> متاح للعمل
+                    <div class="bg-success text-white py-1 fw-bold text-center w-100 position-absolute top-0 start-0 z-1 shadow-sm" style="font-size: 12px; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-check-circle me-1"></i> متاح ومستعد للعمل
                     </div>
                 }
                 else
                 {
-                    <div class="bg-danger text-white py-2 fw-bold text-center w-100 position-absolute top-0 start-0 z-1" style="font-size: 13px; letter-spacing: 1px;">
-                        <i class="fa-solid fa-ban me-1"></i> مشغول حالياً
+                    <div class="bg-danger text-white py-1 fw-bold text-center w-100 position-absolute top-0 start-0 z-1 shadow-sm" style="font-size: 12px; letter-spacing: 0.5px;">
+                        <i class="fa-solid fa-ban me-1"></i> مشغول بإجازة/خارج الخدمة
                     </div>
                 }
 
-                <div class="p-4" style="margin-top: 35px;">
+                <div class="p-4" style="margin-top: 45px; position: relative; z-index: 1;">
                     <div class="mb-3 position-relative d-inline-block">
-                        <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(tech.Name)&background=f1950b&color=fff&size=100&bold=true&font-size=0.4" class="rounded-circle shadow-sm border border-3 border-white" alt="@tech.Name" width="90" height="90">
+                        <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(tech.Name)&background=f1950b&color=fff&size=100&bold=true&font-size=0.4" class="rounded-circle shadow border border-4 border-white" alt="@tech.Name" width="90" height="90">
                     </div>
 
-                    <h4 class="fw-bold mb-1 text-dark" style="font-size: 20px;">@tech.Name</h4>
-                    <p class="text-muted fw-bold mb-4" dir="ltr" style="font-size: 15px;"><i class="fa-solid fa-phone ms-1 text-primary"></i> @tech.Phone</p>
+                    <h4 class="fw-bolder mb-1 text-dark" style="font-size: 20px;">@tech.Name</h4>
+                    <p class="text-muted fw-bold mb-4 small" dir="ltr"><i class="fa-solid fa-phone text-primary opacity-75 me-1"></i> @tech.Phone</p>
 
-                    <div class="d-flex justify-content-center gap-3 mb-4">
-                        <div class="bg-light rounded-3 p-2 w-50" style="border: 1px solid var(--sys-border);">
-                            <span class="d-block text-muted small fw-bold mb-1">نشطة</span>
-                            <span class="fs-4 fw-bold text-primary">@(tech.AssignedOrders?.Count(o => o.Status == KaberSystem.Models.OrderStatus.Assigned || o.Status == KaberSystem.Models.OrderStatus.InProgress) ?? 0)</span>
+                    <div class="d-flex justify-content-center gap-2 mb-4">
+                        <div class="bg-light rounded-4 p-2 w-50 border border-secondary border-opacity-25 shadow-sm">
+                            <span class="d-block text-muted small fw-bolder mb-1 text-uppercase">مهام نشطة</span>
+                            <span class="fs-4 fw-bolder text-primary">@(tech.AssignedOrders?.Count(o => o.Status == KaberSystem.Models.OrderStatus.Assigned || o.Status == KaberSystem.Models.OrderStatus.InProgress || o.Status == KaberSystem.Models.OrderStatus.Returned) ?? 0)</span>
                         </div>
-                        <div class="bg-light rounded-3 p-2 w-50" style="border: 1px solid var(--sys-border);">
-                            <span class="d-block text-muted small fw-bold mb-1">منجزة</span>
-                            <span class="fs-4 fw-bold text-success">@(tech.AssignedOrders?.Count(o => o.Status == KaberSystem.Models.OrderStatus.Completed) ?? 0)</span>
+                        <div class="bg-success bg-opacity-10 rounded-4 p-2 w-50 border border-success border-opacity-25 shadow-sm">
+                            <span class="d-block text-success small fw-bolder mb-1 text-uppercase">طلبات منجزة</span>
+                            <span class="fs-4 fw-bolder text-success">@(tech.AssignedOrders?.Count(o => o.Status == KaberSystem.Models.OrderStatus.Completed || o.Status == KaberSystem.Models.OrderStatus.Approved) ?? 0)</span>
                         </div>
                     </div>
 
-                    <div class="d-flex flex-column gap-2">
-                        <a href="/Technicians/Details/@tech.TechnicianId" class="btn w-100 fw-bold border border-2 py-2 text-primary border-primary rounded-3 hover-elevate">
-                            <i class="fa-solid fa-boxes-stacked me-1"></i> التفاصيل والعهدة
+                    <div class="d-flex flex-column gap-2 mt-auto pt-2 border-top border-dashed border-secondary border-opacity-25">
+                        <a href="/Technicians/Details/@tech.TechnicianId" class="btn w-100 fw-bold py-2 text-primary bg-primary bg-opacity-10 rounded-pill hover-primary">
+                            <i class="fa-solid fa-boxes-stacked me-1"></i> عرض التفاصيل والعهدة
                         </a>
 
-                        <!-- أزرار الأدمن (التعديل والحذف) تظهر في كارت الفني -->
                         @if (User.IsInRole("Admin"))
                         {
                             <div class="d-flex gap-2">
-                                <a href="/Technicians/Edit/@tech.TechnicianId" class="btn btn-outline-warning w-50 fw-bold text-dark rounded-3">
-                                    <i class="fa-solid fa-pen"></i> تعديل
+                                <a href="/Technicians/Edit/@tech.TechnicianId" class="btn btn-outline-secondary bg-white shadow-sm w-50 fw-bold text-dark rounded-pill">
+                                    <i class="fa-solid fa-pen text-warning me-1"></i> تعديل
                                 </a>
-                                <button type="button" onclick="confirmAdminDelete('/Technicians/Delete/@tech.TechnicianId', 'الفني: @tech.Name')" class="btn btn-outline-danger w-50 fw-bold rounded-3">
-                                    <i class="fa-solid fa-trash"></i> حذف
+                                <button type="button" onclick="confirmAdminDelete('/Technicians/Delete/@tech.TechnicianId', 'الفني: @tech.Name')" class="btn btn-outline-danger bg-white shadow-sm w-50 fw-bold rounded-pill">
+                                    <i class="fa-solid fa-trash-can me-1"></i> حذف
                                 </button>
                             </div>
                         }
@@ -81,16 +89,64 @@
 </div>
 
 <style>
-    .hover-elevate:hover {
-        background-color: var(--sys-primary) !important;
-        color: white !important;
-        border-color: var(--sys-primary) !important;
+    :root {
+        --prem-surface: #ffffff;
+        --prem-border: #e2e8f0;
+        --prem-text: #1e293b;
+        --prem-muted: #64748b;
+        --prem-primary: #f1950b;
+        --prem-radius: 20px;
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .premium-card {
+        background: var(--prem-surface);
+        border-radius: var(--prem-radius);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        overflow: hidden;
+    }
+
+    .hover-elevate {
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.05) !important;
+            border-color: #cbd5e1 !important;
+        }
+
+    .hover-primary:hover {
+        background-color: var(--prem-primary) !important;
+        color: #fff !important;
+    }
+
+    .border-dashed {
+        border-top: 2px dashed var(--prem-border) !important;
     }
 </style>
 
 @section Scripts {
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <script>Swal.fire({ icon: 'success', title: 'نجاح', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#f1950b' });</script>
-    }
+    <script>
+        @if (TempData["SuccessMessage"] != null)
+        {
+                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                <text>Swal.fire({ icon: 'success', title: 'نجاح', text: @Html.Raw(msg), confirmButtonColor: '#f1950b', customClass: { popup: 'rounded-4' } });</text>
+        }
+    </script>
 }

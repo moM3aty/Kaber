@@ -1,24 +1,29 @@
-﻿@{
-    ViewData["Title"] = "حاسبة نسب وعمولات الفنيين";
+﻿<!-- مسار الملف: Views/Accounting/TechnicianCommissions.cshtml -->
+@{
+    ViewData["Title"] = "حاسبة التصفية الذكية للفنيين";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 
     var technicians = ViewData["Technicians"] as IEnumerable<KaberSystem.Models.Technician>;
     var selectedTech = ViewBag.Technician as KaberSystem.Models.Technician;
 }
 
-<div class="sys-page-header">
-    <div>
-        <h1 class="sys-page-title text-success"><i class="fa-solid fa-percent me-2"></i> حاسبة تصفية ونسب الفنيين</h1>
-        <p class="sys-page-desc">حساب عمولة الفني بناءً على طلباته المنجزة، مع خصم السلف والغيابات تلقائياً.</p>
+<div class="d-flex justify-content-between align-items-center mb-5 fade-in-up">
+    <div class="d-flex align-items-center gap-3">
+        <div class="bg-white text-success rounded-circle d-flex justify-content-center align-items-center shadow-sm" style="width: 55px; height: 55px; font-size: 22px;">
+            <i class="fa-solid fa-calculator"></i>
+        </div>
+        <div>
+            <h2 class="fw-bolder text-dark mb-1" style="letter-spacing: -0.5px;">حاسبة التصفية الشاملة</h2>
+            <p class="text-muted fw-bold mb-0">خصم (التكلفة + المصروفات) وحساب العمولة على صافي الأرباح</p>
+        </div>
     </div>
 </div>
 
-<!-- 📌 1. قسم الفلترة واختيار الفني -->
-<div class="sys-card mb-4 bg-light border-0">
-    <form method="get" asp-action="TechnicianCommissions" class="row g-3 align-items-end">
+<div class="premium-card mb-4 bg-light border-0 shadow-sm p-4 fade-in-up">
+    <form method="get" asp-action="TechnicianCommissions" class="row g-4 align-items-end">
         <div class="col-md-5">
-            <label class="form-label fw-bold">اختر الفني المُراد محاسبته:</label>
-            <select name="techId" class="form-select form-select-lg fw-bold border-secondary" required>
+            <label class="premium-label text-dark">اختر الفني المُراد محاسبته:</label>
+            <select name="techId" class="form-select form-select-lg fw-bold shadow-none border-secondary" required>
                 <option value="">-- اختر الفني --</option>
                 @if (technicians != null)
                 {
@@ -31,11 +36,13 @@
             </select>
         </div>
         <div class="col-md-4">
-            <label class="form-label fw-bold">اختر شهر المحاسبة:</label>
-            <input type="month" name="monthYear" class="form-control form-control-lg fw-bold border-secondary" value="@Context.Request.Query["monthYear"]" required />
+            <label class="premium-label text-dark">اختر شهر التصفية:</label>
+            <input type="month" name="monthYear" class="form-control form-control-lg fw-bold shadow-none border-secondary" value="@Context.Request.Query["monthYear"]" required />
         </div>
         <div class="col-md-3">
-            <button type="submit" class="btn btn-success btn-lg w-100 fw-bold shadow-sm"><i class="fa-solid fa-calculator me-1"></i> كشف الحساب</button>
+            <button type="submit" class="btn btn-dark btn-lg w-100 fw-bolder shadow-sm hover-elevate">
+                فتح دفتر الفني <i class="fa-solid fa-arrow-left ms-2 text-warning"></i>
+            </button>
         </div>
     </form>
 </div>
@@ -44,124 +51,208 @@
 {
     decimal totalRev = ViewBag.TotalRevenue ?? 0;
     decimal laborRev = ViewBag.LaborRevenue ?? 0;
-    decimal partsRev = ViewBag.PartsRevenue ?? 0;
+    decimal partsCost = ViewBag.PartsCost ?? 0;
     decimal totalDeductions = ViewBag.TotalDeductions ?? 0;
     decimal cashInHand = ViewBag.CashInHand ?? 0;
 
-    <!-- 📌 2. ملخص أرباح الفني -->
-    <div class="row g-4 mb-4">
+    <div class="row g-4 fade-in-up" style="animation-delay: 0.1s;">
         <div class="col-md-3">
-            <div class="sys-card bg-primary bg-opacity-10 border-0 h-100 p-4 text-center">
-                <i class="fa-solid fa-coins fs-1 text-primary mb-2"></i>
-                <h6 class="fw-bold text-muted mb-1">إجمالي الفواتير (التي أنجزها)</h6>
-                <h3 class="fw-bold text-dark m-0" id="lblTotalRev">@totalRev.ToString("N2") <span class="fs-6">ر.س</span></h3>
+            <div class="premium-card bg-primary bg-opacity-10 border-0 h-100 p-4 text-center border-top border-4 border-primary">
+                <div class="icon-box bg-white text-primary mx-auto mb-3 shadow-sm"><i class="fa-solid fa-coins"></i></div>
+                <h6 class="fw-bold text-muted mb-2">إجمالي الفواتير (التي أنجزها)</h6>
+                <h3 class="fw-bolder text-dark m-0" id="lblTotalRev">@totalRev.ToString("N2") <span class="fs-6 text-muted">ر.س</span></h3>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="sys-card bg-info bg-opacity-10 border-0 h-100 p-4 text-center">
-                <i class="fa-solid fa-hand-holding-dollar fs-1 text-info mb-2"></i>
-                <h6 class="fw-bold text-muted mb-1">أجور اليد والفحص (منها)</h6>
-                <h3 class="fw-bold text-dark m-0" id="lblLaborRev">@laborRev.ToString("N2") <span class="fs-6">ر.س</span></h3>
+            <div class="premium-card bg-info bg-opacity-10 border-0 h-100 p-4 text-center border-top border-4 border-info">
+                <div class="icon-box bg-white text-info mx-auto mb-3 shadow-sm"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                <h6 class="fw-bold text-muted mb-2">أجور اليد والفحص (منها)</h6>
+                <h3 class="fw-bolder text-dark m-0" id="lblLaborRev">@laborRev.ToString("N2") <span class="fs-6 text-muted">ر.س</span></h3>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="sys-card bg-danger bg-opacity-10 border-0 h-100 p-4 text-center">
-                <i class="fa-solid fa-file-invoice-dollar fs-1 text-danger mb-2"></i>
-                <h6 class="fw-bold text-muted mb-1">الخصومات والسلف (عليه)</h6>
-                <h3 class="fw-bold text-danger m-0" id="lblDeductions">@totalDeductions.ToString("N2") <span class="fs-6">ر.س</span></h3>
+            <div class="premium-card bg-danger bg-opacity-10 border-0 h-100 p-4 text-center border-top border-4 border-danger">
+                <div class="icon-box bg-white text-danger mx-auto mb-3 shadow-sm"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+                <h6 class="fw-bold text-muted mb-2">مصروفات الفني التشغيلية</h6>
+                <h3 class="fw-bolder text-danger m-0" id="lblDeductions">@totalDeductions.ToString("N2") <span class="fs-6">ر.س</span></h3>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="sys-card bg-warning bg-opacity-10 border-0 h-100 p-4 text-center">
-                <i class="fa-solid fa-sack-dollar fs-1 text-warning mb-2"></i>
-                <h6 class="fw-bold text-muted mb-1">الكاش المُحصّل (في يده)</h6>
-                <h3 class="fw-bold text-dark m-0">@cashInHand.ToString("N2") <span class="fs-6">ر.س</span></h3>
-                <small class="text-muted fw-bold">هذا المبلغ حصله نقداً ولم يورده.</small>
+            <div class="premium-card bg-warning bg-opacity-10 border-0 h-100 p-4 text-center border-top border-4 border-warning">
+                <div class="icon-box bg-white text-warning mx-auto mb-3 shadow-sm"><i class="fa-solid fa-sack-dollar"></i></div>
+                <h6 class="fw-bold text-dark mb-2">الكاش المحصل (في يده)</h6>
+                <h3 class="fw-bolder text-dark m-0">@cashInHand.ToString("N2") <span class="fs-6">ر.س</span></h3>
+                <small class="text-danger fw-bold d-block mt-2">هذا المبلغ حصله نقداً ولم يورده.</small>
             </div>
         </div>
     </div>
 
-    <!-- 📌 3. الحاسبة التفاعلية -->
-    <div class="sys-card mb-4 border border-success border-2 shadow-sm">
-        <h4 class="fw-bold text-success border-bottom pb-3 mb-4"><i class="fa-solid fa-gear fa-spin me-2"></i> حاسبة العمولة والصافي المستحق</h4>
+    <div class="row g-4 fade-in-up" style="animation-delay: 0.1s;">
+        <div class="col-lg-6">
+            <div class="premium-card h-100 border-primary border-top border-4">
+                <div class="card-header-premium bg-light pb-3">
+                    <h5 class="fw-bolder text-primary m-0"><i class="fa-solid fa-list-ol me-2"></i> 1. تحديد الوعاء الخاضع للعمولة</h5>
+                    <p class="text-muted small fw-bold mt-2 mb-0">خطوات خصم (التكلفة + المصروفات) لتحديد صافي أرباح العمل.</p>
+                </div>
+                <div class="card-body-premium">
 
-        <div class="row g-4 align-items-center">
-            <div class="col-md-4">
-                <label class="form-label fw-bold text-dark fs-5">حساب النسبة يتم بناءً على:</label>
-                <div class="d-flex flex-column gap-2 mt-2">
-                    <label class="form-check-label fw-bold bg-light p-2 rounded border cursor-pointer">
-                        <input type="radio" name="calcBase" value="@totalRev" class="form-check-input me-2" checked onchange="calculateNet()"> إجمالي الفواتير (شامل القطع)
-                    </label>
-                    <label class="form-check-label fw-bold bg-light p-2 rounded border cursor-pointer">
-                        <input type="radio" name="calcBase" value="@laborRev" class="form-check-input me-2" onchange="calculateNet()"> أجور اليد والفحص فقط
-                    </label>
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-light rounded-3 border">
+                        <span class="fw-bolder text-dark">أ. إجمالي فواتير العميل (الإيراد)</span>
+                        <span class="fw-bolder fs-5 text-dark" id="displayTotalRev">@totalRev.ToString("N2") ر.س</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-danger bg-opacity-10 border border-danger border-opacity-25 rounded-3" id="partsCostRow">
+                        <span class="fw-bolder text-danger">ب. (يخصم) تكلفة قطع الغيار</span>
+                        <span class="fw-bolder fs-5 text-danger">- @partsCost.ToString("N2") ر.س</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-3 p-3 bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded-3">
+                        <span class="fw-bolder text-dark">ج. (يخصم) مصروفات الفني المسجلة بالدفتر</span>
+                        <span class="fw-bolder fs-5 text-danger">- @totalDeductions.ToString("N2") ر.س</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center mb-4 p-3 bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded-3">
+                        <span class="fw-bolder text-dark">د. (يخصم) مصروفات إضافية (يدوي)</span>
+                        <div class="input-group" style="width: 150px;">
+                            <input type="number" step="0.01" id="generalExpenses" class="form-control fw-bolder text-center border-warning text-danger" value="0" min="0" oninput="calculateNet()" />
+                            <span class="input-group-text bg-white border-warning fw-bold small">ر.س</span>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center p-3 bg-success bg-opacity-10 border border-success rounded-3 shadow-sm">
+                        <span class="fw-bolder text-success fs-5"><i class="fa-solid fa-sack-dollar me-1"></i> صافي الأرباح (الوعاء للنسبة)</span>
+                        <span class="fw-bolder fs-4 text-success" id="baseAmountDisplay">0.00 <span class="fs-6 text-muted">ر.س</span></span>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <div class="col-md-3 text-center border-end border-start">
-                <label class="form-label fw-bold text-primary fs-5">نسبة الفني المئوية (%)</label>
-                <div class="input-group input-group-lg justify-content-center mt-2">
-                    <input type="number" id="commissionPercent" class="form-control text-center fw-bold fs-3 text-primary border-primary" value="30" min="0" max="100" style="max-width: 120px;" oninput="calculateNet()" />
-                    <span class="input-group-text bg-primary text-white fw-bold fs-4">%</span>
+        <div class="col-lg-6">
+            <div class="premium-card h-100 border-success border-top border-4">
+                <div class="card-header-premium bg-light pb-3">
+                    <h5 class="fw-bolder text-success m-0"><i class="fa-solid fa-percent me-2"></i> 2. عمولة الفني والتصفية النهائية</h5>
                 </div>
-            </div>
+                <div class="card-body-premium">
 
-            <div class="col-md-5 text-center">
-                <p class="fw-bold text-muted mb-1 fs-5">الصافي المستحق للدفع (بعد خصم السلف)</p>
-                <div class="bg-success text-white rounded-4 p-3 shadow-lg pulse-success">
-                    <h1 class="m-0 fw-bolder display-4" id="finalNetPayout">0.00 <span class="fs-4">ر.س</span></h1>
+                    <div class="row align-items-center mb-4 pb-3 border-bottom border-dashed">
+                        <div class="col-12 mb-3">
+                            <span class="fw-bolder text-dark d-block mb-2">أساس الحساب:</span>
+                            <div class="d-flex gap-2">
+                                <label class="btn btn-outline-primary fw-bold flex-grow-1">
+                                    <input type="radio" name="calcBase" id="baseTotal" value="@totalRev" class="form-check-input me-2" checked onchange="calculateNet()">
+                                    إجمالي الفواتير
+                                </label>
+                                <label class="btn btn-outline-info fw-bold text-dark flex-grow-1">
+                                    <input type="radio" name="calcBase" id="baseLabor" value="@laborRev" class="form-check-input me-2" onchange="calculateNet()">
+                                    أجور اليد فقط
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-7 mt-2">
+                            <span class="fw-bolder text-dark">نسبة العمولة المئوية للفني:</span>
+                        </div>
+                        <div class="col-5 mt-2">
+                            <div class="input-group shadow-sm rounded-3 overflow-hidden">
+                                <input type="number" id="commissionPercent" class="form-control text-center fw-bolder fs-4 border-success text-success bg-light" value="10" min="0" max="100" oninput="calculateNet()" />
+                                <span class="input-group-text bg-success text-white fw-bolder border-success">%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-4 bg-light rounded-4 border shadow-sm position-relative overflow-hidden">
+                        <!-- تصفية العهدة والسلف -->
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="text-primary fw-bold">أجرة الفني (العمولة المكتسبة):</span>
+                            <span class="fw-bolder text-primary fs-4" id="breakdownGross">0.00 ر.س</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-3 pb-3 border-bottom text-danger border-secondary border-opacity-25">
+                            <span class="fw-bold">يخصم (كاش التحصيل الموجود بيده):</span>
+                            <span class="fw-bold fs-5">- @cashInHand.ToString("N2") ر.س</span>
+                        </div>
+                        
+                        <div class="text-center mt-4">
+                            <p class="fw-bolder text-dark mb-2 fs-6" id="resultText">الصافي النهائي للتسوية:</p>
+                            <h1 class="m-0 fw-bolder display-4 text-dark" id="finalNetPayout">0.00 <span class="fs-4">ر.س</span></h1>
+                        </div>
+
+                        <!-- زر التصفية -->
+                        <button type="button" id="btnSubmit" class="btn btn-dark fw-bolder w-100 mt-4 py-3 rounded-pill shadow-sm fs-5 hover-elevate" data-bs-toggle="modal" data-bs-target="#payModal">
+                            <i class="fa-solid fa-check-double me-2"></i> تصفية الحساب وإغلاق الدفتر
+                        </button>
+                    </div>
+
                 </div>
-
-                <!-- زر تسجيل الدفع -->
-                <button type="button" class="btn btn-dark fw-bold w-100 mt-3 py-2 fs-5" data-bs-toggle="modal" data-bs-target="#payModal">
-                    <i class="fa-solid fa-cash-register me-2"></i> تأكيد وصرف العمولة
-                </button>
             </div>
         </div>
     </div>
 
-    <!-- 📌 نافذة تأكيد الدفع -->
+    <!-- 📌 نافذة تأكيد الإجراء المحاسبي (التوريد أو الصرف) -->
     <div class="modal fade" id="payModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 rounded-4 shadow-lg">
-                <div class="modal-header border-bottom-0 pb-0">
-                    <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-money-bill-transfer me-2"></i> صرف مستحقات الفني</h5>
+            <div class="modal-content premium-modal border-0 shadow-lg">
+                <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+                    <h5 class="modal-title fw-bolder text-dark m-0" id="modalTitle">تصفية مستحقات الفني</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form asp-action="PayCommission" method="post">
-                    <div class="modal-body py-4 text-start">
+                    <div class="modal-body p-4 text-start">
                         <input type="hidden" name="techId" value="@selectedTech.TechnicianId" />
                         <input type="hidden" name="monthYearName" value="@ViewBag.MonthYearName" />
-                        <input type="hidden" name="deductionAmount" value="@totalDeductions" />
+                        <input type="hidden" name="settleType" id="settleType" value="" />
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">المبلغ النهائي المُراد صرفه (كاش من الخزنة) <span class="text-danger">*</span></label>
-                            <input type="number" step="0.01" id="formFinalAmount" name="finalAmount" class="form-control form-control-lg fw-bold border-success text-success bg-light" required readonly />
-                            <small class="text-muted fw-bold d-block mt-1">يتم احتساب هذا الرقم من الحاسبة تلقائياً.</small>
+                        <p class="text-muted fw-bold mb-3 lh-lg" id="modalDesc"></p>
+
+                        <div class="mb-4">
+                            <div class="input-group input-group-lg rounded-4 overflow-hidden shadow-sm">
+                                <input type="number" step="0.01" id="formFinalAmount" name="finalAmount" class="form-control fw-bolder border-0 bg-light" required readonly />
+                                <span class="input-group-text bg-white border-0 fw-bolder px-4">ر.س</span>
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label fw-bold">ملاحظات المحاسب</label>
-                            <input type="text" name="notes" class="form-control fw-bold" placeholder="مثال: تم التصفية لحساب شهر..." />
+                        <!-- 📌 إضافة خيارات الدفع (كاش/فيزا/تحويل) داخل المودال -->
+                        <div class="mb-4" id="paymentMethodSection">
+                            <label class="premium-label text-dark mb-3">طريقة سداد / تحصيل المبلغ: <span class="text-danger">*</span></label>
+                            <div class="d-flex flex-column gap-2">
+                                <label class="btn btn-outline-success text-start fw-bold p-3 rounded-3 d-flex align-items-center">
+                                    <input type="radio" name="paymentMethod" value="Cash" class="form-check-input me-3 fs-5" required checked>
+                                    <div><i class="fa-solid fa-money-bills me-2"></i> كاش (الصندوق النقدي)</div>
+                                </label>
+                                <label class="btn btn-outline-info text-dark text-start fw-bold p-3 rounded-3 d-flex align-items-center">
+                                    <input type="radio" name="paymentMethod" value="POS" class="form-check-input me-3 fs-5">
+                                    <div><i class="fa-solid fa-credit-card me-2"></i> شبكة / فيزا (البنك)</div>
+                                </label>
+                                <label class="btn btn-outline-primary text-start fw-bold p-3 rounded-3 d-flex align-items-center">
+                                    <input type="radio" name="paymentMethod" value="BankTransfer" class="form-check-input me-3 fs-5">
+                                    <div><i class="fa-solid fa-building-columns me-2"></i> تحويل بنكي (البنك)</div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="premium-label">ملاحظات المحاسب الدفترية</label>
+                            <input type="text" name="notes" class="premium-input form-control" placeholder="اكتب بياناً مختصراً لعملية الإيداع/السحب..." required />
                         </div>
                     </div>
-                    <div class="modal-footer border-top-0 pt-0">
-                        <button type="button" class="btn btn-light fw-bold px-4 rounded-3" data-bs-dismiss="modal">إلغاء</button>
-                        <button type="submit" class="btn btn-success fw-bold px-4 rounded-3 fs-5"><i class="fa-solid fa-check-double me-1"></i> صرف وتسجيل بالدفاتر</button>
+                    <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                        <button type="button" class="btn btn-light fw-bold px-4 rounded-pill" data-bs-dismiss="modal">إلغاء</button>
+                        <button type="submit" class="btn btn-dark fw-bolder px-4 rounded-pill shadow-sm hover-elevate">اعتماد وتسجيل بالدفاتر <i class="fa-solid fa-file-signature ms-1 text-warning"></i></button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- 📌 تفاصيل الطلبات والخصومات في هذا الشهر -->
-    <div class="row g-4 mt-2">
+    <!-- 📌 تفاصيل الطلبات والخصومات -->
+    <div class="row g-4 mt-2 fade-in-up" style="animation-delay: 0.3s;">
         <div class="col-lg-8">
-            <div class="sys-card h-100">
-                <h5 class="fw-bold text-dark border-bottom pb-2"><i class="fa-solid fa-list-check text-primary me-2"></i> الطلبات المنجزة خلال (@ViewBag.MonthYearName)</h5>
-                <div class="table-responsive mt-3" style="max-height: 300px; overflow-y: auto;">
-                    <table class="table table-sm table-bordered text-center align-middle">
-                        <thead class="table-light">
+            <div class="premium-card h-100">
+                <div class="card-header-premium bg-light">
+                    <h6 class="fw-bolder text-dark m-0"><i class="fa-solid fa-list-check text-primary me-2"></i> الطلبات المنجزة خلال (@ViewBag.MonthYearName)</h6>
+                </div>
+                <div class="card-body-premium p-0" style="max-height: 350px; overflow-y: auto;">
+                    <table class="table premium-table text-center align-middle m-0">
+                        <thead class="bg-white sticky-top shadow-sm">
                             <tr>
                                 <th>الطلب</th>
                                 <th>التاريخ</th>
@@ -173,9 +264,9 @@
                             @foreach (var o in (IEnumerable<KaberSystem.Models.Order>)ViewBag.TechOrders)
                             {
                                 <tr>
-                                    <td class="fw-bold"><a href="/Orders/Details/@o.OrderId" target="_blank" class="text-decoration-none">#@o.OrderId</a></td>
-                                    <td class="text-muted fw-bold" dir="ltr">@o.CreatedAt.ToString("yyyy-MM-dd")</td>
-                                    <td class="fw-bold text-success">@o.FinalPrice</td>
+                                    <td class="fw-bold"><a href="/Orders/Details/@o.OrderId" target="_blank" class="badge bg-dark text-white px-3 py-2 text-decoration-none shadow-sm">#@o.OrderId</a></td>
+                                    <td class="text-muted fw-bold small" dir="ltr">@o.CreatedAt.ToString("yyyy-MM-dd")</td>
+                                    <td class="fw-bolder text-success fs-6">@o.FinalPrice</td>
                                     <td class="fw-bold text-primary">@(o.IsFeeApplied? o.EstimatedPrice: 0)</td>
                                 </tr>
                             }
@@ -185,21 +276,23 @@
             </div>
         </div>
         <div class="col-lg-4">
-            <div class="sys-card h-100 bg-danger bg-opacity-10 border border-danger">
-                <h5 class="fw-bold text-danger border-bottom border-danger pb-2"><i class="fa-solid fa-file-invoice-dollar me-2"></i> سجل السلف والخصومات</h5>
-                <div class="table-responsive mt-3">
-                    <table class="table table-sm table-borderless text-center align-middle">
+            <div class="premium-card h-100 bg-danger bg-opacity-10 border border-danger border-opacity-25">
+                <div class="card-header-premium bg-transparent border-danger border-opacity-25">
+                    <h6 class="fw-bolder text-danger m-0"><i class="fa-solid fa-file-invoice-dollar me-2"></i> سجل مصروفات الفني التشغيلية</h6>
+                </div>
+                <div class="card-body-premium p-0">
+                    <table class="table table-borderless text-center align-middle m-0">
                         <tbody>
                             @foreach (var exp in (IEnumerable<KaberSystem.Models.Expense>)ViewBag.DeductionsList)
                             {
-                                <tr class="border-bottom border-danger">
-                                    <td class="text-start fw-bold text-dark small">@exp.Description</td>
-                                    <td class="fw-bold text-danger">@exp.Amount</td>
+                                <tr class="border-bottom border-danger border-opacity-25">
+                                    <td class="text-start fw-bold text-dark ps-4 py-3">@exp.Description</td>
+                                    <td class="fw-bolder text-danger pe-4">@exp.Amount</td>
                                 </tr>
                             }
                             @if (!((IEnumerable<KaberSystem.Models.Expense>)ViewBag.DeductionsList).Any())
                             {
-                                <tr><td class="text-muted fw-bold">لا يوجد سلف أو خصومات هذا الشهر.</td></tr>
+                                <tr><td class="text-muted fw-bold p-4 text-center">لا توجد مصروفات مسجلة بالدفتر هذا الشهر.</td></tr>
                             }
                         </tbody>
                     </table>
@@ -208,51 +301,144 @@
         </div>
     </div>
 
-    <!-- 📌 سكربت الحساب الفوري (Live JavaScript) -->
+    <!-- 📌 سكربت الحساب الفوري الدقيق (ERP Logic) -->
     <script>
         function calculateNet() {
-            // 1. جلب القيم
-            var baseAmount = parseFloat(document.querySelector('input[name="calcBase"]:checked').value) || 0;
+            var selectedBaseValue = parseFloat(document.querySelector('input[name="calcBase"]:checked').value) || 0;
+            var isTotalSelected = document.getElementById('baseTotal').checked;
+            
+            var partsCost = parseFloat('@partsCost') || 0;
+            
+            // المصروفات المتغيرة (الرواتب، التشغيل) التي يكتبها المحاسب
+            var generalExpenses = parseFloat(document.getElementById('generalExpenses').value) || 0;
+            
             var percent = parseFloat(document.getElementById('commissionPercent').value) || 0;
+            
             var totalDeductions = parseFloat('@totalDeductions') || 0;
+            var cashInHand = parseFloat('@cashInHand') || 0;
 
-            // 2. حساب العمولة
+            document.getElementById('displayTotalRev').innerText = selectedBaseValue.toFixed(2) + ' ر.س';
+
+            // 1. حساب الوعاء (Base Amount) = الإيراد - المصروفات المسجلة - المصروفات اليدوية - تكلفة القطع (إن وجدت)
+            var baseAmount = 0;
+            if (isTotalSelected) {
+                baseAmount = selectedBaseValue - partsCost - totalDeductions - generalExpenses;
+                document.getElementById('partsCostRow').style.display = 'flex'; 
+            } else {
+                baseAmount = selectedBaseValue - totalDeductions - generalExpenses;
+                document.getElementById('partsCostRow').style.display = 'none'; 
+            }
+
+            if(baseAmount < 0) baseAmount = 0; 
+            document.getElementById('baseAmountDisplay').innerHTML = baseAmount.toFixed(2) + ' <span class="fs-6 text-muted">ر.س</span>';
+
+            // 2. حساب العمولة المكتسبة
             var grossCommission = baseAmount * (percent / 100);
+            document.getElementById('breakdownGross').innerText = grossCommission.toFixed(2) + ' ر.س';
 
-            // 3. خصم السلف والغيابات للحصول على الصافي
-            var netPayout = grossCommission - totalDeductions;
+            // 3. التصفية النهائية (العمولة - الكاش الموجود بيده فقط) 
+            var finalSettlement = grossCommission - cashInHand;
 
-            // منع الأرقام السالبة ظاهرياً (إذا كانت السلف أكبر من الراتب)
-            if (netPayout < 0) netPayout = 0;
+            var resultBox = document.getElementById('finalNetPayout');
+            var resultText = document.getElementById('resultText');
+            var formFinalAmount = document.getElementById('formFinalAmount');
+            var settleType = document.getElementById('settleType');
+            var btnSubmit = document.getElementById('btnSubmit');
+            var modalTitle = document.getElementById('modalTitle');
+            var modalDesc = document.getElementById('modalDesc');
+            var paymentSection = document.getElementById('paymentMethodSection'); // 📌 قسم طريقة الدفع في المودال
 
-            // 4. تحديث الشاشة والحقل المخفي للصرف
-            document.getElementById('finalNetPayout').innerHTML = netPayout.toFixed(2) + ' <span class="fs-4">ر.س</span>';
-            document.getElementById('formFinalAmount').value = netPayout.toFixed(2);
+            if (finalSettlement > 0) {
+                resultBox.innerHTML = finalSettlement.toFixed(2) + ' <span class="fs-4">ر.س</span>';
+                resultBox.className = "m-0 fw-bolder display-4 text-success";
+                resultText.innerText = "الصافي المستحق (يُصرف للفني):";
+                
+                formFinalAmount.value = finalSettlement.toFixed(2);
+                formFinalAmount.className = "form-control form-control-lg fw-bolder border-0 bg-success bg-opacity-10 text-success";
+                settleType.value = "PayToTech";
+                paymentSection.style.display = 'block'; // إظهار طرق الدفع
+                
+                btnSubmit.innerHTML = '<i class="fa-solid fa-hand-holding-dollar me-2"></i> صرف المبلغ للفني وتصفية الدفاتر';
+                btnSubmit.className = "btn btn-success fw-bolder py-3 rounded-pill shadow-sm fs-5 w-100 hover-elevate";
+                
+                modalTitle.innerHTML = '<i class="fa-solid fa-money-bill-transfer text-success me-2"></i> صرف مستحقات الفني';
+                modalDesc.innerHTML = 'تم حساب العمولة بعد خصم كافة التكاليف من الأرباح. سيتم <b class="text-success">صرف هذا المبلغ للفني</b>.';
+            } 
+            else if (finalSettlement < 0) {
+                var owesCompany = Math.abs(finalSettlement);
+                resultBox.innerHTML = owesCompany.toFixed(2) + ' <span class="fs-4">ر.س</span>';
+                resultBox.className = "m-0 fw-bolder display-4 text-danger";
+                resultText.innerText = "المطلوب توريده (يُستلم من الفني):";
+                
+                formFinalAmount.value = owesCompany.toFixed(2);
+                formFinalAmount.className = "form-control form-control-lg fw-bolder border-0 bg-danger bg-opacity-10 text-danger";
+                settleType.value = "ReceiveFromTech";
+                paymentSection.style.display = 'block'; // إظهار طرق الدفع
+                
+                btnSubmit.innerHTML = '<i class="fa-solid fa-vault me-2"></i> استلام وتوريد للصندوق/البنك';
+                btnSubmit.className = "btn btn-danger fw-bolder py-3 rounded-pill shadow-sm fs-5 w-100 hover-elevate";
+                
+                modalTitle.innerHTML = '<i class="fa-solid fa-vault text-danger me-2"></i> استلام وتوريد كاش من الفني';
+                modalDesc.innerHTML = 'الكاش الذي بعهدة الفني أكبر من عمولته. سيتم <b class="text-danger">استلام هذا الفارق منه وإيداعه بالخزنة أو البنك</b>.';
+            } 
+            else {
+                resultBox.innerHTML = '0.00 <span class="fs-4">ر.س</span>';
+                resultBox.className = "m-0 fw-bolder display-4 text-dark";
+                resultText.innerText = "مخالصة تامة (الحساب مصفر):";
+                
+                formFinalAmount.value = 0;
+                formFinalAmount.className = "form-control form-control-lg fw-bolder border-0 bg-light text-dark";
+                settleType.value = "Zero";
+                paymentSection.style.display = 'none'; // 📌 إخفاء خيارات الدفع لأن المبلغ صفر
+                
+                btnSubmit.innerHTML = '<i class="fa-solid fa-check-double me-2"></i> إغلاق وتصفير الدفاتر';
+                btnSubmit.className = "btn btn-dark fw-bolder py-3 rounded-pill shadow-sm fs-5 w-100 hover-elevate";
+                
+                modalTitle.innerHTML = '<i class="fa-solid fa-check-double text-dark me-2"></i> تصفير الحسابات';
+                modalDesc.innerHTML = 'الحسابات متطابقة ولا يوجد مبالغ مستحقة للصرف أو الاستلام. سيتم تصفير الدفاتر واعتبار الكاش مسدداً للعمولات.';
+            }
         }
 
-        // تشغيل الحساب فور تحميل الصفحة
         document.addEventListener("DOMContentLoaded", function() {
             calculateNet();
         });
     </script>
 }
 
-@section Scripts {
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <script>
-            var msg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString()));
-            Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: msg, confirmButtonColor: '#198754', customClass: { popup: 'rounded-4' } });
-        </script>
-    }
-}
 <style>
-    @@keyframes subtlePulseSuccess {
-        0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.4); }
-        70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); }
-        100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
+    /* Premium Dashboard UI Styles */
+    :root {
+        --prem-surface: #ffffff;
+        --prem-border: #e2e8f0;
+        --prem-text: #1e293b;
+        --prem-muted: #64748b;
+        --prem-radius: 20px;
     }
-    .pulse-success { animation: subtlePulseSuccess 2s infinite; }
-    .cursor-pointer { cursor: pointer; transition: background 0.2s; }
-    .cursor-pointer:hover { background: #e9ecef !important; }
+
+    .fade-in-up { animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    @@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+    .premium-card { background: var(--prem-surface); border-radius: var(--prem-radius); box-shadow: 0 10px 30px rgba(0,0,0,0.02); overflow: hidden; }
+    .card-header-premium { padding: 20px 24px; border-bottom: 1px solid var(--prem-border); }
+    .card-body-premium { padding: 24px; }
+
+    .icon-box { width: 45px; height: 45px; border-radius: 12px; display: flex; justify-content: center; align-items: center; font-size: 20px; flex-shrink: 0; }
+    
+    .premium-label { font-weight: 800; color: var(--prem-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
+    .premium-input { background-color: #f8fafc; border: 1px solid var(--prem-border); border-radius: 12px; padding: 14px 20px; font-weight: 700; color: var(--prem-text); transition: all 0.3s ease; }
+    .premium-input:focus { background-color: #fff; box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1) !important; }
+
+    .hover-elevate { transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
+    .hover-elevate:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important; }
+    
+    .border-dashed { border: 2px dashed #cbd5e1; }
+
+    .btn-outline-primary:hover, .btn-outline-info:hover { color: #fff !important; }
+    .btn-check:checked + .btn-outline-primary { background-color: #eff6ff; color: #3b82f6; border-color: #3b82f6; }
+    .btn-check:checked + .btn-outline-info { background-color: #f0f9ff; color: #0ea5e9; border-color: #0ea5e9; }
+    label.btn { transition: all 0.2s ease; cursor: pointer; }
+    
+    .premium-modal { border-radius: 24px; overflow: hidden; }
+    .premium-table th { font-weight: 800; color: var(--prem-muted); border-bottom: 2px solid var(--prem-border); padding: 16px; font-size: 0.85rem; text-transform: uppercase; }
+    .premium-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
 </style>

@@ -118,6 +118,12 @@
                         <div class="info-block">
                             <span class="label">العنوان</span>
                             <span class="value">@Model.Address</span>
+                            @if (!string.IsNullOrEmpty(Model.LocationMapUrl))
+                            {
+                                <a href="@Model.LocationMapUrl" target="_blank" class="btn btn-sm btn-light border text-primary fw-bold rounded-pill px-3 shadow-sm hover-elevate mb-1">
+                                    <i class="fa-solid fa-map-location-dot text-danger me-1"></i> فتح الخريطة
+                                </a>
+                            }
                         </div>
                     </div>
                 </div>

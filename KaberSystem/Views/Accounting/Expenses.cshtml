@@ -1,83 +1,105 @@
-﻿@model IEnumerable<KaberSystem.Models.Expense>
+﻿<!-- مسار الملف: Views/Accounting/Expenses.cshtml -->
+@model IEnumerable<KaberSystem.Models.Expense>
 @{
     ViewData["Title"] = "المرتبات والمصروفات";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
     string currentMonthYear = ViewBag.CurrentMonthYear;
 }
 
-<div class="d-flex justify-content-between align-items-end mb-4 flex-wrap gap-3">
-    <div>
-        <h2 class="fw-bolder text-dark mb-1" style="letter-spacing: -0.5px;">
-            <i class="fa-solid fa-money-check-dollar text-danger me-2"></i> إدارة المرتبات والمصروفات
-        </h2>
-        <p class="text-muted fw-bold mb-0">تسجيل الرواتب، السلف، والمصروفات مع تحديد جهة تحمل التكلفة مالياً</p>
+<div class="d-flex justify-content-between align-items-center mb-5 flex-wrap gap-3 fade-in-up">
+    <div class="d-flex align-items-center gap-3">
+        <div class="bg-white text-danger rounded-circle d-flex justify-content-center align-items-center shadow-sm" style="width: 55px; height: 55px; font-size: 22px;">
+            <i class="fa-solid fa-money-check-dollar"></i>
+        </div>
+        <div>
+            <h2 class="fw-bolder text-dark mb-1" style="letter-spacing: -0.5px;">إدارة الرواتب والمصروفات</h2>
+            <p class="text-muted fw-bold mb-0">تسجيل الرواتب، السلف، والمصروفات مع تحديد طريقة السداد والجهة المحملة</p>
+        </div>
     </div>
 
-    <!-- 📌 أداة الفلترة الشهرية المدمجة مع تصميمك -->
-    <form method="get" asp-action="Expenses" class="m-0 bg-white p-2 rounded-pill shadow-sm border border-danger">
-        <div class="d-flex align-items-center px-2">
+    <!-- أداة الفلترة الشهرية -->
+    <form method="get" asp-action="Expenses" class="m-0 bg-white p-1 rounded-pill shadow-sm border border-danger hover-elevate">
+        <div class="d-flex align-items-center px-3">
             <i class="fa-regular fa-calendar-days text-danger me-2 fs-5"></i>
             <span class="fw-bold text-dark me-2 small">عرض مصروفات شهر:</span>
-            <input type="month" name="monthYear" value="@currentMonthYear" class="form-control form-control-sm fw-bold border-0 text-danger bg-transparent p-0" style="box-shadow: none; cursor: pointer; width: auto;" onchange="this.form.submit()" />
+            <input type="month" name="monthYear" value="@currentMonthYear" class="form-control form-control-sm fw-bolder border-0 text-danger bg-transparent p-0" style="box-shadow: none; cursor: pointer; width: auto;" onchange="this.form.submit()" />
         </div>
     </form>
 </div>
 
-<div class="row g-4">
+<div class="row g-4 fade-in-up" style="animation-delay: 0.1s;">
     <!-- 📌 نموذج إضافة مصروف (Premium Design) -->
     <div class="col-lg-4">
         <div class="card border-0 rounded-4 shadow-sm h-100 position-sticky" style="top: 20px;">
             <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
-                <h5 class="fw-bolder text-dark mb-0"><i class="fa-solid fa-plus-circle text-primary me-2"></i> قيد مالي جديد</h5>
+                <h5 class="fw-bolder text-primary mb-0"><i class="fa-solid fa-plus-circle me-2"></i> قيد مالي جديد</h5>
             </div>
             <div class="card-body p-4">
                 <form asp-action="AddExpense" method="post">
                     <div class="mb-3">
-                        <label class="form-label fw-bold text-muted small text-uppercase">البيان (راتب / سلفة / مصروف) <span class="text-danger">*</span></label>
-                        <input type="text" name="Description" class="form-control sys-input fw-bold" placeholder="مثال: راتب شهر مارس" required />
+                        <label class="form-label fw-bold text-muted small text-uppercase">البيان (راتب / بنزين / سلفة) <span class="text-danger">*</span></label>
+                        <input type="text" name="Description" class="form-control sys-input fw-bold" placeholder="مثال: راتب شهر مارس، فاتورة كهرباء" required />
                     </div>
 
                     <div class="mb-3">
                         <label class="form-label fw-bold text-muted small text-uppercase">المبلغ المستحق <span class="text-danger">*</span></label>
-                        <div class="input-group">
-                            <input type="number" step="0.01" name="Amount" class="form-control sys-input fw-bold text-danger" placeholder="0.00" required />
-                            <span class="input-group-text bg-light fw-bold border-2">ر.س</span>
+                        <div class="input-group shadow-sm rounded-3 overflow-hidden">
+                            <input type="number" step="0.01" name="Amount" class="form-control fw-bolder border-0 bg-light text-danger fs-5" required />
+                            <span class="input-group-text bg-white fw-bolder border-0 text-danger px-4">ر.س</span>
                         </div>
                     </div>
 
-                    <!-- 📌 منطق جهة الخصم -->
-                    <div class="p-3 bg-light rounded-4 mb-3 border">
-                        <label class="fw-bold text-primary mb-3 d-block small text-uppercase tracking-wider">
-                            <i class="fa-solid fa-scale-balanced me-1"></i> جهة الخصم المحاسبية:
+                    <!-- 📌 التحديث: طريقة دفع المصروفات -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bolder text-dark mb-3">طريقة سداد المصروف (تُخصم من): <span class="text-danger">*</span></label>
+                        <div class="d-flex flex-column gap-2">
+                            <label class="btn btn-outline-success text-start fw-bold p-3 rounded-3 d-flex align-items-center">
+                                <input type="radio" name="PaymentMethod" value="Cash" class="form-check-input me-3 fs-5" required checked>
+                                <div><i class="fa-solid fa-money-bills me-2"></i> كاش (تخصم من الدرج)</div>
+                            </label>
+                            <label class="btn btn-outline-info text-dark text-start fw-bold p-3 rounded-3 d-flex align-items-center">
+                                <input type="radio" name="PaymentMethod" value="POS" class="form-check-input me-3 fs-5">
+                                <div><i class="fa-solid fa-credit-card me-2"></i> شبكة / فيزا (تخصم من البنك)</div>
+                            </label>
+                            <label class="btn btn-outline-primary text-start fw-bold p-3 rounded-3 d-flex align-items-center">
+                                <input type="radio" name="PaymentMethod" value="BankTransfer" class="form-check-input me-3 fs-5">
+                                <div><i class="fa-solid fa-building-columns me-2"></i> تحويل بنكي (تخصم من البنك)</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 📌 منطق جهة الخصم المحاسبية -->
+                    <div class="p-3 bg-light rounded-4 mb-4 border shadow-sm">
+                        <label class="fw-bolder text-primary mb-3 d-block small text-uppercase tracking-wider">
+                            <i class="fa-solid fa-scale-balanced me-1"></i> تحميل المصروف على (الجهة المُدانة):
                         </label>
 
                         <div class="form-check mb-3">
-                            <input class="form-check-input" type="radio" name="DeductionFrom" id="dedCompany" value="Company" checked onchange="toggleTechSelect()">
-                            <label class="form-check-label fw-bold text-dark" for="dedCompany">
-                                <span class="d-block">دخل الشركة العام</span>
-                                <small class="text-muted fw-normal">تُحسب كمصروف تشغيلي (رواتب، إيجار، بنزين)</small>
+                            <input class="form-check-input fs-5 mt-1" type="radio" name="DeductionFrom" id="dedCompany" value="Company" checked onchange="toggleTechSelect()">
+                            <label class="form-check-label fw-bold text-dark ps-2" for="dedCompany">
+                                <span class="d-block fs-6">الشركة (مصروف تشغيلي عام)</span>
+                                <small class="text-muted fw-normal">رواتب، إيجار، بنزين، نثرية عامة.</small>
                             </label>
                         </div>
 
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="DeductionFrom" id="dedTech" value="Technician" onchange="toggleTechSelect()">
-                            <label class="form-check-label fw-bold text-danger" for="dedTech">
-                                <span class="d-block">دخل الفني الخاص</span>
-                                <small class="text-muted fw-normal">تُخصم من صافي أرباح الفني (سلفة، مديونية، جزاء)</small>
+                            <input class="form-check-input fs-5 mt-1" type="radio" name="DeductionFrom" id="dedTech" value="Technician" onchange="toggleTechSelect()">
+                            <label class="form-check-label fw-bold text-danger ps-2" for="dedTech">
+                                <span class="d-block fs-6">سلفة شخصية لفني</span>
+                                <small class="text-muted fw-normal">سلفة، جزاء، عهدة شخصية (تخصم من عمولته لاحقاً).</small>
                             </label>
                         </div>
                     </div>
 
-                    <!-- 📌 القائمة المنسدلة للفنيين (تظهر وتختفي برمجياً) -->
                     <div class="mb-4" id="techSelectContainer" style="display: none;">
-                        <label class="form-label fw-bold text-danger small text-uppercase">اختر الفني المُراد الخصم منه <span class="text-danger">*</span></label>
-                        <select name="TechnicianId" id="TechnicianId" class="form-select sys-input fw-bold bg-light border-danger" asp-items="ViewBag.TechnicianId">
+                        <label class="form-label fw-bold text-danger small text-uppercase">اختر الفني المُراد تسجيل السلفة عليه <span class="text-danger">*</span></label>
+                        <select name="TechnicianId" id="TechnicianId" class="form-select sys-input fw-bold bg-danger bg-opacity-10 border-danger text-danger" asp-items="ViewBag.TechnicianId">
                             <option value="">-- اختر الفني --</option>
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-primary fw-bold w-100 py-3 rounded-pill shadow-sm hover-elevate">
-                        <i class="fa-solid fa-save me-2"></i> حفظ واعتماد القيد
+                    <button type="submit" class="btn btn-primary fw-bolder w-100 py-3 fs-5 rounded-pill shadow-sm hover-elevate">
+                        <i class="fa-solid fa-save me-2"></i> حفظ واعتماد القيد <i class="fa-solid fa-check-double ms-1 opacity-50"></i>
                     </button>
                 </form>
             </div>
@@ -85,17 +107,19 @@
     </div>
 
     <!-- 📌 جدول السجلات المسجلة -->
-    <div class="col-lg-8">
-        <div class="card border-0 rounded-4 shadow-sm h-100">
+    <div class="col-lg-8 fade-in-up" style="animation-delay: 0.2s;">
+        <div class="card border-0 rounded-4 shadow-sm h-100 overflow-hidden">
+            <div class="card-header bg-white border-bottom pt-4 pb-3 px-4 d-flex justify-content-between align-items-center">
+                <h5 class="fw-bolder text-dark mb-0"><i class="fa-solid fa-list-ul text-primary me-2"></i> سجل قيود شهر (@ViewBag.MonthName)</h5>
+            </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-borderless table-hover align-middle text-center custom-table mb-0 w-100">
+                    <table class="table table-hover align-middle text-center custom-table mb-0 w-100">
                         <thead class="bg-light text-muted small fw-bold text-uppercase">
                             <tr>
-                                <th class="py-3 text-start ps-4">البيان / الوصف</th>
+                                <th class="py-3 text-start ps-4">البيان وطريقة السداد</th>
                                 <th class="py-3">المبلغ</th>
-                                <th class="py-3">جهة الخصم</th>
-                                <th class="py-3">المستفيد</th>
+                                <th class="py-3">تحميل الخصم على</th>
                                 <th class="py-3">التاريخ</th>
                                 @if (User.IsInRole("Admin"))
                                 {
@@ -108,48 +132,49 @@
                             {
                                 <tr style="border-bottom: 1px solid #f8f9fa;">
                                     <td class="text-start ps-4 py-3">
-                                        <div class="fw-bold text-dark">@item.Description</div>
-                                        <div class="small text-muted">بواسطة: @item.RecordedBy</div>
+                                        <div class="fw-bolder text-dark mb-2 fs-6">@item.Description</div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            @if (item.PaymentMethod == KaberSystem.Models.PaymentMethod.Cash || item.PaymentMethod == KaberSystem.Models.PaymentMethod.None)
+                                            {
+                                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 py-1"><i class="fa-solid fa-money-bills me-1"></i> سُددت كاش</span>
+                                            }
+                                            else if (item.PaymentMethod == KaberSystem.Models.PaymentMethod.POS)
+                                            {
+                                                <span class="badge bg-info bg-opacity-10 text-info text-dark border border-info border-opacity-25 rounded-pill px-2 py-1"><i class="fa-solid fa-credit-card me-1"></i> شبكة (POS)</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-1"><i class="fa-solid fa-building-columns me-1"></i> تحويل بنكي</span>
+                                            }
+                                            <span class="small text-muted fw-bold border-start ps-2">بواسطة: @item.RecordedBy</span>
+                                        </div>
                                     </td>
-                                    <td class="fw-bolder text-danger fs-6">
-                                        @item.Amount.ToString("N2") <span class="small fw-normal">ر.س</span>
+                                    <td class="fw-bolder text-danger fs-5">
+                                        @item.Amount.ToString("N2") <span class="small fw-normal text-muted">ر.س</span>
                                     </td>
                                     <td>
                                         @if (item.DeductionFrom == KaberSystem.Models.DeductionSource.Company)
                                         {
-                                            <span class="badge bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-bold">
-                                                <i class="fa-solid fa-building-columns me-1 small"></i> أرباح الشركة
+                                            <span class="badge bg-dark bg-opacity-10 text-dark px-3 py-2 rounded-pill fw-bold border shadow-sm">
+                                                <i class="fa-solid fa-building-columns me-1 text-primary"></i> أرباح الشركة (عام)
                                             </span>
                                         }
                                         else
                                         {
-                                            <span class="badge bg-danger bg-opacity-10 text-danger px-3 py-1 rounded-pill fw-bold">
-                                                <i class="fa-solid fa-user-minus me-1 small"></i> مديونية فني
+                                            <span class="badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill fw-bold border border-danger shadow-sm">
+                                                <i class="fa-solid fa-user-minus me-1"></i> سلفة: @item.Technician?.Name
                                             </span>
-                                        }
-                                    </td>
-                                    <td>
-                                        @if (item.Technician != null)
-                                        {
-                                            <div class="d-inline-flex align-items-center bg-light rounded-pill px-3 py-1 border">
-                                                <i class="fa-solid fa-user-gear text-muted me-2 small"></i>
-                                                <span class="text-dark fw-bold small">@item.Technician.Name</span>
-                                            </div>
-                                        }
-                                        else
-                                        {
-                                            <span class="text-muted small fw-bold">مصرف عام</span>
                                         }
                                     </td>
                                     <td dir="ltr" class="text-muted fw-bold small">
-                                        @item.Date.ToString("yyyy-MM-dd")
+                                        <i class="fa-regular fa-calendar me-1 opacity-50"></i> @item.Date.ToString("yyyy-MM-dd")
                                     </td>
                                     @if (User.IsInRole("Admin"))
                                     {
                                         <td class="pe-4">
-                                            <form asp-action="DeleteExpense" method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذا القيد المالي؟ سيؤثر ذلك على التقارير فوراً.');">
+                                            <form asp-action="DeleteExpense" method="post" onsubmit="return confirm('تأكيد الحذف وإرجاع المبلغ للخزنة/البنك؟ سيؤثر هذا على الدفاتر فوراً.');">
                                                 <input type="hidden" name="id" value="@item.Id" />
-                                                <button type="submit" class="btn btn-sm btn-light text-danger rounded-circle hover-danger" style="width:38px; height:38px;" title="حذف القيد">
+                                                <button type="submit" class="btn btn-sm btn-light text-danger rounded-circle border shadow-sm hover-danger" style="width:38px; height:38px;" title="حذف وإلغاء القيد">
                                                     <i class="fa-solid fa-trash-can"></i>
                                                 </button>
                                             </form>
@@ -160,11 +185,11 @@
                             @if (!Model.Any())
                             {
                                 <tr>
-                                    <td colspan="6" class="py-5 text-center text-muted">
-                                        <div class="bg-light rounded-circle d-inline-flex justify-content-center align-items-center mb-3" style="width: 70px; height: 70px;">
-                                            <i class="fa-solid fa-file-invoice-dollar fs-3 opacity-50"></i>
+                                    <td colspan="5" class="py-5 text-center text-muted">
+                                        <div class="bg-light border rounded-circle d-inline-flex justify-content-center align-items-center mb-3 shadow-sm" style="width: 80px; height: 80px;">
+                                            <i class="fa-solid fa-file-invoice-dollar fs-2 opacity-50"></i>
                                         </div>
-                                        <h6 class="fw-bold">لا توجد سجلات مصروفات في هذا الشهر.</h6>
+                                        <h6 class="fw-bolder m-0">الدفتر نظيف.. لا توجد سجلات مصروفات أو رواتب في هذا الشهر.</h6>
                                     </td>
                                 </tr>
                             }
@@ -178,7 +203,6 @@
 
 @section Scripts {
     <script>
-        // 📌 دالة ذكية لإظهار وإخفاء قائمة الفنيين بناءً على الاختيار
         function toggleTechSelect() {
             var isTech = document.getElementById('dedTech').checked;
             var techContainer = document.getElementById('techSelectContainer');
@@ -194,22 +218,14 @@
             }
         }
 
-        // تشغيل الدالة فور تحميل الصفحة للتأكد من الحالة الافتراضية
         document.addEventListener("DOMContentLoaded", function () {
             toggleTechSelect();
         });
 
         @if (TempData["SuccessMessage"] != null)
         {
-                <text>
-                Swal.fire({
-                    icon: 'success',
-                    title: 'تم بنجاح',
-                    text: '@Html.Raw(TempData["SuccessMessage"])',
-                    confirmButtonColor: '#05cd99',
-                    customClass: { popup: 'rounded-4' }
-                });
-                </text>
+                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                <text>Swal.fire({ icon: 'success', title: 'تم بنجاح', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'rounded-4' } });</text>
         }
     </script>
 }
@@ -217,7 +233,7 @@
 <style>
     .sys-input {
         border: 2px solid #e9edf7;
-        padding: 12px 18px;
+        padding: 14px 20px;
         border-radius: 12px;
         font-weight: 600;
         transition: all 0.3s ease;
@@ -227,14 +243,31 @@
 
         .sys-input:focus {
             border-color: var(--sys-primary);
-            box-shadow: 0 0 0 0.25rem rgba(241, 149, 11, 0.1);
+            box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1);
             background-color: #fff;
             outline: none;
         }
 
+    .fade-in-up {
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
     .custom-table th {
-        font-size: 0.8rem;
+        font-size: 0.85rem;
         letter-spacing: 0.5px;
+        border-bottom: 2px solid #e2e8f0;
     }
 
     .custom-table tbody tr {
@@ -242,33 +275,46 @@
     }
 
         .custom-table tbody tr:hover {
-            background-color: #fcfcfd !important;
+            background-color: #f8fafc !important;
             transform: scale(1.002);
         }
 
     .hover-elevate {
         transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
     }
 
         .hover-elevate:hover {
             transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
         }
 
     .hover-danger:hover {
         background-color: #ee5d50 !important;
         color: white !important;
         border-color: #ee5d50 !important;
-        box-shadow: 0 4px 12px rgba(238, 93, 80, 0.2);
+        box-shadow: 0 4px 12px rgba(238, 93, 80, 0.3) !important;
     }
 
-    .form-check-input:checked {
-        background-color: var(--sys-primary);
-        border-color: var(--sys-primary);
+    .btn-check:checked + .btn-outline-success {
+        background-color: #ecfdf5;
+        color: #10b981;
+        border-color: #10b981;
     }
 
-    .form-check-label {
-        cursor: pointer;
-        padding-right: 5px;
+    .btn-check:checked + .btn-outline-info {
+        background-color: #f0f9ff;
+        color: #0ea5e9;
+        border-color: #0ea5e9;
+    }
+
+    .btn-check:checked + .btn-outline-primary {
+        background-color: #eff6ff;
+        color: #3b82f6;
+        border-color: #3b82f6;
+    }
+
+    label.btn {
+        transition: all 0.2s ease;
     }
 </style>

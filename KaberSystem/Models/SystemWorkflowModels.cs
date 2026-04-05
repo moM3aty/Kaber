@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿// مسار الملف: Models/Models.cs
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -27,13 +28,21 @@ namespace KaberSystem.Models
         public DbSet<SystemLog> SystemLogs { get; set; }
         public DbSet<LeaveRequest> LeaveRequests { get; set; }
         public DbSet<PayrollSchedule> PayrollSchedules { get; set; }
+
+        // 📌 تمت الإضافة: جدول الشركاء لتوزيع الأرباح
+        public DbSet<Partner> Partners { get; set; }
+
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
             configurationBuilder.Properties<decimal>().HaveColumnType("decimal(18,2)");
         }
     }
+
     public enum PaymentMethod { None, Cash, BankTransfer, Prepaid, POS }
     public enum SafeTransactionType { Income, DepositToBank }
+
+    // 📌 تمت الإضافة: أنواع الخزنات (عامة للأرباح / مشتريات دوارة)
+    public enum SafeType { General, Purchasing }
 
     public class SystemUser
     {
@@ -97,16 +106,21 @@ namespace KaberSystem.Models
 
     public enum OrderType { Maintenance, NewInstallation, Warranty, ACWashing }
     public enum OrderStatus { New, Assigned, Confirmed, InProgress, Completed, Approved, Returned, Cancelled }
+
     public class SafeTransaction
     {
         [Key] public int Id { get; set; }
         public decimal Amount { get; set; }
-        public SafeTransactionType Type { get; set; } 
+        public SafeTransactionType Type { get; set; }
+        public SafeType TargetSafe { get; set; } = SafeType.General;
+
+        public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+
         public DateTime Date { get; set; } = DateTime.Now;
         public string Description { get; set; }
         public string RecordedBy { get; set; }
 
-        public int? OrderId { get; set; } 
+        public int? OrderId { get; set; }
         [ForeignKey("OrderId")] public Order? Order { get; set; }
     }
     public class Invoice
@@ -148,7 +162,6 @@ namespace KaberSystem.Models
         [Required]
         public string Name { get; set; }
 
-        // 📌 التمييز بين قطعة مشتركة (Common) أو لموديل محدد
         public bool IsCommon { get; set; } = true;
         public string? TargetModel { get; set; } // اسم الموديل المرتبط بالقطعة
 
@@ -161,7 +174,6 @@ namespace KaberSystem.Models
         public string? Barcode { get; set; }
     }
 
-    // 📌 الكلاس الجديد لطلبات قطع الغيار (Workflow)
     public class OrderPartRequest
     {
         [Key]
@@ -202,7 +214,7 @@ namespace KaberSystem.Models
         public LeaveStatus Status { get; set; } = LeaveStatus.Pending;
         public DateTime RequestDate { get; set; } = DateTime.Now;
         public string? AdminNote { get; set; }
-        public bool IsReturned { get; set; } = false; 
+        public bool IsReturned { get; set; } = false;
         public DateTime? ActualReturnDate { get; set; }
     }
 
@@ -215,6 +227,7 @@ namespace KaberSystem.Models
         public bool IsProcessed { get; set; } = false; // هل تم الصرف فعلاً؟
         public string Note { get; set; }
     }
+
     public enum PartRequestStatus { PendingWarehouse, PendingPurchasing, PurchasedWaitingStore, ReadyForInstallation, Installed, Rejected }
     public enum PartRequestType { FromWarehouse, PurchaseNew }
 
@@ -255,8 +268,9 @@ namespace KaberSystem.Models
         public string? SupplierPhone { get; set; }
         public string? SupplierLocation { get; set; }
         public string? Barcode { get; set; }
-    }
 
+        public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+    }
     public enum DeductionSource { Company, Technician }
     public class Expense
     {
@@ -270,6 +284,8 @@ namespace KaberSystem.Models
 
         public int? TechnicianId { get; set; }
         [ForeignKey("TechnicianId")] public Technician? Technician { get; set; }
+
+        public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
     }
 
     public class DamagedPart
@@ -282,5 +298,13 @@ namespace KaberSystem.Models
         public DateTime Date { get; set; } = DateTime.Now;
 
         public decimal TotalLoss { get; set; }
+    }
+
+    // 📌 تمت الإضافة: كلاس الشريك
+    public class Partner
+    {
+        [Key] public int Id { get; set; }
+        [Required] public string Name { get; set; }
+        public decimal SharePercentage { get; set; } // نسبة الشريك (مثال: 50.00)
     }
 }

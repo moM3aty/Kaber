@@ -1,4 +1,5 @@
-﻿@model KaberSystem.Models.PurchaseOrder
+﻿<!-- مسار الملف: Views/Purchases/Create.cshtml -->
+@model KaberSystem.Models.PurchaseOrder
 @{
     ViewData["Title"] = "تسجيل مشتريات";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
@@ -16,65 +17,79 @@
 
 <div class="row g-4">
     <div class="col-lg-8">
-        <div class="sys-card border-top border-4 border-primary">
+        <div class="sys-card border-top border-4 border-primary p-4 rounded-4 shadow-sm bg-white">
             <form asp-action="Create" method="post">
                 <div class="row g-4">
                     <div class="col-md-12">
-                        <label asp-for="ItemName" class="form-label fw-bold text-dark"><i class="fa-solid fa-tag text-primary me-1"></i> اسم الصنف المشتراة <span class="text-danger">*</span></label>
-                        <input asp-for="ItemName" class="form-control sys-input" placeholder="اكتب اسم الصنف (سيتم مطابقته مع المخزن أو إضافته كصنف جديد)" required />
+                        <label asp-for="ItemName" class="form-label fw-bolder text-dark">اسم الصنف المشتراة <span class="text-danger">*</span></label>
+                        <input asp-for="ItemName" class="form-control sys-input" placeholder="اكتب اسم الصنف بدقة" required />
                     </div>
 
                     <div class="col-md-6">
-                        <label asp-for="Quantity" class="form-label fw-bold text-dark"><i class="fa-solid fa-cubes text-primary me-1"></i> الكمية <span class="text-danger">*</span></label>
+                        <label asp-for="Quantity" class="form-label fw-bolder text-dark">الكمية <span class="text-danger">*</span></label>
                         <input asp-for="Quantity" type="number" class="form-control sys-input" placeholder="الكمية بالعدد" required />
                     </div>
 
                     <div class="col-md-6">
-                        <label asp-for="PurchasePrice" class="form-label fw-bold text-dark"><i class="fa-solid fa-money-bill-wave text-primary me-1"></i> سعر الشراء (للوحدة) <span class="text-danger">*</span></label>
+                        <label asp-for="PurchasePrice" class="form-label fw-bolder text-dark">سعر الشراء (للوحدة) <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control sys-input border-end-0" placeholder="0.00" required />
-                            <span class="input-group-text bg-light border-start-0 text-muted fw-bold" style="border-radius: 12px 0 0 12px; border-color: var(--sys-border);">ر.س</span>
+                            <span class="input-group-text bg-light fw-bold text-muted border-start-0" style="border-radius: 12px 0 0 12px; border: 2px solid var(--sys-border);">ر.س</span>
                         </div>
                     </div>
 
-                    <!-- 📌 إضافة بيانات المورد -->
+                    <!-- 📌 التحديث: طريقة دفع المشتريات -->
+                    <div class="col-md-12 mt-4">
+                        <label class="form-label fw-bolder text-dark mb-3">طريقة سداد المشتريات (تُخصم من): <span class="text-danger">*</span></label>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <input type="radio" class="btn-check" name="PaymentMethod" id="pay1" value="Cash" required checked>
+                                <label class="btn btn-outline-success w-100 text-start fw-bold p-3 rounded-3 d-flex align-items-center" for="pay1" style="border-width: 2px;">
+                                    <i class="fa-solid fa-money-bills fs-4 me-2"></i>
+                                    <div><span class="d-block">كاش</span><small class="opacity-75" style="font-size:10px;">من خزنة المشتريات</small></div>
+                                </label>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="radio" class="btn-check" name="PaymentMethod" id="pay2" value="POS">
+                                <label class="btn btn-outline-info text-dark w-100 text-start fw-bold p-3 rounded-3 d-flex align-items-center" for="pay2" style="border-width: 2px;">
+                                    <i class="fa-solid fa-credit-card fs-4 me-2"></i> بطاقة شركة
+                                </label>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="radio" class="btn-check" name="PaymentMethod" id="pay3" value="BankTransfer">
+                                <label class="btn btn-outline-primary w-100 text-start fw-bold p-3 rounded-3 d-flex align-items-center" for="pay3" style="border-width: 2px;">
+                                    <i class="fa-solid fa-building-columns fs-4 me-2"></i> تحويل بنكي
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="col-12 border-top pt-3 mt-4">
-                        <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-truck-field me-2"></i> بيانات المورد (اختياري)</h5>
-                        <p class="text-muted small fw-bold mb-3">سيتم نقل هذه البيانات تلقائياً إلى بطاقة الصنف في المخزون عند اعتماد الفاتورة.</p>
+                        <h5 class="fw-bold text-primary mb-3">بيانات المورد (اختياري)</h5>
                     </div>
 
                     <div class="col-md-4">
-                        <label asp-for="SupplierName" class="form-label fw-bold text-dark">اسم المورد / الشركة</label>
-                        <input asp-for="SupplierName" class="form-control sys-input" placeholder="اسم مورد هذه القطعة" />
+                        <label asp-for="SupplierName" class="form-label fw-bold text-dark">اسم المورد</label>
+                        <input asp-for="SupplierName" class="form-control sys-input" />
                     </div>
 
                     <div class="col-md-4">
                         <label asp-for="SupplierPhone" class="form-label fw-bold text-dark">رقم الجوال</label>
-                        <input asp-for="SupplierPhone" class="form-control sys-input" dir="ltr" placeholder="05XXXXXXXX" style="text-align: right;" />
+                        <input asp-for="SupplierPhone" class="form-control sys-input" dir="ltr" />
                     </div>
 
                     <div class="col-md-4">
-                        <label asp-for="SupplierLocation" class="form-label fw-bold text-dark">موقع المورد (العنوان)</label>
-                        <input asp-for="SupplierLocation" class="form-control sys-input" placeholder="المدينة، الشارع، أو رابط الخريطة" />
+                        <label asp-for="SupplierLocation" class="form-label fw-bold text-dark">العنوان</label>
+                        <input asp-for="SupplierLocation" class="form-control sys-input" />
                     </div>
 
                     <div class="col-12 mt-5 text-end border-top pt-4">
-                        <button type="submit" class="sys-btn sys-btn-primary px-5 fs-5">
-                            <i class="fa-solid fa-paper-plane"></i> تسجيل الفاتورة
+                        <button type="submit" class="sys-btn sys-btn-primary px-5 py-3 fs-5 rounded-pill shadow-sm">
+                            <i class="fa-solid fa-check-double me-2"></i> تسجيل الفاتورة
                         </button>
                     </div>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <div class="col-lg-4">
-        <div class="sys-card bg-light border-0 h-100" style="border-right: 4px solid var(--sys-primary) !important;">
-            <h5 class="fw-bold mb-3 text-primary"><i class="fa-solid fa-circle-info"></i> ملاحظة لمندوب المشتريات</h5>
-            <p class="text-muted fw-bold lh-lg">
-                بمجرد تسجيل الفاتورة هنا، ستظهر لدى (أمين المخزن) كبضاعة <b>"في الطريق"</b>.<br><br>
-                <i class="fa-solid fa-triangle-exclamation text-warning me-1"></i> لن يتم إضافة الكميات للرصيد الفعلي أو تغيير الأسعار أو بيانات المورد إلا بعد أن يقوم أمين المخزن بمراجعتها والضغط على زر <span class="text-primary">"تأكيد وإضافة للمخزن"</span> من حسابه.
-            </p>
         </div>
     </div>
 </div>
@@ -86,14 +101,32 @@
         border-radius: 12px;
         font-weight: 600;
         color: var(--sys-text-main);
-        transition: var(--sys-transition);
-        background-color: #fafbfc;
+        background-color: #f8fafc;
+        transition: 0.3s;
     }
 
         .sys-input:focus {
-            border-color: var(--sys-primary);
-            box-shadow: 0 0 0 0.25rem rgba(241, 149, 11, 0.15);
             background-color: #fff;
+            border-color: var(--sys-primary);
+            box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1);
             outline: none;
         }
+
+    .btn-check:checked + .btn-outline-success {
+        background-color: #ecfdf5;
+        color: #10b981;
+        border-color: #10b981;
+    }
+
+    .btn-check:checked + .btn-outline-info {
+        background-color: #f0f9ff;
+        color: #0ea5e9;
+        border-color: #0ea5e9;
+    }
+
+    .btn-check:checked + .btn-outline-primary {
+        background-color: #eff6ff;
+        color: #3b82f6;
+        border-color: #3b82f6;
+    }
 </style>
