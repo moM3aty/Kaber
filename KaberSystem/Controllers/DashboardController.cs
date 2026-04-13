@@ -1,8 +1,11 @@
-﻿using System.Linq;
+﻿// مسار الملف: Controllers/DashboardController.cs
+using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using KaberSystem.Models;
+using System.Collections.Generic;
 
 namespace KaberSystem.Controllers
 {
@@ -30,6 +33,7 @@ namespace KaberSystem.Controllers
 
             // ج. إجمالي الربح المبدئي للشهر
             decimal grossProfit = totalRevenue - cogs;
+
             // د. المصروفات التشغيلية للشهر
             var opExpensesList = await _context.Expenses
                 .Where(e => e.Date.Year == targetDate.Year && e.Date.Month == targetDate.Month)
@@ -51,6 +55,7 @@ namespace KaberSystem.Controllers
             // إجمالي المصروفات الشهرية
             decimal allExpenses = totalOpExpenses + damagesCost + techCommissionsPaid;
             decimal netProfit = grossProfit - allExpenses;
+
             // إحصائيات الأرقام العلوية (KPIs)
             ViewData["TotalOrders"] = await _context.Orders.CountAsync();
 
@@ -60,13 +65,39 @@ namespace KaberSystem.Controllers
 
             ViewData["NewOrders"] = newOrdersCount;
             ViewData["CompletedOrders"] = completedOrdersCount;
-            ViewData["InProgressOrders"] = inProgressOrdersCount; // للرسم البياني
+            ViewData["InProgressOrders"] = inProgressOrdersCount; // للرسم البياني الدائري
 
             // إحصائيات الفنيين
             ViewData["ActiveTechnicians"] = await _context.Technicians.CountAsync(t => t.IsAvailable);
 
-            // إحصائيات مالية (مجموع الفواتير المدفوعة)
+            // إحصائيات مالية (صافي الربح)
             ViewData["TotalRevenue"] = netProfit;
+
+
+            // 📌 التحديث الجديد: حساب الإيرادات الفعلية لآخر 6 أشهر لتغذية الرسم البياني
+            var chartLabels = new List<string>();
+            var chartData = new List<decimal>();
+
+            for (int i = 5; i >= 0; i--)
+            {
+                var loopDate = targetDate.AddMonths(-i);
+
+                // جلب اسم الشهر بالعربي
+                string monthName = loopDate.ToString("MMMM", new System.Globalization.CultureInfo("ar-SA"));
+                chartLabels.Add(monthName);
+
+                // حساب إجمالي مبيعات/إيرادات هذا الشهر
+                decimal monthRev = await _context.Orders
+                    .Where(o => o.IsPaid && o.CreatedAt.Year == loopDate.Year && o.CreatedAt.Month == loopDate.Month)
+                    .SumAsync(o => o.FinalPrice);
+
+                chartData.Add(monthRev);
+            }
+
+            ViewData["ChartLabels"] = chartLabels;
+            ViewData["ChartData"] = chartData;
+            // -------------------------------------------------------------
+
 
             // جلب أحدث 10 طلبات لعرضها في الشاشة الرئيسية (تم زيادتها لدعم الجدول التفاعلي)
             var recentOrders = await _context.Orders

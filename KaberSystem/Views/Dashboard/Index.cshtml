@@ -1,7 +1,17 @@
 ﻿@model IEnumerable<KaberSystem.Models.Order>
+@using KaberSystem.Models
+@inject ApplicationDbContext DbContext
 @{
     ViewData["Title"] = "لوحة القيادة الإحصائية";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
+
+    // 📌 التحديث الجديد: حساب الإحصائيات الدقيقة لجميع الحالات مباشرة من قاعدة البيانات
+    int countNew = DbContext.Orders.Count(o => o.Status == OrderStatus.New);
+    int countAssigned = DbContext.Orders.Count(o => o.Status == OrderStatus.Assigned);
+    int countConfirmed = DbContext.Orders.Count(o => o.Status == OrderStatus.Confirmed);
+    int countInProgress = DbContext.Orders.Count(o => o.Status == OrderStatus.InProgress);
+    int countCompleted = DbContext.Orders.Count(o => o.Status == OrderStatus.Completed);
+    int countCancelled = DbContext.Orders.Count(o => o.Status == OrderStatus.Cancelled);
 }
 
 <div class="sys-page-header">
@@ -144,13 +154,22 @@
                                             <span class="badge bg-secondary rounded-pill px-3 py-2">جديد</span>
                                             break;
                                         case KaberSystem.Models.OrderStatus.Completed:
-                                            <span class="badge bg-success rounded-pill px-3 py-2">مكتمل</span>
+                                            <span class="badge bg-dark rounded-pill px-3 py-2">مكتمل</span>
                                             break;
                                         case KaberSystem.Models.OrderStatus.Cancelled:
                                             <span class="badge bg-danger rounded-pill px-3 py-2">ملغي</span>
                                             break;
+                                        case KaberSystem.Models.OrderStatus.Assigned:
+                                            <span class="badge bg-primary rounded-pill px-3 py-2">تم التعيين</span>
+                                            break;
+                                        case KaberSystem.Models.OrderStatus.Confirmed:
+                                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2">مؤكد</span>
+                                            break;
+                                        case KaberSystem.Models.OrderStatus.Approved:
+                                            <span class="badge bg-success rounded-pill px-3 py-2">معتمد نهائي</span>
+                                            break;
                                         default:
-                                            <span class="badge bg-warning text-dark rounded-pill px-3 py-2">قيد المعالجة</span>
+                                            <span class="badge bg-info text-dark rounded-pill px-3 py-2">قيد التنفيذ</span>
                                             break;
                                     }
                                 </td>
@@ -190,30 +209,45 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-                    if ($.fn.DataTable) {
-            $('.sys-table').DataTable({
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/ar.json"
-                },
-                "pageLength": 10,
-                "ordering": true,
-                "info": true,
-                "responsive": true,
-                "dom": '<"d-flex justify-content-between align-items-center mb-3"lf>rt<"d-flex justify-content-between align-items-center mt-3"ip>'
-            });
-        }
-            // 1. إعداد الرسم البياني الدائري (حالات الطلبات)
+            if ($.fn.DataTable) {
+                $('.sys-table').DataTable({
+                    "language": {
+                        "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/ar.json"
+                    },
+                    "pageLength": 10,
+                    "ordering": true,
+                    "info": true,
+                    "responsive": true,
+                    "dom": '<"d-flex justify-content-between align-items-center mb-3"lf>rt<"d-flex justify-content-between align-items-center mt-3"ip>'
+                });
+            }
+
+            // 1. إعداد الرسم البياني الدائري (حالات الطلبات) الشامل
             var orderCanvas = document.getElementById('orderStatusChart');
             if (orderCanvas) {
                 var ctxOrder = orderCanvas.getContext('2d');
                 new Chart(ctxOrder, {
                     type: 'doughnut',
                     data: {
-                        labels: ['طلبات جديدة', 'قيد التنفيذ', 'طلبات مكتملة'],
+                        // 📌 التحديث: جميع الحالات الستة التي طلبتها
+                        labels: ['جديد', 'تم التعيين', 'مؤكد', 'قيد التنفيذ', 'مكتمل (بانتظار الإدارة)', 'ملغي'],
                         datasets: [{
-                            // قراءة الأرقام من C# مباشرة
-                            data: [@(ViewData["NewOrders"] ?? 0), @(ViewData["InProgressOrders"] ?? 0), @(ViewData["CompletedOrders"] ?? 0)],
-                            backgroundColor: ['#a3aed1', '#3965ff', '#05cd99'],
+                            data: [
+                                @countNew,
+                                @countAssigned,
+                                @countConfirmed,
+                                @countInProgress,
+                                @countCompleted,
+                                @countCancelled
+                            ],
+                            backgroundColor: [
+                                '#a3aed1', // جديد (رمادي فاتح)
+                                '#3965ff', // تم التعيين (أزرق)
+                                '#ffc107', // مؤكد (أصفر)
+                                '#0dcaf0', // قيد التنفيذ (سماوي)
+                                '#343a40', // مكتمل بانتظار الإدارة (داكن)
+                                '#dc3545'  // ملغي (أحمر)
+                            ],
                             borderWidth: 0,
                             hoverOffset: 8
                         }]
@@ -224,30 +258,40 @@
                         plugins: {
                             legend: {
                                 position: 'bottom',
-                                labels: { font: { family: 'Cairo', size: 14 } }
+                                labels: {
+                                    font: { family: 'Cairo', size: 12 },
+                                    padding: 15,
+                                    usePointStyle: true
+                                }
                             }
                         },
-                        cutout: '70%'
+                        cutout: '65%'
                     }
                 });
             }
 
-            // 2. إعداد الرسم البياني للأعمدة (الإيرادات)
+            // 2. إعداد الرسم البياني للأعمدة (الإيرادات الحقيقية من الداتا بيز)
             var revenueCanvas = document.getElementById('revenueChart');
             if (revenueCanvas) {
                 var ctxRev = revenueCanvas.getContext('2d');
 
-                // قراءة إجمالي الإيرادات الحالي من C#
-                var currentMonthRevenue = @(ViewData["TotalRevenue"] ?? 0);
+                // جلب الداتا من الـ C# (الشارت هيقرأ الشهور والمبيعات آلياً)
+                var chartLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewData["ChartLabels"] ?? new List<string>()));
+                var chartData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(ViewData["ChartData"] ?? new List<decimal>()));
+
+                // بيانات احتياطية في حال كانت الداتا فارغة
+                if(chartLabels.length === 0) {
+                    chartLabels = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو'];
+                    chartData = [0, 0, 0, 0, 0, 0];
+                }
 
                 new Chart(ctxRev, {
                     type: 'bar',
                     data: {
-                        labels: ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'الشهر الحالي'],
+                        labels: chartLabels,
                         datasets: [{
-                            label: 'الإيرادات (ر.س)',
-                            // أرقام تجريبية للأشهر السابقة، والرقم الحقيقي للشهر الحالي
-                            data: [3500, 4200, 5800, 4900, 7100, currentMonthRevenue],
+                            label: 'إجمالي المبيعات (ر.س)',
+                            data: chartData,
                             backgroundColor: '#f1950b',
                             borderRadius: 6,
                             barPercentage: 0.5

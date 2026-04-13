@@ -1,4 +1,5 @@
-﻿using System;
+﻿// مسار الملف: Controllers/SafeController.cs
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -18,7 +19,6 @@ namespace KaberSystem.Controllers
             _context = context;
         }
 
-        // 📌 دالة مساعدة لتسجيل اللوج بأمان
         private void LogAction(string actionType, string details)
         {
             var username = User.Identity?.Name ?? "مستخدم غير معروف";
@@ -40,8 +40,22 @@ namespace KaberSystem.Controllers
                 .OrderByDescending(s => s.Date)
                 .ToListAsync();
 
-            decimal totalIncome = transactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount);
-            decimal totalDeposits = transactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+            // 📌 التحديث الجذري: حساب السيولة النقدية الفعلية (الكاش) في الدرج فقط لمنع الدبلرة
+
+            // 1. الفلترة لسحب الحركات الكاش فقط
+            var cashTransactions = transactions.Where(t => t.PaymentMethod == PaymentMethod.Cash || t.PaymentMethod == PaymentMethod.None).ToList();
+
+            // 2. استبعاد أموال الفواتير التي لا تزال في جيب الفني (لم تورد للدرج بعد)
+            var actualDrawerIncome = cashTransactions.Where(t =>
+                t.Type == SafeTransactionType.Income &&
+                !(t.OrderId.HasValue && (t.Description.Contains("تحصيل أجور") || t.Description.Contains("استرداد رأس مال")))
+            ).ToList();
+
+            var actualDrawerDeposits = cashTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).ToList();
+
+            // 3. حساب الصافي الفعلي للدرج
+            decimal totalIncome = actualDrawerIncome.Sum(t => t.Amount);
+            decimal totalDeposits = actualDrawerDeposits.Sum(t => t.Amount);
 
             ViewBag.CurrentBalance = totalIncome - totalDeposits;
             ViewBag.TotalIncome = totalIncome;
@@ -60,13 +74,21 @@ namespace KaberSystem.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
-            var income = await _context.SafeTransactions.Where(t => t.Type == SafeTransactionType.Income).SumAsync(t => t.Amount);
-            var deposits = await _context.SafeTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).SumAsync(t => t.Amount);
-            decimal currentBalance = income - deposits;
+            // 📌 التأكد من الرصيد الفعلي قبل التوريد (بناءً على المعادلة الجديدة)
+            var allCash = await _context.SafeTransactions
+                .Where(t => t.PaymentMethod == PaymentMethod.Cash || t.PaymentMethod == PaymentMethod.None)
+                .ToListAsync();
+
+            var actualIncome = allCash.Where(t => t.Type == SafeTransactionType.Income &&
+                !(t.OrderId.HasValue && (t.Description.Contains("تحصيل أجور") || t.Description.Contains("استرداد رأس مال")))
+            ).Sum(t => t.Amount);
+
+            var deposits = allCash.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+            decimal currentBalance = actualIncome - deposits;
 
             if (amount > currentBalance)
             {
-                TempData["ErrorMessage"] = $"الرصيد المتوفر في الخزنة ({currentBalance} ريال) لا يكفي للتوريد.";
+                TempData["ErrorMessage"] = $"الرصيد الفعلي المتوفر في الخزنة الكاش ({currentBalance:N2} ريال) لا يكفي للتوريد.";
                 return RedirectToAction(nameof(Index));
             }
 
@@ -87,7 +109,6 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // 📌 [جديد] تعديل حركة الخزنة بشكل آمن
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,Accounting")]
@@ -96,7 +117,6 @@ namespace KaberSystem.Controllers
             var transaction = await _context.SafeTransactions.FindAsync(id);
             if (transaction == null) return NotFound();
 
-            // حماية محاسبية: لا تسمح بتغيير مبلغ حركة مرتبطة بفاتورة صيانة (COGS)
             if (transaction.OrderId.HasValue && transaction.Amount != amount)
             {
                 TempData["ErrorMessage"] = "لا يمكن تغيير مبلغ حركة مرتبطة بفاتورة صيانة من هنا. استخدم زر (استرداد) من شاشة الفواتير.";
@@ -109,7 +129,6 @@ namespace KaberSystem.Controllers
             transaction.Amount = amount;
             transaction.Description = description;
 
-            // لا نغير نوع الحركة إذا كانت فاتورة تلقائية
             if (!transaction.OrderId.HasValue)
             {
                 transaction.Type = type;
@@ -123,10 +142,9 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        // 📌 [جديد] حذف حركة الخزنة اليدوية
         [HttpPost]
         [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin")] // الحذف للإدارة فقط للحماية
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DeleteTransaction(int id)
         {
             var transaction = await _context.SafeTransactions.FindAsync(id);

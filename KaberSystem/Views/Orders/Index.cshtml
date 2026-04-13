@@ -17,10 +17,25 @@
     }
 
     var activeOrders = Model.Where(o => o.Status != OrderStatus.Approved && o.Status != OrderStatus.Cancelled).ToList();
-    var pastOrders = Model.Where(o => o.Status == OrderStatus.Approved || o.Status == OrderStatus.Cancelled).ToList();
 
-    var todayOrders = activeOrders.Where(o => o.ScheduledDate?.Date <= DateTime.Today || o.ScheduledDate == null).ToList();
-    var futureOrders = activeOrders.Where(o => o.ScheduledDate?.Date > DateTime.Today).ToList();
+    // 📌 التحديث هنا: صعود الطلبات الجاهزة للتركيب في "السجل" أيضاً إلى أعلى القائمة
+    var pastOrders = Model.Where(o => o.Status == OrderStatus.Approved || o.Status == OrderStatus.Cancelled)
+                          .OrderByDescending(o => ordersWithReadyParts.Contains(o.OrderId)) // يصعد لأعلى
+                          .ThenByDescending(o => o.CreatedAt)
+                          .ToList();
+
+    // 📌 التحديث: حساب عدد كل الطلبات التي تحتاج لجدولة تركيب (سواء كانت نشطة أو في السجل)
+    int readyOrdersCount = ordersWithReadyParts.Count;
+
+    var todayOrders = activeOrders.Where(o => o.ScheduledDate?.Date <= DateTime.Today || o.ScheduledDate == null)
+                                  .OrderByDescending(o => ordersWithReadyParts.Contains(o.OrderId)) // يصعد لأعلى
+                                  .ThenByDescending(o => o.CreatedAt)
+                                  .ToList();
+
+    var futureOrders = activeOrders.Where(o => o.ScheduledDate?.Date > DateTime.Today)
+                                   .OrderByDescending(o => ordersWithReadyParts.Contains(o.OrderId)) // يصعد لأعلى
+                                   .ThenByDescending(o => o.ScheduledDate)
+                                   .ToList();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-4 fade-in-up">
@@ -48,6 +63,18 @@
         <div class="content">
             <h5 class="fw-bolder mb-1">لديك مهام بانتظارك!</h5>
             <p class="mb-0 fw-bold">يوجد (<span class="text-danger fs-5">@techAlertCount</span>) طلبات جديدة أو معادة من الإدارة للتعديل بانتظار استلامك والبدء بها.</p>
+        </div>
+    </div>
+}
+
+<!-- 📌 التحديث: التنبيه العلوي يقرأ الآن جميع الطلبات المتبقية للتركيب -->
+@if ((User.IsInRole("Admin") || User.IsInRole("CallCenter")) && readyOrdersCount > 0)
+{
+    <div class="premium-alert success fade-in-up mb-4" style="border-color: #10b981; background-color: #ecfdf5;">
+        <div class="icon-box bg-success text-white shadow-sm"><i class="fa-solid fa-box-open fa-bounce"></i></div>
+        <div class="content">
+            <h5 class="fw-bolder mb-1 text-success">تنبيه: يوجد نواقص تم توفيرها من المخزن!</h5>
+            <p class="mb-0 fw-bold text-dark">يوجد (<span class="text-danger fs-5">@readyOrdersCount</span>) طلبات توفرت قطع غيارها وبانتظار <b class="text-danger">تحديد موعد تركيب</b> لها (تظهر في أعلى القائمة بلون مميز).</p>
         </div>
     </div>
 }
@@ -116,7 +143,7 @@
                                 string phoneStr = item.PhoneNumber.StartsWith("0") ? item.PhoneNumber.Substring(1) : item.PhoneNumber;
                                 string whatsappNumber = "966" + phoneStr;
                                 bool isReadyForInstall = ordersWithReadyParts.Contains(item.OrderId);
-                                string rowClass = isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")) ? "ready-install-row" : "";
+                                string rowClass = isReadyForInstall ? "ready-install-row" : ""; // إعطاء لون مميز
 
                                 <tr class="@rowClass" style="border-bottom: 1px solid #f1f5f9;">
                                     <td class="text-start ps-4"><span class="premium-badge default fs-6 shadow-sm border">#@item.OrderId</span></td>
@@ -128,7 +155,7 @@
                                         </div>
                                         @if (isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")))
                                         {
-                                            <div class="mt-2"><span class="premium-badge success payment-btn-pulse px-2 py-1" style="font-size:11px;"><i class="fa-solid fa-box-open me-1"></i> القطعة جاهزة</span></div>
+                                            <div class="mt-2"><span class="badge bg-success bg-opacity-10 text-success border border-success fw-bold px-2 py-1" style="font-size:11px;"><i class="fa-solid fa-check-circle me-1"></i> القطعة متوفرة وبانتظار موعد</span></div>
                                         }
                                     </td>
                                     <td>
@@ -213,7 +240,6 @@
                                         }
                                     </td>
                                     <td>
-                                        <!-- 📌 أزرار الإجراءات المباشرة (تعديل وحذف بجوار فتح) -->
                                         <div class="d-flex gap-2 justify-content-center align-items-center">
                                             <a href="/Orders/Details/@item.OrderId" class="btn btn-sm btn-light border text-primary fw-bold px-3 rounded-pill hover-elevate shadow-sm"><i class="fa-solid fa-folder-open me-1"></i> فتح</a>
 
@@ -229,7 +255,7 @@
                                                 }
                                                 @if (isReadyForInstall)
                                                 {
-                                                    <button type="button" class="btn btn-sm btn-success fw-bold px-3 rounded-pill text-white hover-elevate shadow-sm" data-bs-toggle="modal" data-bs-target="#scheduleModal" onclick="setupScheduleModal(@item.OrderId, '@Html.Raw(item.CustomerName.Replace("'", "\\'"))', @(item.TechnicianId ?? 0))"><i class="fa-solid fa-calendar-plus me-1"></i> تركيب</button>
+                                                    <button type="button" class="btn btn-sm btn-success fw-bold px-3 rounded-pill text-white hover-elevate shadow-sm payment-btn-pulse" data-bs-toggle="modal" data-bs-target="#scheduleModal" onclick="setupScheduleModal(@item.OrderId, '@Html.Raw(item.CustomerName.Replace("'", "\\'"))', @(item.TechnicianId ?? 0))"><i class="fa-solid fa-calendar-plus me-1"></i> تحديد موعد تركيب</button>
                                                 }
                                             }
 
@@ -276,7 +302,7 @@
                                 string phoneStr = item.PhoneNumber.StartsWith("0") ? item.PhoneNumber.Substring(1) : item.PhoneNumber;
                                 string whatsappNumber = "966" + phoneStr;
                                 bool isReadyForInstall = ordersWithReadyParts.Contains(item.OrderId);
-                                string rowClass = isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")) ? "ready-install-row" : "";
+                                string rowClass = isReadyForInstall ? "ready-install-row" : ""; // إعطاء لون مميز
 
                                 <tr class="@rowClass" style="border-bottom: 1px solid #f1f5f9;">
                                     <td class="text-start ps-4"><span class="premium-badge default fs-6 shadow-sm border">#@item.OrderId</span></td>
@@ -288,7 +314,7 @@
                                         </div>
                                         @if (isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")))
                                         {
-                                            <div class="mt-2"><span class="premium-badge success payment-btn-pulse px-2 py-1" style="font-size:11px;"><i class="fa-solid fa-box-open me-1"></i> القطعة جاهزة</span></div>
+                                            <div class="mt-2"><span class="badge bg-success bg-opacity-10 text-success border border-success fw-bold px-2 py-1" style="font-size:11px;"><i class="fa-solid fa-check-circle me-1"></i> القطعة متوفرة وبانتظار موعد</span></div>
                                         }
                                     </td>
                                     <td>
@@ -379,7 +405,6 @@
                                         }
                                     </td>
                                     <td>
-                                        <!-- 📌 أزرار الإجراءات المباشرة -->
                                         <div class="d-flex gap-2 justify-content-center align-items-center">
                                             <a href="/Orders/Details/@item.OrderId" class="btn btn-sm btn-light border text-primary fw-bold px-3 rounded-pill hover-elevate shadow-sm"><i class="fa-solid fa-folder-open me-1"></i> فتح</a>
 
@@ -388,6 +413,15 @@
                                                 <a href="/Orders/Edit/@item.OrderId" class="btn btn-sm btn-warning text-dark fw-bold px-3 rounded-pill shadow-sm hover-elevate" title="تعديل الطلب">
                                                     <i class="fa-solid fa-pen me-1"></i> تعديل
                                                 </a>
+
+                                                @if (item.Status == KaberSystem.Models.OrderStatus.New)
+                                                {
+                                                    <a href="/Orders/Assign/@item.OrderId" class="btn btn-sm btn-primary fw-bold text-white rounded-circle hover-elevate d-flex justify-content-center align-items-center shadow-sm" style="width: 32px; height: 32px;" title="تعيين فني"><i class="fa-solid fa-user-plus"></i></a>
+                                                }
+                                                @if (isReadyForInstall)
+                                                {
+                                                    <button type="button" class="btn btn-sm btn-success fw-bold px-3 rounded-pill text-white hover-elevate shadow-sm payment-btn-pulse" data-bs-toggle="modal" data-bs-target="#scheduleModal" onclick="setupScheduleModal(@item.OrderId, '@Html.Raw(item.CustomerName.Replace("'", "\\'"))', @(item.TechnicianId ?? 0))"><i class="fa-solid fa-calendar-plus me-1"></i> تحديد موعد تركيب</button>
+                                                }
                                             }
 
                                             @if (User.IsInRole("Admin"))
@@ -432,15 +466,22 @@
                             {
                                 string phoneStr = item.PhoneNumber.StartsWith("0") ? item.PhoneNumber.Substring(1) : item.PhoneNumber;
                                 string whatsappNumber = "966" + phoneStr;
+                                // 📌 التحديث: إضافة خيار تحديد الموعد في تبويب السجل أيضاً
+                                bool isReadyForInstall = ordersWithReadyParts.Contains(item.OrderId);
+                                string rowClass = isReadyForInstall ? "ready-install-row" : "";
 
-                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <tr class="@rowClass" style="border-bottom: 1px solid #f1f5f9;">
                                     <td class="text-start ps-4"><span class="premium-badge default fs-6 shadow-sm border">#@item.OrderId</span></td>
                                     <td class="text-start">
-                                        <span class="fw-bolder text-dark d-block" style="white-space: pre-wrap;">@item.CustomerName</span>
+                                        <span class="fw-bolder text-dark d-block" style="white-space: pre-line;">@item.CustomerName</span>
                                         <div class="d-flex align-items-center gap-2 mt-1">
                                             <a href="tel:@item.PhoneNumber" class="text-decoration-none text-muted fw-bold small hover-primary-text" dir="ltr">@item.PhoneNumber</a>
                                             <a href="https://wa.me/@whatsappNumber" target="_blank" class="text-success hover-elevate" title="محادثة واتساب"><i class="fa-brands fa-whatsapp fs-5"></i></a>
                                         </div>
+                                        @if (isReadyForInstall && (User.IsInRole("Admin") || User.IsInRole("CallCenter")))
+                                        {
+                                            <div class="mt-2"><span class="badge bg-success bg-opacity-10 text-success border border-success fw-bold px-2 py-1" style="font-size:11px;"><i class="fa-solid fa-box-open me-1"></i> القطعة متوفرة وبانتظار موعد</span></div>
+                                        }
                                     </td>
                                     <td>
                                         @switch (item.Type)
@@ -497,6 +538,12 @@
                                                 <a href="/Orders/Edit/@item.OrderId" class="btn btn-sm btn-warning text-dark fw-bold px-3 rounded-pill shadow-sm hover-elevate" title="تعديل الطلب">
                                                     <i class="fa-solid fa-pen me-1"></i> تعديل
                                                 </a>
+
+                                                @if (isReadyForInstall)
+                                                {
+                                                    // 📌 التحديث هنا: تم إضافة زر (تحديد موعد تركيب) في تبويب السجل
+                                                    <button type="button" class="btn btn-sm btn-success fw-bold px-3 rounded-pill text-white hover-elevate shadow-sm payment-btn-pulse" data-bs-toggle="modal" data-bs-target="#scheduleModal" onclick="setupScheduleModal(@item.OrderId, '@Html.Raw(item.CustomerName.Replace("'", "\\'"))', @(item.TechnicianId ?? 0))"><i class="fa-solid fa-calendar-plus me-1"></i> تحديد موعد تركيب</button>
+                                                }
                                             }
 
                                             @if (User.IsInRole("Admin"))
@@ -585,7 +632,7 @@
         </div>
     </div>
 
-    <!-- 📌 التحديث الجديد: نافذة تعديل أو إلغاء الموعد الحالي -->
+    <!-- 📌 نافذة تعديل أو إلغاء الموعد الحالي -->
     <div class="modal fade" id="editScheduleModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content premium-modal border-0 shadow-lg">
@@ -835,12 +882,17 @@
         background-color: #f8fafc;
     }
 
+    /* 📌 التحديث: تلوين مميز لصف الطلب الجاهز للتركيب */
     .ready-install-row td {
-        background-color: rgba(25, 135, 84, 0.02) !important;
+        background-color: rgba(25, 135, 84, 0.08) !important;
     }
 
+        .ready-install-row td:first-child {
+            border-right: 4px solid #10b981 !important;
+        }
+
     .ready-install-row:hover td {
-        background-color: rgba(25, 135, 84, 0.05) !important;
+        background-color: rgba(25, 135, 84, 0.15) !important;
     }
 
     .premium-modal {
@@ -850,6 +902,7 @@
 
     .hover-elevate {
         transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+        cursor: pointer;
     }
 
         .hover-elevate:hover {
@@ -895,7 +948,7 @@
         }
 
         70% {
-            box-shadow: 0 0 0 10px rgba(25, 135, 84, 0);
+            box-shadow: 0 0 0 15px rgba(25, 135, 84, 0);
         }
 
         100% {

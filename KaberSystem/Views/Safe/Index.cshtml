@@ -1,4 +1,5 @@
-﻿@model IEnumerable<KaberSystem.Models.SafeTransaction>
+﻿<!-- مسار الملف: Views/Safe/Index.cshtml -->
+@model IEnumerable<KaberSystem.Models.SafeTransaction>
 @{
     ViewData["Title"] = "إدارة الخزنة";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
@@ -9,56 +10,56 @@
         <h1 class="sys-page-title text-success"><i class="fa-solid fa-vault me-2"></i> الخزنة النقدية (الكاش)</h1>
         <p class="sys-page-desc">مراقبة السيولة النقدية الواردة من الفواتير وتصفية الفنيين، وتوريد الأموال للبنك</p>
     </div>
-    <button class="sys-btn btn-success fw-bold" data-bs-toggle="modal" data-bs-target="#depositModal">
+    <button class="sys-btn btn-success fw-bold hover-elevate shadow-sm" data-bs-toggle="modal" data-bs-target="#depositModal">
         <i class="fa-solid fa-money-bill-transfer"></i> توريد أموال (سحب من الخزنة)
     </button>
 </div>
 
 <!-- لوحة المؤشرات المالية -->
-<div class="row g-4 mb-4">
+<div class="row g-4 mb-4 fade-in-up" style="animation-delay: 0.1s;">
     <div class="col-md-4">
-        <div class="sys-card bg-primary bg-opacity-10 border-0 h-100 d-flex align-items-center p-4">
+        <div class="sys-card bg-primary bg-opacity-10 border-0 h-100 d-flex align-items-center p-4 shadow-sm border-top border-4 border-primary">
             <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-3 shadow-sm" style="width: 60px; height: 60px;">
                 <i class="fa-solid fa-arrow-down-short-wide fs-3"></i>
             </div>
             <div>
-                <p class="text-muted fw-bold mb-1">إجمالي الوارد (كاش)</p>
-                <h3 class="fw-bold text-dark m-0">@ViewBag.TotalIncome.ToString("N2") <span class="fs-6">ريال</span></h3>
+                <p class="text-muted fw-bold mb-1 text-uppercase small tracking-wider">السيولة الواردة للدرج</p>
+                <h3 class="fw-bolder text-dark m-0">@ViewBag.TotalIncome.ToString("N2") <span class="fs-6 text-muted">ريال</span></h3>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="sys-card bg-danger bg-opacity-10 border-0 h-100 d-flex align-items-center p-4">
+        <div class="sys-card bg-danger bg-opacity-10 border-0 h-100 d-flex align-items-center p-4 shadow-sm border-top border-4 border-danger">
             <div class="bg-danger text-white rounded-circle d-flex justify-content-center align-items-center me-3 shadow-sm" style="width: 60px; height: 60px;">
                 <i class="fa-solid fa-arrow-up-right-dots fs-3"></i>
             </div>
             <div>
-                <p class="text-muted fw-bold mb-1">إجمالي المورد (خارج)</p>
-                <h3 class="fw-bold text-dark m-0">@ViewBag.TotalDeposits.ToString("N2") <span class="fs-6">ريال</span></h3>
+                <p class="text-muted fw-bold mb-1 text-uppercase small tracking-wider">الخوارج والتوريدات</p>
+                <h3 class="fw-bolder text-dark m-0">@ViewBag.TotalDeposits.ToString("N2") <span class="fs-6 text-muted">ريال</span></h3>
             </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="sys-card bg-success h-100 d-flex align-items-center p-4 text-white shadow-lg position-relative overflow-hidden">
+        <div class="sys-card bg-success h-100 d-flex align-items-center p-4 text-white shadow-lg position-relative overflow-hidden hover-elevate border-top border-4 border-white border-opacity-50">
             <i class="fa-solid fa-vault position-absolute" style="font-size: 150px; opacity: 0.1; right: -20px; bottom: -20px;"></i>
             <div class="position-relative z-1">
-                <p class="fw-bold text-white-50 mb-1 fs-5">رصيد الخزنة الحالي (السيولة)</p>
-                <h2 class="fw-bold m-0 display-5">@ViewBag.CurrentBalance.ToString("N2") <span class="fs-4">ريال</span></h2>
+                <p class="fw-bold text-white-50 mb-1 fs-6 text-uppercase tracking-wider">رصيد الدرج الفعلي الآن (كاش)</p>
+                <h2 class="fw-bolder m-0 display-5">@ViewBag.CurrentBalance.ToString("N2") <span class="fs-5">ريال</span></h2>
             </div>
         </div>
     </div>
 </div>
 
-<div class="sys-card">
-    <h5 class="fw-bold text-dark border-bottom pb-3 mb-4"><i class="fa-solid fa-list-check text-primary me-2"></i> سجل حركات الخزنة</h5>
+<div class="sys-card fade-in-up" style="animation-delay: 0.2s;">
+    <h5 class="fw-bolder text-dark border-bottom pb-3 mb-4"><i class="fa-solid fa-list-check text-primary me-2"></i> سجل الدفتر وجميع الحركات</h5>
     <div class="table-responsive">
         <table class="table table-hover align-middle text-center sys-table w-100">
-            <thead class="table-light">
+            <thead class="table-light text-muted small fw-bold text-uppercase">
                 <tr>
-                    <th>رقم الحركة</th>
-                    <th>نوع الحركة</th>
+                    <th class="ps-4 text-start">رقم الحركة</th>
+                    <th>نوع الحركة وطريقة الدفع</th>
                     <th>المبلغ</th>
-                    <th>البيان (الوصف)</th>
+                    <th class="text-start">البيان (الوصف)</th>
                     <th>بواسطة</th>
                     <th>التاريخ</th>
                     <th>إجراءات</th>
@@ -67,26 +68,43 @@
             <tbody>
                 @foreach (var item in Model)
                 {
-                    <tr>
-                        <td class="fw-bold text-muted">#@item.Id</td>
+                    <tr style="border-bottom: 1px solid #f8f9fa;">
+                        <td class="fw-bolder text-dark ps-4 text-start">#@item.Id</td>
                         <td>
                             @if (item.Type == KaberSystem.Models.SafeTransactionType.Income)
                             {
-                                <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-3 py-2"><i class="fa-solid fa-arrow-down me-1"></i> إيداع (تحصيل)</span>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-3 py-2 shadow-sm d-block mb-1"><i class="fa-solid fa-arrow-down me-1"></i> إيداع (تحصيل)</span>
                             }
                             else
                             {
-                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger rounded-pill px-3 py-2"><i class="fa-solid fa-arrow-up me-1"></i> سحب (توريد)</span>
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger rounded-pill px-3 py-2 shadow-sm d-block mb-1"><i class="fa-solid fa-arrow-up me-1"></i> سحب (خروج)</span>
+                            }
+
+                            @if (item.PaymentMethod == KaberSystem.Models.PaymentMethod.POS || item.PaymentMethod == KaberSystem.Models.PaymentMethod.BankTransfer)
+                            {
+                                <span class="badge bg-info bg-opacity-10 text-dark border border-info rounded-pill px-2"><i class="fa-solid fa-building-columns me-1"></i> بنك / شبكة</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary rounded-pill px-2"><i class="fa-solid fa-money-bills me-1"></i> نقدي (كاش)</span>
                             }
                         </td>
-                        <td class="fw-bold fs-5 @(item.Type == KaberSystem.Models.SafeTransactionType.Income ? "text-success" : "text-danger")">
+                        <td class="fw-bolder fs-5 @(item.Type == KaberSystem.Models.SafeTransactionType.Income ? "text-success" : "text-danger")">
                             @(item.Type == KaberSystem.Models.SafeTransactionType.Income ? "+" : "-") @item.Amount.ToString("N2")
                         </td>
                         <td class="text-start fw-bold text-dark">
                             @item.Description
                             @if (item.OrderId.HasValue)
                             {
-                                <a href="/Orders/Details/@item.OrderId" class="ms-2 badge bg-primary text-white text-decoration-none shadow-sm"><i class="fa-solid fa-link"></i> الفاتورة #@item.OrderId</a>
+                                <a href="/Orders/Details/@item.OrderId" class="ms-2 badge bg-primary text-white text-decoration-none shadow-sm hover-elevate"><i class="fa-solid fa-link"></i> الفاتورة #@item.OrderId</a>
+                            }
+
+                            <!-- 📌 التوضيح المحاسبي: يظهر فقط تحت الفواتير اللي متحصلة مع الفني ومادخلتش الدرج لسه -->
+                            @if (item.OrderId.HasValue && (item.Description.Contains("تحصيل أجور") || item.Description.Contains("استرداد رأس مال")) && (item.PaymentMethod == KaberSystem.Models.PaymentMethod.Cash || item.PaymentMethod == KaberSystem.Models.PaymentMethod.None))
+                            {
+                                <div class="mt-2">
+                                    <span class="badge bg-warning bg-opacity-10 text-dark border border-warning shadow-sm" style="font-size: 11px;"><i class="fa-solid fa-user-gear me-1"></i> بعهدة الفني (غير مودعة بالدرج)</span>
+                                </div>
                             }
                         </td>
                         <td class="text-muted fw-bold small"><i class="fa-solid fa-user-tie me-1"></i> @item.RecordedBy</td>
@@ -95,7 +113,7 @@
                         <!-- 📌 أزرار التعديل والحذف -->
                         <td>
                             <div class="d-flex gap-2 justify-content-center">
-                                <button type="button" class="btn btn-sm btn-outline-primary fw-bold px-2 rounded-3"
+                                <button type="button" class="btn btn-sm btn-outline-primary fw-bold px-2 rounded-circle hover-elevate shadow-sm" style="width:35px; height:35px;"
                                         onclick="openEditModal(@item.Id, @item.Amount, '@Html.Raw(item.Description.Replace("'", "\\'"))', '@item.Type', '@(item.OrderId.HasValue ? "true" : "false")')"
                                         data-bs-toggle="modal" data-bs-target="#editTransactionModal" title="تعديل الحركة">
                                     <i class="fa-solid fa-pen"></i>
@@ -105,7 +123,7 @@
                                 {
                                     <form asp-action="DeleteTransaction" method="post" class="d-inline" onsubmit="return confirm('تأكيد الحذف؟ سيتم تعديل رصيد الخزنة فوراً.');">
                                         <input type="hidden" name="id" value="@item.Id" />
-                                        <button type="submit" class="btn btn-sm btn-outline-danger fw-bold px-2 rounded-3" title="حذف الحركة">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger fw-bold px-2 rounded-circle hover-elevate shadow-sm" style="width:35px; height:35px;" title="حذف الحركة">
                                             <i class="fa-solid fa-trash"></i>
                                         </button>
                                     </form>
@@ -116,7 +134,7 @@
                 }
                 @if (!Model.Any())
                 {
-                    <tr><td colspan="7" class="text-center py-5 text-muted fw-bold">لا توجد أي حركات في الخزنة حالياً.</td></tr>
+                    <tr><td colspan="7" class="text-center py-5 text-muted fw-bold"><i class="fa-solid fa-folder-open fs-2 mb-3 opacity-50 d-block"></i> لا توجد أي حركات في الخزنة حالياً.</td></tr>
                 }
             </tbody>
         </table>
@@ -126,40 +144,44 @@
 <!-- 📌 Modal: تعديل حركة خزنة -->
 <div class="modal fade" id="editTransactionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 rounded-4 shadow-lg">
-            <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-primary"><i class="fa-solid fa-pen-to-square me-2"></i> تعديل قيد الخزنة</h5>
+        <div class="modal-content premium-modal border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+                <h5 class="modal-title fw-bolder text-primary"><i class="fa-solid fa-pen-to-square me-2"></i> تعديل قيد الخزنة</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form asp-action="EditTransaction" method="post">
-                <div class="modal-body py-4 text-start">
+                <div class="modal-body p-4 text-start">
                     <input type="hidden" name="id" id="edit_id" />
 
-                    <div id="edit_warning" class="alert alert-warning py-2 small fw-bold" style="display:none;">
-                        <i class="fa-solid fa-circle-info me-1"></i> هذه الحركة مسجلة آلياً من فاتورة صيانة. يمكنك تعديل <b>(البيان فقط)</b> للتوضيح. لتعديل المبلغ، يرجى استرداد الفاتورة من شاشة الفواتير.
+                    <div id="edit_warning" class="premium-alert warning py-3 small fw-bold mb-4" style="display:none;">
+                        <div class="icon-box"><i class="fa-solid fa-circle-info"></i></div>
+                        <div class="content">
+                            <h6 class="fw-bolder m-0">حركة تلقائية</h6>
+                            <p class="mb-0 text-muted">هذه الحركة مسجلة آلياً من فاتورة. يمكنك تعديل <b>(البيان فقط)</b> للتوضيح. لتعديل المبلغ استخدم الفاتورة.</p>
+                        </div>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">نوع الحركة</label>
-                        <select name="type" id="edit_type" class="form-select fw-bold bg-light border-secondary">
+                        <label class="premium-label">نوع الحركة</label>
+                        <select name="type" id="edit_type" class="premium-input form-select fw-bold">
                             <option value="Income">إيداع / تحصيل (+)</option>
                             <option value="DepositToBank">سحب / توريد للبنك (-)</option>
                         </select>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">المبلغ (ر.س) <span class="text-danger">*</span></label>
-                        <input type="number" step="0.01" name="amount" id="edit_amount" class="form-control fw-bold border-primary text-primary" required />
+                        <label class="premium-label">المبلغ (ر.س) <span class="text-danger">*</span></label>
+                        <input type="number" step="0.01" name="amount" id="edit_amount" class="premium-input form-control text-primary" required />
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label fw-bold">البيان (الوصف) <span class="text-danger">*</span></label>
-                        <textarea name="description" id="edit_desc" class="form-control fw-bold bg-light" rows="2" required></textarea>
+                        <label class="premium-label">البيان (الوصف) <span class="text-danger">*</span></label>
+                        <textarea name="description" id="edit_desc" class="premium-input form-control" rows="2" required></textarea>
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-light fw-bold px-4 rounded-3" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-primary fw-bold px-4 rounded-3"><i class="fa-solid fa-save"></i> حفظ التعديلات</button>
+                <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light fw-bold px-4 rounded-pill" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary fw-bolder px-4 rounded-pill shadow-sm hover-elevate"><i class="fa-solid fa-save me-1"></i> حفظ التعديلات</button>
                 </div>
             </form>
         </div>
@@ -169,37 +191,179 @@
 <!-- Modal: توريد أموال -->
 <div class="modal fade" id="depositModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 rounded-4 shadow-lg">
-            <div class="modal-header border-bottom-0 pb-0">
-                <h5 class="modal-title fw-bold text-success"><i class="fa-solid fa-money-bill-transfer me-2"></i> توريد أموال من الخزنة</h5>
+        <div class="modal-content premium-modal border-0 rounded-4 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+                <h5 class="modal-title fw-bolder text-success"><i class="fa-solid fa-money-bill-transfer me-2"></i> توريد أموال من الخزنة</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form asp-action="DepositMoney" method="post">
-                <div class="modal-body py-4 text-start">
-                    <div class="alert alert-warning py-2 small fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> سيتم خصم هذا المبلغ من رصيد الخزنة الحالي واعتباره مورد للبنك أو المالك.</div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">المبلغ المراد توريده <span class="text-danger">*</span></label>
-                        <div class="input-group input-group-lg">
-                            <input type="number" step="0.01" name="amount" class="form-control fw-bold border-success text-success" max="@ViewBag.CurrentBalance" required />
-                            <span class="input-group-text bg-light fw-bold">ر.س</span>
+                <div class="modal-body p-4 text-start">
+                    <div class="premium-alert warning py-3 small fw-bold mb-4">
+                        <div class="icon-box"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <div class="content">
+                            <p class="mb-0 text-dark">سيتم خصم هذا المبلغ من رصيد الخزنة الحالي (الدرج) واعتباره مورد للبنك أو لمالك المؤسسة.</p>
                         </div>
-                        <small class="text-muted fw-bold mt-1 d-block">أقصى مبلغ متاح للسحب: @ViewBag.CurrentBalance ريال</small>
                     </div>
 
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">البيان (إلى أين تم التوريد؟) <span class="text-danger">*</span></label>
-                        <input type="text" name="description" class="form-control fw-bold bg-light" placeholder="مثال: إيداع في حساب الشركة البنكي (الراجحي)" required />
+                    <div class="mb-4">
+                        <label class="premium-label">المبلغ المراد توريده <span class="text-danger">*</span></label>
+                        <div class="input-group input-group-lg shadow-sm rounded-3 overflow-hidden">
+                            <input type="number" step="0.01" name="amount" class="form-control fw-bolder border-0 bg-light text-success" max="@ViewBag.CurrentBalance" required />
+                            <span class="input-group-text bg-white fw-bolder border-0 text-success px-4">ر.س</span>
+                        </div>
+                        <small class="text-muted fw-bold mt-2 d-block text-center">أقصى مبلغ متاح للسحب من الدرج: @ViewBag.CurrentBalance ريال</small>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="premium-label">البيان (إلى أين تم التوريد؟) <span class="text-danger">*</span></label>
+                        <input type="text" name="description" class="premium-input form-control" placeholder="مثال: إيداع في حساب الشركة البنكي (الراجحي)" required />
                     </div>
                 </div>
-                <div class="modal-footer border-top-0 pt-0">
-                    <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">إلغاء</button>
-                    <button type="submit" class="btn btn-success fw-bold px-4"><i class="fa-solid fa-check"></i> تأكيد التوريد</button>
+                <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light fw-bold px-4 rounded-pill" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-success fw-bolder px-4 rounded-pill shadow-sm hover-elevate"><i class="fa-solid fa-check-double me-1"></i> تأكيد التوريد</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+
+<style>
+    /* Premium Dashboard UI Styles */
+    :root {
+        --prem-bg: #f8f9fc;
+        --prem-surface: #ffffff;
+        --prem-border: #e2e8f0;
+        --prem-text: #1e293b;
+        --prem-muted: #64748b;
+        --prem-primary: #f1950b;
+        --prem-radius: 20px;
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .sys-card {
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+    }
+
+    .premium-label {
+        font-weight: 800;
+        color: var(--prem-muted);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .premium-input {
+        background-color: #f8fafc;
+        border: 1px solid var(--prem-border);
+        border-radius: 12px;
+        padding: 14px 20px;
+        font-weight: 700;
+        color: var(--prem-text);
+        box-shadow: none !important;
+        transition: all 0.3s ease;
+    }
+
+        .premium-input:focus {
+            background-color: #fff;
+            border-color: var(--prem-primary);
+            box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1) !important;
+        }
+
+    .premium-alert {
+        background: #fffbfa;
+        border: 1px solid #fee2e2;
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.05);
+    }
+
+        .premium-alert.warning {
+            background: #fffbf0;
+            border-color: #fef08a;
+        }
+
+            .premium-alert.warning .icon-box {
+                background: #fef08a;
+                color: #ca8a04;
+            }
+
+        .premium-alert .icon-box {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
+
+        .premium-alert .content h6 {
+            color: #1e293b;
+        }
+
+    .sys-table th {
+        font-weight: 800;
+        color: var(--prem-muted);
+        border-bottom: 2px solid var(--prem-border) !important;
+        padding: 16px;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+    }
+
+    .sys-table td {
+        padding: 16px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .sys-table tr:hover td {
+        background-color: #f8fafc;
+    }
+
+    .premium-modal {
+        border-radius: 24px;
+        overflow: hidden;
+    }
+
+    .hover-elevate {
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+        cursor: pointer;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
+
+    .tracking-wider {
+        letter-spacing: 0.5px;
+    }
+</style>
 
 @section Scripts {
     <script>
@@ -219,7 +383,7 @@
                 amountInput.classList.add('bg-light');
                 typeInput.style.pointerEvents = "none";
                 typeInput.classList.add('bg-light');
-                warningDiv.style.display = 'block';
+                warningDiv.style.display = 'flex'; // Premium Alert Display
             } else {
                 amountInput.readOnly = false;
                 amountInput.classList.remove('bg-light');
@@ -231,17 +395,13 @@
 
         @if (TempData["SuccessMessage"] != null)
         {
-                <text>
-                var msg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString()));
-                Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: msg, confirmButtonColor: '#198754', customClass: { popup: 'rounded-4' } });
-                </text>
+                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'premium-modal' } });</text>
         }
         @if (TempData["ErrorMessage"] != null)
         {
-                <text>
-                var errMsg = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString()));
-                Swal.fire({ icon: 'error', title: 'تنبيه', text: errMsg, confirmButtonColor: '#dc3545', customClass: { popup: 'rounded-4' } });
-                </text>
+                var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
+                <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(errMsg), confirmButtonColor: '#dc3545', customClass: { popup: 'premium-modal' } });</text>
         }
     </script>
 }
