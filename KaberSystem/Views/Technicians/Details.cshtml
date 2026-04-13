@@ -58,7 +58,7 @@
         </div>
     </div>
 
-    <!-- 📌 2. الطلبات المسندة للفني (التي تم إضافتها لتوضيح موقع العميل) -->
+    <!-- 📌 2. الطلبات المسندة للفني -->
     <div class="col-lg-8 fade-in-up" style="animation-delay: 0.2s;">
         <div class="premium-card h-100 d-flex flex-column">
             <div class="card-header-premium bg-light d-flex justify-content-between align-items-center">
@@ -114,7 +114,6 @@
                                         </td>
                                         <td class="fw-bold text-primary">@order.DeviceName</td>
                                         <td>
-                                            <!-- 📌 هنا يظهر موقع العميل ورابط الخريطة للفني -->
                                             @if (!string.IsNullOrEmpty(order.LocationMapUrl))
                                             {
                                                 <a href="@order.LocationMapUrl" target="_blank" class="btn btn-sm btn-light border text-primary fw-bold rounded-pill px-3 shadow-sm hover-elevate mb-1">
@@ -199,38 +198,6 @@
                                         <button class="btn btn-sm btn-light border text-danger fw-bold rounded-pill px-3 hover-elevate" data-bs-toggle="modal" data-bs-target="#returnStockModal-@item.PartId">
                                             <i class="fa-solid fa-arrow-rotate-left me-1"></i> إرجاع للمخزن
                                         </button>
-
-                                        <!-- Modal إرجاع العهدة للمخزن -->
-                                        <div class="modal fade" id="returnStockModal-@item.PartId" tabindex="-1" aria-hidden="true">
-                                            <div class="modal-dialog modal-dialog-centered">
-                                                <div class="modal-content premium-modal border-0 shadow-lg text-start">
-                                                    <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
-                                                        <h5 class="modal-title fw-bolder text-danger"><i class="fa-solid fa-arrow-rotate-left me-2"></i> إرجاع قطعة للمخزن الرئيسي</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <form asp-action="ReturnStock" method="post">
-                                                        <div class="modal-body p-4">
-                                                            <input type="hidden" name="technicianId" value="@Model.TechnicianId" />
-                                                            <input type="hidden" name="partId" value="@item.PartId" />
-
-                                                            <div class="alert alert-danger py-2 small fw-bold mb-4 border-0 border-start border-4 border-danger rounded-3 bg-danger bg-opacity-10">
-                                                                سيتم سحب <span class="text-dark">@item.SparePart?.Name</span> من عهدة الفني وإعادتها للرصيد الرئيسي للمؤسسة.
-                                                            </div>
-
-                                                            <div class="mb-3">
-                                                                <label class="premium-label">الكمية المراد إرجاعها للمخزن <span class="text-danger">*</span></label>
-                                                                <input type="number" name="returnQuantity" class="premium-input form-control text-center fs-5" min="1" max="@item.Quantity" value="1" required />
-                                                                <small class="text-muted fw-bold mt-2 d-block text-center">الحد الأقصى المتاح للإرجاع: @item.Quantity</small>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
-                                                            <button type="button" class="btn btn-light fw-bold px-4 rounded-pill" data-bs-dismiss="modal">إلغاء</button>
-                                                            <button type="submit" class="btn btn-danger fw-bolder px-4 rounded-pill shadow-sm hover-elevate">تأكيد الإرجاع <i class="fa-solid fa-check ms-1"></i></button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </td>
                                 }
                             </tr>
@@ -266,8 +233,9 @@
 
                     <div class="mb-4">
                         <label class="premium-label">اختر القطعة من المخزن العام <span class="text-danger">*</span></label>
-                        <select name="partId" class="premium-input form-select fw-bold" required>
-                            <option value="">-- اضغط للاختيار --</option>
+                        <!-- 📌 إضافة ID = warehousePartSelect لتفعيل البحث عبر مكتبة Select2 -->
+                        <select name="partId" id="warehousePartSelect" class="form-select fw-bold searchable-select" style="width: 100%;" required>
+                            <option value="">-- اضغط للاختيار وابحث --</option>
                             @if (ViewData["AvailableParts"] != null)
                             {
                                 foreach (var part in (IEnumerable<KaberSystem.Models.SparePart>)ViewData["AvailableParts"])
@@ -293,17 +261,73 @@
     </div>
 </div>
 
+<!-- 📌 Modals إرجاع العهدة للمخزن (موجودة بالخارج لمنع مشاكل الـ Style والـ Z-Index) -->
+@if (Model.Inventory != null && Model.Inventory.Any() && (User.IsInRole("Admin") || User.IsInRole("Store")))
+{
+    foreach (var item in Model.Inventory)
+    {
+        <div class="modal fade" id="returnStockModal-@item.PartId" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content premium-modal border-0 shadow-lg text-start">
+                    <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+                        <h5 class="modal-title fw-bolder text-danger"><i class="fa-solid fa-arrow-rotate-left me-2"></i> إرجاع قطعة للمخزن الرئيسي</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <form asp-action="ReturnStock" method="post">
+                        <div class="modal-body p-4">
+                            <input type="hidden" name="technicianId" value="@Model.TechnicianId" />
+                            <input type="hidden" name="partId" value="@item.PartId" />
+
+                            <div class="premium-alert danger px-4 py-3 mb-4">
+                                <div class="icon-box"><i class="fa-solid fa-info-circle"></i></div>
+                                <div class="content">
+                                    <h6 class="fw-bolder m-0 text-danger">تنبيه إرجاع:</h6>
+                                    <p class="mb-0 small fw-bold">سيتم سحب <span class="text-dark">@item.SparePart?.Name</span> من عهدة الفني وإعادتها للرصيد الرئيسي.</p>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="premium-label">الكمية المراد إرجاعها للمخزن <span class="text-danger">*</span></label>
+                                <input type="number" name="returnQuantity" class="premium-input form-control text-center fs-5" min="1" max="@item.Quantity" value="1" required />
+                                <small class="text-muted fw-bold mt-2 d-block text-center">الحد الأقصى المتاح للإرجاع: @item.Quantity</small>
+                            </div>
+                        </div>
+                        <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                            <button type="button" class="btn btn-light fw-bold px-4 rounded-pill" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-danger fw-bolder px-4 rounded-pill shadow-sm hover-elevate">تأكيد الإرجاع <i class="fa-solid fa-check ms-1"></i></button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+}
+
 @section Scripts {
+    <!-- 📌 إضافة مكتبة Select2 للبحث داخل القوائم المنسدلة -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
     <script>
+        $(document).ready(function() {
+            // تفعيل البحث لقائمة المخزن وتوجيه الـ Dropdown داخل الـ Modal ليعمل بشكل سليم
+            $('#warehousePartSelect').select2({
+                dropdownParent: $('#assignStockModal'),
+                width: '100%',
+                language: "ar",
+                dir: "rtl"
+            });
+        });
+
         @if (TempData["SuccessMessage"] != null)
         {
-                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
-                <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', html: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'premium-swal' } });</text>
+                    var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                    <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', html: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'premium-swal' } });</text>
         }
         @if (TempData["ErrorMessage"] != null)
         {
-                var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
-                <text>Swal.fire({ icon: 'error', title: 'خطأ', html: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
+                    var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
+                    <text>Swal.fire({ icon: 'error', title: 'خطأ', html: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
         }
     </script>
 }
@@ -384,6 +408,49 @@
             box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1) !important;
         }
 
+    /* 📌 ستايلات مخصصة لمكتبة Select2 لتطابق الستايل الاحترافي للسيستم */
+    .select2-container--default .select2-selection--single {
+        background-color: #f8fafc;
+        border: 2px solid var(--prem-border);
+        border-radius: 12px;
+        height: 52px;
+        display: flex;
+        align-items: center;
+        font-weight: 700;
+        color: var(--prem-text);
+        transition: all 0.3s ease;
+    }
+
+    .select2-container--default.select2-container--open .select2-selection--single {
+        background-color: #fff;
+        border-color: var(--prem-primary);
+        box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1);
+    }
+
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 50px;
+        right: auto;
+        left: 10px;
+    }
+
+    .select2-search__field {
+        border-radius: 8px !important;
+        padding: 8px !important;
+        border: 1px solid var(--prem-border) !important;
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected] {
+        background-color: var(--prem-primary);
+        color: white;
+    }
+
+    .select2-dropdown {
+        border: 2px solid var(--prem-border);
+        border-radius: 12px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
     /* Badges */
     .premium-badge {
         padding: 6px 16px;
@@ -444,6 +511,37 @@
             color: #0f172a;
         }
 
+    /* Info Blocks */
+    .info-block {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+        .info-block .label {
+            font-size: 0.8rem;
+            color: var(--prem-muted);
+            font-weight: 700;
+        }
+
+        .info-block .value {
+            font-size: 1.1rem;
+            color: var(--prem-text);
+            font-weight: 800;
+        }
+
+    .avatar-sm {
+        width: 30px;
+        height: 30px;
+        background: var(--prem-primary);
+        color: #fff;
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        border-radius: 50%;
+        font-size: 12px;
+    }
+
     /* Table */
     .premium-table th {
         font-weight: 800;
@@ -456,14 +554,56 @@
 
     .premium-table td {
         padding: 16px;
+        border-bottom: 1px solid #f1f5f9;
         vertical-align: middle;
     }
 
-    /* Modals & Buttons */
+    .premium-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .premium-table tr:hover td {
+        background-color: #f8fafc;
+    }
+
+    /* Modals & Alerts */
     .premium-modal {
         border-radius: 24px;
         overflow: hidden;
     }
+
+    .premium-alert {
+        background: #fffbfa;
+        border: 1px solid #fee2e2;
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.05);
+    }
+
+        /* 📌 ستايل مخصص للتنبيه داخل المودال */
+        .premium-alert.danger {
+            background: #fff1f2;
+            border-color: #fecdd3;
+        }
+
+            .premium-alert.danger .icon-box {
+                background: #ffe4e6;
+                color: #e11d48;
+            }
+
+        .premium-alert .icon-box {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            flex-shrink: 0;
+        }
 
     .hover-elevate {
         transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;

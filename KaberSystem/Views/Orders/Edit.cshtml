@@ -1,50 +1,106 @@
 ﻿@model KaberSystem.Models.Order
 @{
-    ViewData["Title"] = "تعديل بيانات الطلب";
+    ViewData["Title"] = "تعديل بيانات الطلب #" + Model.OrderId;
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 }
 
-<div class="sys-page-header">
+<div class="sys-page-header fade-in-up">
     <div>
-        <h1 class="sys-page-title text-primary">تعديل الطلب #@Model.OrderId</h1>
-        <p class="sys-page-desc">شاشة مخصصة للإدارة لتعديل بيانات الطلبات أو تصحيح الأخطاء</p>
+        <h1 class="sys-page-title text-primary"><i class="fa-solid fa-pen-to-square me-2"></i> تعديل الطلب #@Model.OrderId</h1>
+        <p class="sys-page-desc">شاشة مخصصة للإدارة لتعديل بيانات الطلبات، الحالات، أو تصحيح التسعير</p>
     </div>
-    <a href="/Orders/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3">
+    <a href="/Orders/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-pill shadow-sm hover-elevate border-2">
         <i class="fa-solid fa-arrow-right"></i> إلغاء والعودة
     </a>
 </div>
 
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="sys-card border-top border-4 border-warning shadow-sm">
-            <form asp-action="Edit" method="post">
+<div class="row justify-content-center mt-3 fade-in-up" style="animation-delay: 0.1s;">
+    <div class="col-lg-10">
+        <div class="sys-card border-top border-4 border-warning shadow-lg">
+            <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
+                <div class="bg-warning bg-opacity-10 text-warning rounded-circle d-flex justify-content-center align-items-center me-3 shadow-sm" style="width: 50px; height: 50px;">
+                    <i class="fa-solid fa-user-pen fs-4"></i>
+                </div>
+                <h4 class="fw-bolder m-0 text-dark">بيانات العميل: @Model.CustomerName</h4>
+            </div>
+
+            <!-- 📌 التحديث: إضافة enctype لتمكين رفع الملفات في وضع التعديل -->
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
                 <input type="hidden" asp-for="OrderId" />
                 <input type="hidden" asp-for="CreatedAt" />
 
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger fw-bold rounded-3 shadow-sm"></div>
+
                 <div class="row g-4">
-                    <div class="col-md-6">
-                        <label asp-for="CustomerName" class="form-label fw-bold">اسم العميل</label>
-                        <input asp-for="CustomerName" class="form-control sys-input" required />
-                    </div>
-                    <div class="col-md-6">
-                        <label asp-for="PhoneNumber" class="form-label fw-bold">رقم الهاتف</label>
-                        <input asp-for="PhoneNumber" class="form-control sys-input" dir="ltr" required />
-                    </div>
-                    <div class="col-md-12">
-                        <label asp-for="Address" class="form-label fw-bold">العنوان</label>
-                        <input asp-for="Address" class="form-control sys-input" required />
-                    </div>
-                    <div class="col-md-12">
-                        <label asp-for="ProblemDescription" class="form-label fw-bold">وصف المشكلة</label>
-                        <textarea asp-for="ProblemDescription" class="form-control sys-input" rows="3" required></textarea>
+                    <!-- 📌 القسم الأول: بيانات العميل -->
+                    <div class="col-12 mb-0">
+                        <h6 class="fw-bolder text-primary"><i class="fa-solid fa-address-card me-1"></i> المعلومات الأساسية</h6>
                     </div>
 
-                    <!-- 📌 الحقول الجديدة في التعديل -->
+                    <div class="col-md-6">
+                        <label asp-for="CustomerName" class="premium-label text-dark">اسم العميل <span class="text-danger">*</span></label>
+                        <input asp-for="CustomerName" class="form-control premium-input" required />
+                        <span asp-validation-for="CustomerName" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="PhoneNumber" class="premium-label text-dark">رقم الهاتف <span class="text-danger">*</span></label>
+                        <input asp-for="PhoneNumber" class="form-control premium-input" dir="ltr" style="text-align: right;" required />
+                        <span asp-validation-for="PhoneNumber" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <!-- 📌 التحديث: تحويل حقل الجهاز إلى Textarea ليتحمل عرض وتعديل أكثر من جهاز مرقم بسهولة -->
+                    <div class="col-md-12">
+                        <label asp-for="DeviceName" class="premium-label text-dark">نوع الجهاز (المنتجات) <span class="text-danger">*</span></label>
+                        <textarea asp-for="DeviceName" class="form-control premium-input" rows="2" required></textarea>
+                        <small class="text-muted fw-bold mt-1 d-block"><i class="fa-solid fa-circle-info text-primary me-1"></i> يمكنك تعديل أو إضافة أسماء الأجهزة، كل جهاز في سطر.</small>
+                        <span asp-validation-for="DeviceName" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="ScheduledDate" class="premium-label text-dark">الموعد المجدول <span class="text-muted fw-normal">(اختياري)</span></label>
+                        <input asp-for="ScheduledDate" type="datetime-local" class="form-control premium-input" />
+                    </div>
+
+                    <div class="col-md-12">
+                        <label asp-for="Address" class="premium-label text-dark">العنوان بالتفصيل <span class="text-danger">*</span></label>
+                        <input asp-for="Address" class="form-control premium-input" required />
+                        <span asp-validation-for="Address" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label asp-for="LocationMapUrl" class="premium-label text-dark">رابط الموقع (Google Maps) <span class="text-muted fw-normal">(اختياري)</span></label>
+                        <input asp-for="LocationMapUrl" class="form-control premium-input" dir="ltr" style="text-align: left;" />
+                    </div>
+
+                    <div class="col-md-12">
+                        <label asp-for="ProblemDescription" class="premium-label text-dark">وصف المشكلة / الشكوى <span class="text-danger">*</span></label>
+                        <textarea asp-for="ProblemDescription" class="form-control premium-input" rows="3" required></textarea>
+                        <span asp-validation-for="ProblemDescription" class="text-danger small fw-bold"></span>
+                    </div>
+
+                    <!-- 📌 التحديث: رفع صور إضافية جديدة دون حذف القديم -->
+                    <div class="col-md-12 mt-3">
+                        <label class="premium-label text-dark"><i class="fa-solid fa-images text-primary me-1"></i> إرفاق صور إضافية للأجهزة/الأعطال <span class="text-muted fw-normal">(يمكنك تحديد أكثر من صورة)</span></label>
+                        <input type="file" name="deviceImages" class="form-control premium-input" style="padding: 12px;" accept="image/*" multiple />
+                        @if (!string.IsNullOrEmpty(Model.DeviceImagePath))
+                        {
+                            <div class="alert alert-success mt-3 p-3 mb-0 border-0 rounded-4 shadow-sm">
+                                <i class="fa-solid fa-check-circle me-1"></i> <span class="fw-bold">يوجد صور مرفقة مسبقاً.</span>
+                                <span class="small d-block mt-1">رفع صور جديدة سيقوم بإضافتها بجانب الصور الحالية (لن يتم حذف القديمة). لتصفح الصور القديمة ارجع لشاشة التفاصيل.</span>
+                            </div>
+                        }
+                    </div>
+
+                    <!-- 📌 القسم الثاني: الإدارة والتسعير -->
+                    <div class="col-12 border-top pt-3 mt-4">
+                        <h6 class="fw-bolder text-primary"><i class="fa-solid fa-gears me-1"></i> حالة الطلب والتسعير المبدئي</h6>
+                    </div>
+
                     <div class="col-md-4">
-                        <label asp-for="Type" class="form-label fw-bold">نوع الطلب</label>
-                        <select asp-for="Type" class="form-select sys-input fw-bold bg-light">
+                        <label asp-for="Type" class="premium-label text-dark">نوع الطلب</label>
+                        <select asp-for="Type" class="form-select premium-input fw-bold bg-light">
                             <option value="Maintenance">صيانة وإصلاح</option>
-                            <!-- 📌 إضافة غسيل مكيفات هنا -->
                             <option value="ACWashing">غسيل مكيفات</option>
                             <option value="NewInstallation">تركيب جديد</option>
                             <option value="Warranty">ضمان (بدون رسوم)</option>
@@ -52,36 +108,43 @@
                     </div>
 
                     <div class="col-md-4">
-                        <label asp-for="TechnicianId" class="form-label fw-bold text-dark">الفني المنفذ</label>
-                        <select asp-for="TechnicianId" class="form-select sys-input fw-bold bg-light" asp-items="ViewBag.TechnicianId">
-                            <option value="">-- بدون فني --</option>
+                        <label asp-for="TechnicianId" class="premium-label text-dark">الفني المنفذ</label>
+                        <select asp-for="TechnicianId" class="form-select premium-input fw-bold bg-light" asp-items="ViewBag.TechnicianId">
+                            <option value="">-- بدون تعيين --</option>
                         </select>
                     </div>
 
                     <div class="col-md-4">
-                        <label asp-for="Status" class="form-label fw-bold">حالة الطلب</label>
-                        <select asp-for="Status" class="form-select sys-input fw-bold bg-light">
+                        <label asp-for="Status" class="premium-label text-dark">حالة الطلب</label>
+                        <select asp-for="Status" class="form-select premium-input fw-bold border-secondary text-primary">
                             <option value="New">جديد</option>
                             <option value="Assigned">تم التعيين</option>
                             <option value="Confirmed">مؤكد</option>
                             <option value="InProgress">قيد التنفيذ</option>
-                            <option value="Completed">مكتمل</option>
+                            <option value="Completed">مكتمل (بانتظار الإدارة)</option>
                             <option value="Cancelled">ملغي</option>
                         </select>
                     </div>
 
                     <div class="col-md-6">
-                        <label asp-for="EstimatedPrice" class="form-label fw-bold text-danger">أجور اليد (الفحص)</label>
-                        <input asp-for="EstimatedPrice" type="number" step="0.01" class="form-control sys-input" />
-                    </div>
-                    <div class="col-md-6">
-                        <label asp-for="AdvancePayment" class="form-label fw-bold text-danger">الدفعة المقدمة</label>
-                        <input asp-for="AdvancePayment" type="number" step="0.01" class="form-control sys-input" />
+                        <label asp-for="EstimatedPrice" class="premium-label text-danger">أجور اليد (الفحص)</label>
+                        <div class="input-group shadow-sm">
+                            <input asp-for="EstimatedPrice" type="number" step="0.01" class="form-control premium-input border-end-0 fw-bolder text-danger" />
+                            <span class="input-group-text bg-white border-2 border-start-0 border-secondary fw-bold text-muted" style="border-radius: 12px 0 0 12px;">ر.س</span>
+                        </div>
                     </div>
 
-                    <div class="col-12 mt-4 text-end border-top pt-4">
-                        <button type="submit" class="sys-btn btn-warning text-dark px-5 py-3 fs-5 fw-bold shadow-sm">
-                            <i class="fa-solid fa-save me-2"></i> حفظ التعديلات
+                    <div class="col-md-6">
+                        <label asp-for="AdvancePayment" class="premium-label text-success">الدفعة المقدمة (إن وجدت)</label>
+                        <div class="input-group shadow-sm">
+                            <input asp-for="AdvancePayment" type="number" step="0.01" class="form-control premium-input border-end-0 fw-bolder text-success" />
+                            <span class="input-group-text bg-white border-2 border-start-0 border-secondary fw-bold text-muted" style="border-radius: 12px 0 0 12px;">ر.س</span>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mt-5 text-end border-top pt-4">
+                        <button type="submit" class="btn btn-warning text-dark px-5 py-3 fs-5 fw-bolder rounded-pill shadow-sm hover-elevate">
+                            <i class="fa-solid fa-save me-2"></i> حفظ التعديلات الشاملة
                         </button>
                     </div>
                 </div>
@@ -91,20 +154,81 @@
 </div>
 
 <style>
-    .sys-input {
-        border: 2px solid var(--sys-border);
-        padding: 12px 18px;
-        border-radius: 10px;
-        font-weight: 600;
-        transition: all 0.3s;
-        background-color: var(--sys-bg);
-        color: var(--sys-text-main);
+    :root {
+        --prem-primary: #f1950b;
+        --prem-bg: #f8f9fc;
+        --prem-border: #e2e8f0;
+        --prem-text: #1e293b;
+        --prem-muted: #64748b;
     }
 
-        .sys-input:focus {
-            border-color: var(--sys-primary);
-            box-shadow: 0 0 0 0.25rem rgba(241, 149, 11, 0.15);
+    .fade-in-up {
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .sys-card {
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 35px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+    }
+
+    .premium-label {
+        font-weight: 800;
+        color: var(--prem-muted);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .premium-input {
+        border: 2px solid var(--prem-border);
+        padding: 14px 20px;
+        border-radius: 12px;
+        font-weight: 700;
+        color: var(--prem-text);
+        background-color: var(--prem-bg);
+        transition: all 0.3s ease;
+        box-shadow: none !important;
+    }
+
+        .premium-input:focus {
             background-color: #fff;
+            border-color: var(--prem-primary);
+            box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1) !important;
             outline: none;
+        }
+
+    .input-group .premium-input {
+        border-radius: 0 12px 12px 0;
+    }
+
+    .input-group .input-group-text {
+        border: 2px solid var(--prem-border);
+        border-right: none;
+        border-radius: 12px 0 0 12px;
+    }
+
+    .hover-elevate {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
         }
 </style>

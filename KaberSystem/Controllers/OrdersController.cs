@@ -44,7 +44,6 @@ namespace KaberSystem.Controllers
 
             if (User.IsInRole("Technician"))
             {
-                // 📌 التعديل هنا: تم إزالة OrderStatus.Completed ليظل الطلب ظاهراً للفني حتى يتم اعتماده نهائياً
                 query = query.Where(o => o.Technician.Name == User.Identity.Name
                                       && o.Status != OrderStatus.Approved
                                       && o.Status != OrderStatus.Cancelled);
@@ -75,6 +74,193 @@ namespace KaberSystem.Controllers
             }
 
             return View(orders);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin,CallCenter")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> UpdateSchedule(int orderId, DateTime? newScheduledDate)
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order != null)
+            {
+                string oldDate = order.ScheduledDate?.ToString("yyyy-MM-dd hh:mm tt") ?? "لم يكن محدد";
+                string newDateStr = newScheduledDate?.ToString("yyyy-MM-dd hh:mm tt") ?? "تم الإلغاء وبدون موعد";
+
+                order.ScheduledDate = newScheduledDate;
+                _context.Update(order);
+
+                LogAction("تعديل موعد طلب", $"تم تعديل الموعد للطلب #{orderId} من ({oldDate}) إلى ({newDateStr})");
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = newScheduledDate.HasValue ? "تم تحديث وتعديل الموعد بنجاح!" : "تم إلغاء الموعد بنجاح.";
+            }
+            return RedirectToAction(nameof(Index));
+        }
+
+        [Authorize(Roles = "Admin,CallCenter")]
+        public async Task<IActionResult> Create()
+        {
+            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Technicians.Where(t => t.IsAvailable).ToListAsync(), "TechnicianId", "Name");
+            return View();
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin,CallCenter")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Order order, List<string> DeviceNamesList, List<IFormFile> deviceImages)
+        {
+            ModelState.Remove("DeviceName");
+
+            if (ModelState.IsValid)
+            {
+                if (DeviceNamesList != null && DeviceNamesList.Any(d => !string.IsNullOrWhiteSpace(d)))
+                {
+                    var numberedDevices = DeviceNamesList
+                        .Where(d => !string.IsNullOrWhiteSpace(d))
+                        .Select((d, i) => $"{i + 1}- {d}")
+                        .ToList();
+
+                    order.DeviceName = string.Join(" \n ", numberedDevices);
+                }
+                else
+                {
+                    order.DeviceName = "غير محدد";
+                }
+
+                order.Status = order.TechnicianId.HasValue ? OrderStatus.Assigned : OrderStatus.New;
+                order.CreatedAt = DateTime.Now;
+
+                if (deviceImages != null && deviceImages.Count > 0)
+                {
+                    var imagePaths = new List<string>();
+                    string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "orders");
+                    if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                    foreach (var file in deviceImages)
+                    {
+                        if (file.Length > 0)
+                        {
+                            string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
+                            string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                            using (var fileStream = new FileStream(filePath, FileMode.Create))
+                            {
+                                await file.CopyToAsync(fileStream);
+                            }
+                            imagePaths.Add("/uploads/orders/" + uniqueFileName);
+                        }
+                    }
+                    order.DeviceImagePath = string.Join(",", imagePaths);
+                }
+
+                _context.Add(order);
+                await _context.SaveChangesAsync();
+
+                if (order.EstimatedPrice > 0)
+                {
+                    var invoice = new Invoice
+                    {
+                        OrderId = order.OrderId,
+                        Amount = order.EstimatedPrice,
+                        Type = InvoiceType.Advance,
+                        Status = InvoiceStatus.NotReceived,
+                        IssuedAt = DateTime.Now
+                    };
+                    _context.Invoices.Add(invoice);
+                }
+
+                LogAction("إنشاء طلب جديد", $"تم إنشاء طلب صيانة رقم #{order.OrderId} للعميل {order.CustomerName} يحتوي على أجهزة متعددة");
+                await _context.SaveChangesAsync();
+
+                TempData["SuccessMessage"] = "تم إنشاء الطلب بنجاح!";
+                return RedirectToAction(nameof(Index));
+            }
+            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Technicians.Where(t => t.IsAvailable).ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
+            return View(order);
+        }
+
+        [Authorize(Roles = "Admin,CallCenter")]
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null) return NotFound();
+            var order = await _context.Orders.FindAsync(id);
+            if (order == null) return NotFound();
+            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Technicians.Where(t => t.IsAvailable || t.TechnicianId == order.TechnicianId).ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
+            return View(order);
+        }
+
+        // 📌 التحديث الأهم: استقبال الصور (deviceImages) وتحديث الدفعة المقدمة
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,CallCenter")]
+        public async Task<IActionResult> Edit(int id, Order order, List<IFormFile> deviceImages)
+        {
+            if (id != order.OrderId) return NotFound();
+
+            var existingOrder = await _context.Orders.FindAsync(id);
+            if (existingOrder == null) return NotFound();
+
+            // تحديث البيانات الأساسية
+            existingOrder.CustomerName = order.CustomerName;
+            existingOrder.PhoneNumber = order.PhoneNumber;
+            existingOrder.DeviceName = order.DeviceName;
+            existingOrder.ProblemDescription = order.ProblemDescription;
+            existingOrder.Address = order.Address;
+            existingOrder.LocationMapUrl = order.LocationMapUrl;
+            existingOrder.Type = order.Type;
+            existingOrder.EstimatedPrice = order.EstimatedPrice;
+            existingOrder.AdvancePayment = order.AdvancePayment; // 👈 ضمان تحديث الدفعة المقدمة
+            existingOrder.ScheduledDate = order.ScheduledDate;
+
+            // 📌 معالجة رفع الصور الإضافية (لا تحذف الصور القديمة)
+            if (deviceImages != null && deviceImages.Count > 0)
+            {
+                var imagePaths = new List<string>();
+
+                // جلب الصور القديمة للاحتفاظ بها
+                if (!string.IsNullOrEmpty(existingOrder.DeviceImagePath))
+                {
+                    imagePaths.AddRange(existingOrder.DeviceImagePath.Split(',', StringSplitOptions.RemoveEmptyEntries));
+                }
+
+                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "orders");
+                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                foreach (var file in deviceImages)
+                {
+                    if (file.Length > 0)
+                    {
+                        string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
+                        string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                        using (var fileStream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await file.CopyToAsync(fileStream);
+                        }
+                        imagePaths.Add("/uploads/orders/" + uniqueFileName);
+                    }
+                }
+
+                // دمج الصور القديمة مع الجديدة
+                existingOrder.DeviceImagePath = string.Join(",", imagePaths);
+            }
+
+            if (existingOrder.TechnicianId != order.TechnicianId)
+            {
+                existingOrder.TechnicianId = order.TechnicianId;
+                if (order.TechnicianId.HasValue && existingOrder.Status == OrderStatus.New)
+                {
+                    existingOrder.Status = OrderStatus.Assigned;
+                }
+            }
+
+            _context.Update(existingOrder);
+            LogAction("تعديل طلب", $"تعديل بيانات الطلب #{order.OrderId} للعميل {order.CustomerName} وإضافة صور/تعديل أسعار");
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "تم حفظ التعديلات وإضافة الصور للطلب بنجاح!";
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]
@@ -144,64 +330,6 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Index));
         }
 
-        [Authorize(Roles = "Admin,CallCenter")]
-        public async Task<IActionResult> Create()
-        {
-            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Technicians.Where(t => t.IsAvailable).ToListAsync(), "TechnicianId", "Name");
-            return View();
-        }
-
-        [HttpPost]
-        [Authorize(Roles = "Admin,CallCenter")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create(Order order, IFormFile deviceImage)
-        {
-            if (ModelState.IsValid)
-            {
-                order.Status = order.TechnicianId.HasValue ? OrderStatus.Assigned : OrderStatus.New;
-                order.CreatedAt = DateTime.Now;
-
-                // 📌 كود حفظ صورة الجهاز المرفوعة
-                if (deviceImage != null && deviceImage.Length > 0)
-                {
-                    string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "orders");
-                    if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-
-                    string uniqueFileName = Guid.NewGuid().ToString() + "_" + deviceImage.FileName;
-                    string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-
-                    using (var fileStream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await deviceImage.CopyToAsync(fileStream);
-                    }
-                    order.DeviceImagePath = "/uploads/orders/" + uniqueFileName;
-                }
-
-                _context.Add(order);
-                await _context.SaveChangesAsync();
-
-                if (order.EstimatedPrice > 0)
-                {
-                    var invoice = new Invoice
-                    {
-                        OrderId = order.OrderId,
-                        Amount = order.EstimatedPrice,
-                        Type = InvoiceType.Advance,
-                        Status = InvoiceStatus.NotReceived,
-                        IssuedAt = DateTime.Now
-                    };
-                    _context.Invoices.Add(invoice);
-                }
-
-                LogAction("إنشاء طلب جديد", $"تم إنشاء طلب صيانة رقم #{order.OrderId} للعميل {order.CustomerName}");
-                await _context.SaveChangesAsync();
-
-                TempData["SuccessMessage"] = "تم إنشاء الطلب بنجاح!";
-                return RedirectToAction(nameof(Index));
-            }
-            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Technicians.Where(t => t.IsAvailable).ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
-            return View(order);
-        }
         [Authorize(Roles = "Admin,CallCenter")]
         public async Task<IActionResult> Assign(int? id)
         {
@@ -309,7 +437,6 @@ namespace KaberSystem.Controllers
 
             if (User.IsInRole("Technician"))
             {
-                // 📌 التعديل هنا: السماح للفني بفتح الطلب المكتمل للطباعة، ومنعه فقط إذا كان (Approved)
                 if (order.Technician?.Name != User.Identity.Name ||
                     order.Status == OrderStatus.Approved)
                 {
@@ -347,7 +474,24 @@ namespace KaberSystem.Controllers
                 string oldStatusStr = order.Status.ToString();
                 order.Status = newStatus;
                 order.TechnicianNotes = technicianNotes;
-                order.IsFeeApplied = (isFeeApplied == 1);
+
+                // 📌 التحديث الجديد: معالجة نظام البلاك لست وإعفاء الرسوم
+                if (isFeeApplied == 1)
+                {
+                    order.IsFeeApplied = true;
+                    order.IsBlacklisted = false;
+                }
+                else if (isFeeApplied == 0)
+                {
+                    order.IsFeeApplied = false;
+                    order.IsBlacklisted = false;
+                }
+                else if (isFeeApplied == -1) // 👈 حالة البلاك لست
+                {
+                    order.IsFeeApplied = false;
+                    order.IsBlacklisted = true;
+                    order.TechnicianNotes += "\n[النظام]: تم وضع العميل في القائمة السوداء (رفض دفع الرسوم).";
+                }
 
                 decimal partsTotal = order.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
                 decimal appliedFee = order.IsFeeApplied ? order.EstimatedPrice : 0;
@@ -388,7 +532,6 @@ namespace KaberSystem.Controllers
             }
             return RedirectToAction(nameof(Details), new { id = id });
         }
-
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,Technician,CallCenter")]
@@ -667,19 +810,34 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Details), new { id = request?.OrderId });
         }
 
+        // 📌 التحديث الجديد: دعم رفع أكثر من صورة لنواقص المخزن
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> RequestPurchase(int orderId, string partName, string deviceModel, int quantity, bool isCommon, IFormFile partImage)
+        public async Task<IActionResult> RequestPurchase(int orderId, string partName, string deviceModel, int quantity, bool isCommon, List<IFormFile> partImages)
         {
-            string imagePath = null;
-            if (partImage != null && partImage.Length > 0)
+            string finalImagePaths = null;
+
+            if (partImages != null && partImages.Count > 0)
             {
+                var imagePathsList = new List<string>();
                 string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "parts");
                 if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
-                string uniqueFileName = Guid.NewGuid().ToString() + "_" + partImage.FileName;
-                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
-                using (var fileStream = new FileStream(filePath, FileMode.Create)) { await partImage.CopyToAsync(fileStream); }
-                imagePath = "/uploads/parts/" + uniqueFileName;
+
+                foreach (var file in partImages)
+                {
+                    if (file.Length > 0)
+                    {
+                        string uniqueFileName = Guid.NewGuid().ToString() + "_" + file.FileName;
+                        string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                        using (var fileStream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await file.CopyToAsync(fileStream);
+                        }
+                        imagePathsList.Add("/uploads/parts/" + uniqueFileName);
+                    }
+                }
+                finalImagePaths = string.Join(",", imagePathsList);
             }
 
             var request = new OrderPartRequest
@@ -690,7 +848,7 @@ namespace KaberSystem.Controllers
                 DeviceModel = deviceModel,
                 IsCommonRequest = isCommon,
                 Quantity = quantity,
-                ImagePath = imagePath,
+                ImagePath = finalImagePaths, // 👈 حفظ المسارات المتعددة
                 Status = PartRequestStatus.PendingPurchasing
             };
 
@@ -737,34 +895,6 @@ namespace KaberSystem.Controllers
             LogAction("طباعة عرض سعر", $"قام المستخدم بإنشاء عرض سعر للطلب #{id}");
             await _context.SaveChangesAsync();
 
-            return View(order);
-        }
-
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null) return NotFound();
-            var order = await _context.Orders.FindAsync(id);
-            if (order == null) return NotFound();
-            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Technicians.ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
-            return View(order);
-        }
-
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> Edit(int id, Order order)
-        {
-            if (id != order.OrderId) return NotFound();
-            if (ModelState.IsValid)
-            {
-                _context.Update(order);
-                LogAction("تعديل طلب", $"تعديل إداري على بيانات الطلب #{order.OrderId}");
-                await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم تعديل بيانات الطلب بنجاح!";
-                return RedirectToAction(nameof(Index));
-            }
-            ViewData["TechnicianId"] = new Microsoft.AspNetCore.Mvc.Rendering.SelectList(await _context.Technicians.ToListAsync(), "TechnicianId", "Name", order.TechnicianId);
             return View(order);
         }
 

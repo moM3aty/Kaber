@@ -10,7 +10,9 @@
     decimal partsTotal = Model.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
     decimal appliedLaborFee = Model.IsFeeApplied ? Model.EstimatedPrice : 0;
 
-    decimal remainingToPay = Model.FinalPrice - Model.AdvancePayment;
+    decimal actualFinalPrice = appliedLaborFee + partsTotal;
+
+    decimal remainingToPay = actualFinalPrice - Model.AdvancePayment;
     if (remainingToPay < 0) remainingToPay = 0;
 
     var partRequests = ViewBag.PartRequests as IEnumerable<KaberSystem.Models.OrderPartRequest>;
@@ -28,15 +30,30 @@
         </div>
     </div>
     <div class="d-flex gap-2 flex-wrap">
-        <a href="/Orders/Index" class="btn btn-light text-muted fw-bold px-4 rounded-pill hover-elevate border">
+        <a href="/Orders/Index" class="btn btn-light text-muted fw-bold px-4 rounded-pill hover-elevate border shadow-sm">
             <i class="fa-solid fa-arrow-right me-1"></i> عودة
         </a>
+
+        @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
+        {
+            <a href="/Orders/Edit/@Model.OrderId" class="btn btn-warning text-dark fw-bold px-4 rounded-pill shadow-sm hover-elevate">
+                <i class="fa-solid fa-pen me-1"></i> تعديل الطلب
+            </a>
+        }
+
         <a href="/Orders/Quotation/@Model.OrderId" target="_blank" class="btn btn-dark fw-bold px-4 rounded-pill shadow-sm hover-elevate">
             <i class="fa-solid fa-file-signature me-1"></i> عرض السعر
         </a>
         <a href="/Orders/PrintInvoice/@Model.OrderId" target="_blank" class="btn btn-primary fw-bold px-4 rounded-pill shadow-sm hover-elevate">
             <i class="fa-solid fa-print me-1"></i> الفاتورة
         </a>
+
+        @if (User.IsInRole("Admin"))
+        {
+            <a href="/Orders/Delete/@Model.OrderId" onclick="return confirm('تأكيد الحذف النهائي للطلب وكل بياناته؟');" class="btn btn-danger fw-bold px-3 rounded-pill shadow-sm hover-elevate" title="حذف نهائي">
+                <i class="fa-solid fa-trash"></i>
+            </a>
+        }
     </div>
 </div>
 
@@ -54,7 +71,7 @@
 <div class="row g-4 mb-4">
     <!-- 📌 بطاقة بيانات العميل -->
     <div class="col-lg-8 fade-in-up" style="animation-delay: 0.1s;">
-        <div class="premium-card h-100">
+        <div class="premium-card h-100 @(Model.IsBlacklisted ? "border-danger" : "")">
             <div class="card-header-premium">
                 <h5 class="fw-bolder m-0 text-dark"><i class="fa-solid fa-user-tag text-primary me-2"></i> بيانات العميل والخدمة</h5>
                 @switch (Model.Status)
@@ -90,12 +107,21 @@
             </div>
 
             <div class="card-body-premium">
+                <!-- 📌 التحديث: عرض تنبيه البلاك لست -->
+                @if (Model.IsBlacklisted)
+                {
+                    <div class="alert alert-danger py-2 fw-bolder rounded-3 shadow-sm d-flex align-items-center mb-4">
+                        <i class="fa-solid fa-triangle-exclamation fs-4 me-2"></i>
+                        هذا العميل في القائمة السوداء (بلاك لست) لرفضه دفع رسوم الفحص!
+                    </div>
+                }
+
                 <div class="row g-4 mb-4">
                     <div class="col-md-6">
                         <div class="info-block">
                             <span class="label">اسم العميل</span>
                             <span class="value d-flex align-items-center gap-2">
-                                <span class="avatar-sm">@Model.CustomerName.Substring(0, 1)</span> @Model.CustomerName
+                                <span class="avatar-sm @(Model.IsBlacklisted ? "bg-danger" : "")">@Model.CustomerName.Substring(0, 1)</span> @Model.CustomerName
                             </span>
                         </div>
                     </div>
@@ -111,7 +137,7 @@
                     <div class="col-md-6">
                         <div class="info-block">
                             <span class="label">الجهاز / الموديل</span>
-                            <span class="value text-primary">@Model.DeviceName</span>
+                            <span class="value text-primary" style="white-space: pre-line;">@Model.DeviceName</span>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -133,14 +159,18 @@
                     <p>@Model.ProblemDescription</p>
                 </div>
 
-                <!-- 📌 عرض الصورة المرفقة إذا كانت موجودة -->
                 @if (!string.IsNullOrEmpty(Model.DeviceImagePath))
                 {
                     <div class="mt-4 pt-3 border-top">
-                        <span class="fw-bolder text-dark mb-3 d-block"><i class="fa-solid fa-image text-primary me-2"></i> صورة الجهاز أو العطل المرفقة:</span>
-                        <a href="@Model.DeviceImagePath" target="_blank" class="d-inline-block">
-                            <img src="@Model.DeviceImagePath" class="img-thumbnail shadow-sm hover-elevate rounded-4" style="max-height: 250px; border: 2px solid #e2e8f0;" alt="صورة العطل" />
-                        </a>
+                        <span class="fw-bolder text-dark mb-3 d-block"><i class="fa-solid fa-images text-primary me-2"></i> الصور المرفقة للأجهزة/الأعطال:</span>
+                        <div class="d-flex flex-wrap gap-2">
+                            @foreach (var imgPath in Model.DeviceImagePath.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                            {
+                                <a href="@imgPath" target="_blank" class="d-inline-block">
+                                    <img src="@imgPath" class="img-thumbnail shadow-sm hover-elevate rounded-4" style="height: 120px; width: auto; object-fit: cover; border: 2px solid #e2e8f0;" alt="صورة العطل" />
+                                </a>
+                            }
+                        </div>
                     </div>
                 }
 
@@ -148,7 +178,7 @@
                 {
                     <div class="tech-note-box mt-4">
                         <div class="header-label"><i class="fa-solid fa-clipboard-list"></i> التقرير الفني وملاحظات الإدارة:</div>
-                        <p>@Model.TechnicianNotes</p>
+                        <p style="white-space: pre-wrap;">@Model.TechnicianNotes</p>
                     </div>
                 }
             </div>
@@ -184,11 +214,13 @@
                         </select>
                     </div>
 
+                    <!-- 📌 التحديث: إضافة خيار البلاك لست في أجور اليد -->
                     <div class="mb-4">
-                        <label class="premium-label">إجمالي أجور اليد (تراكمي للمواعيد)</label>
+                        <label class="premium-label">أجور اليد (رسوم الفحص)</label>
                         <select name="isFeeApplied" class="premium-input form-select fw-bold">
-                            <option value="1" selected="@(Model.IsFeeApplied)">تطبيق الأجرة (@Model.EstimatedPrice ريال)</option>
-                            <option value="0" selected="@(!Model.IsFeeApplied)">إعفاء العميل (0.00 ريال)</option>
+                            <option value="1" selected="@(Model.IsFeeApplied && !Model.IsBlacklisted)">تطبيق الأجرة (@Model.EstimatedPrice ريال)</option>
+                            <option value="0" selected="@(!Model.IsFeeApplied && !Model.IsBlacklisted)">إعفاء العميل (0.00 ريال)</option>
+                            <option value="-1" selected="@(Model.IsBlacklisted)" class="text-danger fw-bolder">رفض الدفع (بلاك لست)</option>
                         </select>
                     </div>
 
@@ -249,7 +281,7 @@
                     <tr>
                         <th class="text-start ps-4">نوع الطلب</th>
                         <th class="text-start">اسم القطعة والموديل</th>
-                        <th>صورة القطعة</th>
+                        <th>صور القطعة (المرفقات)</th>
                         <th>الكمية</th>
                         <th>الحالة</th>
                         @if (User.IsInRole("Admin") || User.IsInRole("Store"))
@@ -283,18 +315,23 @@
                                         }
                                         else
                                         {
-
                                             <span class="text-muted fw-bold small"><i class="fa-solid fa-tag me-1"></i> مخصصة لموديل: @req.DeviceModel</span>
                                         }
                                     </div>
                                 }
                             </td>
                             <td>
+                                <!-- 📌 التحديث: عرض الصور المتعددة لنواقص الشراء -->
                                 @if (!string.IsNullOrEmpty(req.ImagePath))
                                 {
-                                    <a href="@req.ImagePath" target="_blank" class="btn btn-sm btn-light border text-primary fw-bold rounded-pill px-3 hover-elevate">
-                                        <i class="fa-regular fa-image me-1"></i> عرض
-                                    </a>
+                                    <div class="d-flex justify-content-center gap-1 flex-wrap">
+                                        @foreach (var imgPath in req.ImagePath.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                                        {
+                                            <a href="@imgPath" target="_blank" class="btn btn-sm btn-light border text-primary fw-bold rounded-pill px-2 hover-elevate">
+                                                <i class="fa-regular fa-image"></i>
+                                            </a>
+                                        }
+                                    </div>
                                 }
                                 else
                                 {
@@ -314,6 +351,9 @@
                                         break;
                                     case KaberSystem.Models.PartRequestStatus.Rejected:
                                         <span class="premium-badge danger"><i class="fa-solid fa-ban me-1"></i> مرفوضة</span>
+                                        break;
+                                    case KaberSystem.Models.PartRequestStatus.Installed:
+                                        <span class="premium-badge dark"><i class="fa-solid fa-check-double me-1"></i> تم التركيب</span>
                                         break;
                                 }
                             </td>
@@ -429,7 +469,7 @@
 
                 <div class="receipt-line total-line">
                     <span class="label text-dark fw-bolder">المجموع الكلي للفاتورة</span>
-                    <span class="value text-dark fw-bolder fs-5">@Model.FinalPrice.ToString("N2") ر.س</span>
+                    <span class="value text-dark fw-bolder fs-5">@actualFinalPrice.ToString("N2") ر.س</span>
                 </div>
 
                 @if (Model.AdvancePayment > 0)
@@ -568,7 +608,7 @@
     </div>
 </div>
 
-<!-- 📌 Modal طلب شراء خارجي كامل كما طلبت -->
+<!-- 📌 Modal طلب شراء خارجي -->
 <div class="modal fade" id="requestPurchaseModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content premium-modal border-0 shadow-lg">
@@ -576,6 +616,7 @@
                 <h4 class="fw-bolder text-dark m-0"><i class="fa-solid fa-cart-plus text-warning me-2"></i> طلب شراء خارجي (نواقص)</h4>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
+            <!-- 📌 التحديث: إضافة enctype لتمكين رفع الصور المتعددة -->
             <form asp-action="RequestPurchase" method="post" enctype="multipart/form-data">
                 <div class="modal-body p-4 text-start">
                     <input type="hidden" name="orderId" value="@Model.OrderId" />
@@ -600,12 +641,14 @@
                                 <option value="false" class="text-secondary">لا (مخصصة للموديل فقط)</option>
                             </select>
                         </div>
+
+                        <!-- 📌 التحديث: السماح بتحديد أكثر من صورة عن طريق (multiple) وتغيير الاسم إلى (partImages) -->
                         <div class="col-12 mt-4">
                             <div class="file-upload-wrapper text-center p-4 rounded-4 border-dashed bg-light hover-elevate">
                                 <i class="fa-solid fa-cloud-arrow-up fs-1 text-primary mb-3"></i>
                                 <h6 class="fw-bold text-dark">إرفاق صورة للقطعة التالفة</h6>
-                                <p class="text-muted small mb-3">يساعد المشتريات على جلب القطعة المطابقة تماماً (اختياري)</p>
-                                <input type="file" name="partImage" class="form-control premium-input bg-white w-75 mx-auto" accept="image/*" />
+                                <p class="text-muted small mb-3">يساعد المشتريات على جلب القطعة المطابقة تماماً (يمكنك تحديد عدة صور معاً)</p>
+                                <input type="file" name="partImages" class="form-control premium-input bg-white w-75 mx-auto" accept="image/*" multiple />
                             </div>
                         </div>
                     </div>
@@ -1114,6 +1157,16 @@
             .premium-alert.warning .icon-box {
                 background: #fef08a;
                 color: #ca8a04;
+            }
+
+        .premium-alert.danger {
+            background: #fff1f2;
+            border-color: #fecdd3;
+        }
+
+            .premium-alert.danger .icon-box {
+                background: #ffe4e6;
+                color: #e11d48;
             }
 
         .premium-alert .icon-box {

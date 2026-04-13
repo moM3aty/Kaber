@@ -81,6 +81,7 @@ namespace KaberSystem.Models
         [Required] public string ProblemDescription { get; set; }
         public string? TechnicianNotes { get; set; }
         public bool IsFeeApplied { get; set; } = true;
+        public bool IsBlacklisted { get; set; } = false;
         public OrderType Type { get; set; } = OrderType.Maintenance;
         public OrderStatus Status { get; set; } = OrderStatus.New;
         public DateTime CreatedAt { get; set; } = DateTime.Now;

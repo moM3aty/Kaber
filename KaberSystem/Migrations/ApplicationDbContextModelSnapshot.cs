@@ -228,6 +228,9 @@ namespace KaberSystem.Migrations
                     b.Property<decimal>("FinalPrice")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<bool>("IsBlacklisted")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsFeeApplied")
                         .HasColumnType("bit");
 

@@ -7,7 +7,7 @@
 <div class="sys-page-header">
     <div>
         <h1 class="sys-page-title">إنشاء طلب صيانة جديد</h1>
-        <p class="sys-page-desc">إدخال بيانات العميل، تحديد الجهاز، إرفاق صور، والموعد المطلوب لبدء دورة الصيانة</p>
+        <p class="sys-page-desc">إدخال بيانات العميل، إضافة جهاز أو أكثر، إرفاق الصور، والموعد المطلوب</p>
     </div>
     <a href="/Orders/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2">
         <i class="fa-solid fa-arrow-right"></i> عودة للقائمة
@@ -25,19 +25,26 @@
                     <div class="col-md-6">
                         <label asp-for="CustomerName" class="form-label fw-bold text-dark"><i class="fa-regular fa-user text-primary me-1"></i> اسم العميل <span class="text-danger">*</span></label>
                         <input asp-for="CustomerName" class="form-control sys-input" placeholder="أدخل اسم العميل ثلاثي" required />
-                        <span asp-validation-for="CustomerName" class="text-danger small fw-bold"></span>
                     </div>
 
                     <div class="col-md-6">
                         <label asp-for="PhoneNumber" class="form-label fw-bold text-dark"><i class="fa-solid fa-phone text-primary me-1"></i> رقم الهاتف <span class="text-danger">*</span></label>
-                        <input asp-for="PhoneNumber" class="form-control sys-input" placeholder="مثال: 0541683466" required />
-                        <span asp-validation-for="PhoneNumber" class="text-danger small fw-bold"></span>
+                        <input asp-for="PhoneNumber" class="form-control sys-input" placeholder="مثال: +966555794669" required />
                     </div>
 
-                    <div class="col-md-6">
-                        <label asp-for="DeviceName" class="form-label fw-bold text-dark"><i class="fa-solid fa-tv text-primary me-1"></i> نوع الجهاز (المنتج) <span class="text-danger">*</span></label>
-                        <input asp-for="DeviceName" class="form-control sys-input" placeholder="مثال: مكيف، غسالة، فرن كهربائي..." required />
-                        <span asp-validation-for="DeviceName" class="text-danger small fw-bold"></span>
+                    <!-- 📌 التحديث: إضافة قائمة أجهزة مرقمة ديناميكية -->
+                    <div class="col-md-12 bg-light p-3 rounded-3 border border-dashed">
+                        <label class="form-label fw-bold text-dark mb-3"><i class="fa-solid fa-tv text-primary me-1"></i> الأجهزة المراد صيانتها <span class="text-danger">*</span></label>
+                        <div id="devicesContainer">
+                            <div class="input-group mb-2">
+                                <span class="input-group-text bg-white fw-bold border-2 border-secondary">1</span>
+                                <input type="text" name="DeviceNamesList" class="form-control sys-input" placeholder="مثال: مكيف سبليت ماركة LG" required />
+                                <button type="button" class="btn btn-success fw-bold px-3 border-2" onclick="addDeviceField()" title="إضافة جهاز آخر"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                        </div>
+                        <small class="text-muted fw-bold"><i class="fa-solid fa-circle-info text-primary me-1"></i> يمكنك إضافة أكثر من جهاز في نفس الطلب عبر الضغط على علامة (+).</small>
+                        <!-- حقل مخفي لتخطي الـ Validation للموديل الأصلي -->
+                        <input type="hidden" name="DeviceName" value="Multiple Devices" />
                     </div>
 
                     <div class="col-md-6">
@@ -47,13 +54,12 @@
 
                     <div class="col-md-12">
                         <label asp-for="Address" class="form-label fw-bold text-dark"><i class="fa-solid fa-location-dot text-primary me-1"></i> العنوان بالتفصيل <span class="text-danger">*</span></label>
-                        <input asp-for="Address" class="form-control sys-input" placeholder="المدينة، الحي، الشارع، رقم المبنى (مثال: الدمام - حي الشاطئ)" required />
-                        <span asp-validation-for="Address" class="text-danger small fw-bold"></span>
+                        <input asp-for="Address" class="form-control sys-input" placeholder="المدينة، الحي، الشارع، رقم المبنى" required />
                     </div>
 
                     <div class="col-md-12">
                         <label asp-for="LocationMapUrl" class="form-label fw-bold text-dark"><i class="fa-solid fa-map text-primary me-1"></i> رابط الموقع (Google Maps) <span class="text-muted small">- اختياري</span></label>
-                        <input asp-for="LocationMapUrl" class="form-control sys-input" placeholder="انسخ والصق رابط الموقع المرسل من العميل عبر الواتساب" dir="ltr" style="text-align: left;" />
+                        <input asp-for="LocationMapUrl" class="form-control sys-input" placeholder="انسخ والصق رابط الموقع" dir="ltr" style="text-align: left;" />
                     </div>
 
                     <div class="col-12 border-top pt-3 mt-4">
@@ -87,14 +93,13 @@
 
                     <div class="col-md-12 mt-3">
                         <label asp-for="ProblemDescription" class="form-label fw-bold text-dark"><i class="fa-solid fa-triangle-exclamation text-primary me-1"></i> وصف المشكلة (الشكوى) <span class="text-danger">*</span></label>
-                        <textarea asp-for="ProblemDescription" class="form-control sys-input" rows="4" placeholder="اكتب تفاصيل العطل بدقة لتسهيل المهمة على الفني (مثال: الغسالة لا تسحب الماء، الثلاجة لا تبرد من الأسفل)..." required></textarea>
-                        <span asp-validation-for="ProblemDescription" class="text-danger small fw-bold"></span>
+                        <textarea asp-for="ProblemDescription" class="form-control sys-input" rows="4" placeholder="اكتب تفاصيل العطل بدقة لتسهيل المهمة على الفني..." required></textarea>
                     </div>
 
-                    <!-- 📌 حقل رفع صورة الجهاز/العطل -->
+                    <!-- 📌 التحديث: رفع صور متعددة -->
                     <div class="col-md-12 mt-3">
-                        <label class="form-label fw-bold text-dark"><i class="fa-solid fa-camera text-primary me-1"></i> إرفاق صورة للجهاز أو العطل <span class="text-muted small fw-normal">- اختياري لمساعدة الفني</span></label>
-                        <input type="file" name="deviceImage" class="form-control sys-input" style="padding: 12px;" accept="image/*" />
+                        <label class="form-label fw-bold text-dark"><i class="fa-solid fa-images text-primary me-1"></i> إرفاق صور للأجهزة أو الأعطال <span class="text-muted small fw-normal">- (يمكنك تحديد أكثر من صورة معاً)</span></label>
+                        <input type="file" name="deviceImages" class="form-control sys-input" style="padding: 12px;" accept="image/*" multiple />
                     </div>
 
                     <div class="col-12 mt-5 text-end border-top pt-4">
@@ -107,20 +112,43 @@
         </div>
     </div>
 
-    <!-- قسم التعليمات الجانبي للكول سنتر -->
+    <!-- قسم التعليمات الجانبي -->
     <div class="col-lg-4">
         <div class="sys-card bg-light border-0 h-100" style="border-right: 4px solid var(--sys-primary) !important;">
             <h5 class="fw-bold mb-4 text-primary"><i class="fa-solid fa-circle-info"></i> تعليمات الكول سنتر</h5>
             <ul class="list-unstyled lh-lg text-muted fw-bold">
-                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>تأكد من <b>(نوع الجهاز)</b> والماركة لتقدير العطل وتوفير القطع المسبقة.</span></li>
-                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>حدد <b>(الموعد المطلوب)</b> بناءً على رغبة العميل ليتمكن الفني من جدولته.</span></li>
-                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>لا تنسَ إخبار العميل بـ <b>(رسوم الفحص)</b> المبدئية.</span></li>
-                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>إذا كان الطلب (ضمان أو غسيل) قم بتحديد خيار نوع الطلب بشكل صحيح.</span></li>
-                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-camera text-primary ms-2 mt-1 fs-5"></i> <span>اطلب من العميل إرسال <b>صورة للمشكلة</b> وارفعها مع الطلب لمساعدة الفني.</span></li>
+                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>تأكد من <b>(أنواع الأجهزة)</b> والماركة، ويمكنك إضافة عدة أجهزة عبر الزر الأخضر (+).</span></li>
+                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>حدد الموعد المطلوب بناءً على رغبة العميل ليتمكن الفني من جدولته.</span></li>
+                <li class="mb-3 d-flex align-items-start"><i class="fa-solid fa-check-circle text-success ms-2 mt-1 fs-5"></i> <span>اطلب من العميل إرسال <b>صور للمشكلة</b>، ويمكنك تحديد أكثر من صورة لرفعها مرة واحدة لتوضيح الحالة للفني.</span></li>
             </ul>
         </div>
     </div>
 </div>
+
+<script>
+    let deviceCount = 1;
+    function addDeviceField() {
+        deviceCount++;
+        const container = document.getElementById('devicesContainer');
+        const newDiv = document.createElement('div');
+        newDiv.className = 'input-group mb-2';
+        newDiv.innerHTML = `
+            <span class="input-group-text bg-white fw-bold border-2 border-secondary">${deviceCount}</span>
+            <input type="text" name="DeviceNamesList" class="form-control sys-input" placeholder="الجهاز ${deviceCount}" required />
+            <button type="button" class="btn btn-danger fw-bold px-3 border-2" onclick="this.parentElement.remove(); renumberDevices();"><i class="fa-solid fa-trash"></i></button>
+        `;
+        container.appendChild(newDiv);
+    }
+
+    function renumberDevices() {
+        const container = document.getElementById('devicesContainer');
+        const spans = container.querySelectorAll('.input-group-text');
+        deviceCount = spans.length;
+        spans.forEach((span, index) => {
+            span.innerText = index + 1;
+        });
+    }
+</script>
 
 <style>
     .sys-input {
@@ -141,6 +169,6 @@
         }
 
     .input-group .sys-input {
-        border-radius: 0 12px 12px 0;
+        border-radius: 0;
     }
 </style>
