@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace KaberSystem.Controllers
 {
+    [Authorize(Roles = "Admin,CallCenter,Technicians,Orders")]
     public class TechniciansController : Controller
     {
         private readonly ApplicationDbContext _context;

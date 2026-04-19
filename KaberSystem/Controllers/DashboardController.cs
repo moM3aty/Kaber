@@ -1,14 +1,16 @@
 ﻿// مسار الملف: Controllers/DashboardController.cs
-using System;
-using System.Linq;
-using System.Threading.Tasks;
+using KaberSystem.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using KaberSystem.Models;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace KaberSystem.Controllers
 {
+    [Authorize(Roles = "Admin,Reports,Accounting")]
     public class DashboardController : Controller
     {
         private readonly ApplicationDbContext _context;

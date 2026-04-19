@@ -6,16 +6,20 @@
     var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
     var userName = User.Identity?.Name ?? "الموظف";
+
+    // عرض الدور الأساسي الأول للمستخدم في البروفايل
     var userRole = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "Guest";
 
     int techNewOrdersCount = 0;
     int adminReadyPartsCount = 0;
 
-    if (userRole == "Technician")
+    // 📌 التحديث: استخدام User.IsInRole لدعم الصلاحيات الإضافية في التنبيهات (Badges)
+    if (User.IsInRole("Technician"))
     {
         techNewOrdersCount = DbContext.Orders.Count(o => o.Technician.Name == userName && (o.Status == OrderStatus.Assigned || o.Status == OrderStatus.Returned));
     }
-    else if (userRole == "Admin" || userRole == "CallCenter")
+
+    if (User.IsInRole("Admin") || User.IsInRole("CallCenter") || User.IsInRole("Orders"))
     {
         adminReadyPartsCount = DbContext.OrderPartRequests.Count(pr => pr.Status == PartRequestStatus.ReadyForInstallation);
     }
@@ -201,29 +205,37 @@
                 </a>
 
                 <div class="top-icon-nav flex-grow-1 justify-content-start justify-content-lg-center">
-                    @if (userRole == "Admin" || userRole == "Accounting")
+
+                    <!-- 📌 1. رؤية التقارير والإحصائيات -->
+                    @if (User.IsInRole("Admin") || User.IsInRole("Reports"))
                     {
                         <a href="/Dashboard" class="nav-app-icon @(currentController == "Dashboard" ? "active" : "")"><i class="fa-solid fa-chart-pie"></i><span>الرئيسية</span></a>
                     }
 
-                    <a href="/Orders" class="nav-app-icon @(currentController == "Orders" ? "active" : "")">
-                        <i class="fa-solid fa-headset"></i><span>الطلبات</span>
-                        @if (techNewOrdersCount > 0 && currentController != "Orders")
-                        {
-                            <span class="sys-badge-count pulse-danger">@techNewOrdersCount</span>
-                        }
-                        @if (adminReadyPartsCount > 0 && currentController != "Orders")
-                        {
-                            <span class="sys-badge-count bg-success-badge pulse-success">@adminReadyPartsCount</span>
-                        }
-                    </a>
+                    <!-- 📌 2. إدارة طلبات الصيانة -->
+                    @if (User.IsInRole("Admin") || User.IsInRole("CallCenter") || User.IsInRole("Technician") || User.IsInRole("Orders"))
+                    {
+                        <a href="/Orders" class="nav-app-icon @(currentController == "Orders" ? "active" : "")">
+                            <i class="fa-solid fa-headset"></i><span>الطلبات</span>
+                            @if (techNewOrdersCount > 0 && currentController != "Orders")
+                            {
+                                <span class="sys-badge-count pulse-danger">@techNewOrdersCount</span>
+                            }
+                            @if (adminReadyPartsCount > 0 && currentController != "Orders")
+                            {
+                                <span class="sys-badge-count bg-success-badge pulse-success">@adminReadyPartsCount</span>
+                            }
+                        </a>
+                    }
 
-                    @if (userRole == "Admin" || userRole == "CallCenter")
+                    <!-- 📌 3. إدارة الفنيين -->
+                    @if (User.IsInRole("Admin") || User.IsInRole("CallCenter") || User.IsInRole("Technicians"))
                     {
                         <a href="/Technicians" class="nav-app-icon @(currentController == "Technicians" ? "active" : "")"><i class="fa-solid fa-users-gear"></i><span>الفنيين</span></a>
                     }
 
-                    @if (userRole == "Admin" || userRole == "Store")
+                    <!-- 📌 4. إدارة المخزون والعهد -->
+                    @if (User.IsInRole("Admin") || User.IsInRole("Store") || User.IsInRole("Inventory"))
                     {
                         <div class="dropdown">
                             <a href="#" class="nav-app-icon @(currentController == "Inventory" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span></a>
@@ -234,14 +246,15 @@
                         </div>
                     }
 
-                    @if (userRole == "Admin" || userRole.Contains("Purchasing") || userRole == "Store")
+                    <!-- 📌 5. دورة المشتريات والتسعير -->
+                    @if (User.IsInRole("Admin") || User.IsInRole("Store") || User.IsInRole("Purchasing"))
                     {
                         <div class="dropdown">
                             <a href="#" class="nav-app-icon @(currentController == "Purchases" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-cart-shopping"></i><span>المشتريات</span></a>
                             <ul class="dropdown-menu text-end">
                                 <li><a class="dropdown-item" href="/Purchases"><i class="fa-solid fa-truck-fast text-primary me-2"></i> سجل المشتريات</a></li>
                                 <li><a class="dropdown-item" href="/Purchases/PartRequests"><i class="fa-solid fa-screwdriver-wrench text-warning me-2"></i> نواقص الفنيين</a></li>
-                                @if (userRole == "Admin" || userRole == "PurchasingManager")
+                                @if (User.IsInRole("Admin") || User.IsInRole("Purchasing"))
                                 {
                                     <li><a class="dropdown-item" href="/Purchases/Pricing"><i class="fa-solid fa-tags text-success me-2"></i> تسعير المنتجات</a></li>
                                 }
@@ -249,7 +262,8 @@
                         </div>
                     }
 
-                    @if (userRole == "Admin" || userRole == "Accounting")
+                    <!-- 📌 6. الفواتير والحسابات -->
+                    @if (User.IsInRole("Admin") || User.IsInRole("Accounting"))
                     {
                         <div class="dropdown">
                             <a href="#" class="nav-app-icon @(currentController == "Accounting" || currentController == "Safe" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-calculator"></i><span>الحسابات</span></a>
@@ -264,7 +278,8 @@
                         </div>
                     }
 
-                    @if (userRole == "Admin" || userRole == "HR")
+                    <!-- 📌 7. إدارة الموارد البشرية والرواتب -->
+                    @if (User.IsInRole("Admin") || User.IsInRole("HR"))
                     {
                         <div class="dropdown">
                             <a href="#" class="nav-app-icon @(currentController == "HR" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-id-card"></i><span>HR</span></a>
@@ -276,12 +291,14 @@
                         </div>
                     }
 
-                    @if (userRole == "Admin" || userRole == "CallCenter")
+                    <!-- (تابع لإدارة الطلبات - العملاء) -->
+                    @if (User.IsInRole("Admin") || User.IsInRole("CallCenter") || User.IsInRole("Orders"))
                     {
                         <a href="/Customers" class="nav-app-icon @(currentController == "Customers" ? "active" : "")"><i class="fa-solid fa-users-viewfinder"></i><span>العملاء</span></a>
                     }
 
-                    @if (userRole == "Admin")
+                    <!-- 📌 8. الإدارة (الأدمن فقط) -->
+                    @if (User.IsInRole("Admin"))
                     {
                         <div class="dropdown">
                             <a href="#" class="nav-app-icon @(currentController == "Users" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-shield-halved"></i><span>الإدارة</span></a>

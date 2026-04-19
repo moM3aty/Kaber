@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace KaberSystem.Controllers
 {
-    [Authorize(Roles = "Admin,Store")]
+    [Authorize(Roles = "Admin,Store,Inventory")]
     public class InventoryController : Controller
     {
         private readonly ApplicationDbContext _context;

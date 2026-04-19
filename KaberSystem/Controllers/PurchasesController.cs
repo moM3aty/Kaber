@@ -12,7 +12,7 @@ using System.Collections.Generic;
 
 namespace KaberSystem.Controllers
 {
-    [Authorize(Roles = "Admin,PurchasingManager,PurchasingRep,Store")]
+    [Authorize(Roles = "Admin,PurchasingManager,PurchasingRep,Store,Purchasing")]
     public class PurchasesController : Controller
     {
         private readonly ApplicationDbContext _context;
