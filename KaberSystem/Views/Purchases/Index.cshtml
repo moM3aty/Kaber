@@ -1,57 +1,61 @@
-﻿@model IEnumerable<KaberSystem.Models.PurchaseOrder>
+﻿<!-- مسار الملف: Views/Purchases/Index.cshtml -->
+@model IEnumerable<KaberSystem.Models.PurchaseOrder>
 @{
     ViewData["Title"] = "إدارة المشتريات";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 }
 
-<div class="sys-page-header">
+<div class="sys-page-header fade-in-up">
     <div>
-        <h1 class="sys-page-title">سجل المشتريات الواردة</h1>
+        <h1 class="sys-page-title text-primary"><i class="fa-solid fa-cart-shopping me-2"></i> سجل المشتريات الواردة</h1>
         <p class="sys-page-desc">تسجيل طلبات الشراء للمخزن واعتماد استلامها لتُضاف للرصيد</p>
     </div>
     <div class="d-flex gap-2">
-        <a href="/Purchases/PartRequests" class="btn btn-warning fw-bold text-dark border-2 rounded-3 shadow-sm px-4">
+        <a href="/Purchases/PartRequests" class="btn btn-warning fw-bold text-dark border-2 rounded-pill shadow-sm px-4 hover-elevate">
             <i class="fa-solid fa-list-check"></i> طلبات النواقص (من الفنيين)
         </a>
-        <a href="/Purchases/Create" class="sys-btn sys-btn-primary">
+        <a href="/Purchases/Create" class="btn btn-primary fw-bold text-white border-2 rounded-pill shadow-sm px-4 hover-elevate">
             <i class="fa-solid fa-cart-plus"></i> تسجيل مشتريات جديدة
         </a>
     </div>
 </div>
 
-<div class="sys-card">
-    <div class="table-responsive">
-        <table class="table table-hover align-middle text-center sys-table w-100">
-            <thead class="table-light">
+<div class="premium-card fade-in-up" style="animation-delay: 0.1s;">
+    <div class="table-responsive p-3">
+        <table class="table premium-table align-middle text-center mb-0 w-100">
+            <thead class="bg-light text-muted small fw-bold text-uppercase">
                 <tr>
-                    <th>رقم العملية</th>
-                    <th>اسم الصنف (قطعة الغيار)</th>
-                    <th>الكمية المشتراة</th>
-                    <th>سعر الشراء (للوحدة)</th>
+                    <th class="text-start ps-4">رقم العملية</th>
+                    <th class="text-start">اسم الصنف (قطعة الغيار)</th>
+                    <th>الكمية</th>
+                    <th>سعر الوحدة</th>
                     <th>الإجمالي</th>
                     <th>تاريخ الشراء</th>
-                    <th>حالة الاستلام (المخزن)</th>
+                    <th>حالة الاستلام</th>
                     <th>إجراء أمين المخزن</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var item in Model)
                 {
-                    <tr>
-                        <td><span class="fw-bold px-2 py-1 bg-light border rounded text-muted">PO-#@item.PurchaseId</span></td>
-                        <td class="fw-bold text-dark text-start">@item.ItemName</td>
-                        <td class="fw-bold fs-5">@item.Quantity</td>
-                        <td class="text-danger fw-bold">@item.PurchasePrice <span class="small">ر.س</span></td>
-                        <td class="text-danger fw-bold fs-6 bg-light border-start border-end">@(item.Quantity* item.PurchasePrice) <span class="small">ر.س</span></td>
-                        <td dir="ltr" class="text-muted fw-bold">@item.PurchaseDate.ToString("yyyy-MM-dd")</td>
+                    <tr style="border-bottom: 1px solid #f8f9fa;">
+                        <td class="text-start ps-4">
+                            <span class="fw-bold px-2 py-1 bg-light border rounded text-muted shadow-sm">PO-#@item.PurchaseId</span>
+                        </td>
+                        <td class="fw-bolder text-dark text-start">@item.ItemName</td>
+
+                        <td class="fw-bold fs-5 text-dark">@item.Quantity</td>
+                        <td class="text-danger fw-bold">@item.PurchasePrice.ToString("N2") <span class="small text-muted">ر.س</span></td>
+                        <td class="text-danger fw-bolder fs-6 bg-light border-start border-end">@( (item.Quantity * item.PurchasePrice).ToString("N2") ) <span class="small text-muted">ر.س</span></td>
+                        <td dir="ltr" class="text-muted fw-bold small">@item.PurchaseDate.ToString("yyyy-MM-dd")</td>
                         <td>
                             @if (item.IsReceivedByStore)
                             {
-                                <span class="badge bg-success rounded-pill px-3 py-2 fs-6"><i class="fa-solid fa-check-double me-1"></i> تم الاستلام</span>
+                                <span class="premium-badge success shadow-sm"><i class="fa-solid fa-check-double me-1"></i> تم الاستلام</span>
                             }
                             else
                             {
-                                <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fw-bold"><i class="fa-solid fa-truck-fast me-1"></i> في الطريق</span>
+                                <span class="premium-badge warning shadow-sm"><i class="fa-solid fa-truck-fast me-1"></i> في الطريق</span>
                             }
                         </td>
                         <td>
@@ -59,15 +63,26 @@
                             {
                                 <form asp-action="MarkAsReceived" method="post" class="d-inline">
                                     <input type="hidden" name="id" value="@item.PurchaseId" />
-                                    <button type="submit" class="btn btn-sm btn-primary fw-bold px-3 rounded-3 shadow-sm hover-elevate">
-                                        <i class="fa-solid fa-box-open"></i> تأكيد وإضافة للمخزن
+                                    <button type="submit" class="btn btn-sm btn-primary fw-bold px-3 rounded-pill shadow-sm hover-elevate" onclick="return confirm('هل تأكدت من استلام الكمية وإضافتها للمخزن الفعلي؟');">
+                                        <i class="fa-solid fa-box-open me-1"></i> تأكيد وإضافة
                                     </button>
                                 </form>
                             }
                             else
                             {
-                                <span class="text-success small fw-bold"><i class="fa-solid fa-lock text-success me-1"></i> تمت الإضافة للرصيد</span>
+                                <span class="text-success small fw-bold"><i class="fa-solid fa-lock text-success me-1"></i> بالرصيد</span>
                             }
+                        </td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center py-5">
+                            <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 80px; height: 80px;">
+                                <i class="fa-solid fa-cart-shopping fs-2 text-muted opacity-50"></i>
+                            </div>
+                            <h6 class="text-muted fw-bold m-0">لا توجد عمليات شراء مسجلة حالياً.</h6>
                         </td>
                     </tr>
                 }
@@ -77,10 +92,141 @@
 </div>
 
 @section Scripts {
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <script>
-            Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonText: 'حسناً', confirmButtonColor: '#f1950b' });
-        </script>
-    }
+    <script>
+        @if (TempData["SuccessMessage"] != null)
+        {
+                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                <text>
+                Swal.fire({
+                    icon: 'success',
+                    title: 'عملية ناجحة',
+                    text: @Html.Raw(msg),
+                    confirmButtonText: 'حسناً',
+                    confirmButtonColor: '#198754',
+                    customClass: { popup: 'premium-modal' }
+                });
+                </text>
+        }
+
+        @if (TempData["ErrorMessage"] != null)
+        {
+                var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
+                <text>
+                Swal.fire({
+                    icon: 'error',
+                    title: 'تنبيه',
+                    text: @Html.Raw(errMsg),
+                    confirmButtonColor: '#dc3545',
+                    customClass: { popup: 'premium-modal' }
+                });
+                </text>
+        }
+    </script>
 }
+
+<style>
+    /* Premium Dashboard UI Styles */
+    :root {
+        --prem-bg: #f8f9fc;
+        --prem-surface: #ffffff;
+        --prem-border: #e2e8f0;
+        --prem-text: #1e293b;
+        --prem-muted: #64748b;
+        --prem-primary: #f1950b;
+        --prem-radius: 20px;
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .premium-card {
+        background: var(--prem-surface);
+        border-radius: var(--prem-radius);
+        border: 1px solid var(--prem-border);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        overflow: hidden;
+    }
+
+    .premium-table th {
+        font-weight: 800;
+        color: var(--prem-muted);
+        border-bottom: 2px solid var(--prem-border) !important;
+        padding: 16px;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+    }
+
+    .premium-table td {
+        padding: 16px;
+        vertical-align: middle;
+    }
+
+    .premium-table tr:hover td {
+        background-color: #f8fafc;
+    }
+
+    .premium-badge {
+        padding: 6px 16px;
+        border-radius: 30px;
+        font-size: 0.85rem;
+        font-weight: 800;
+    }
+
+        .premium-badge.default {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+
+        .premium-badge.primary {
+            background: rgba(241,149,11,0.1);
+            color: var(--prem-primary);
+            border: 1px solid rgba(241,149,11,0.2);
+        }
+
+        .premium-badge.success {
+            background: #ecfdf5;
+            color: #198754;
+            border: 1px solid #d1e7dd;
+        }
+
+        .premium-badge.warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .premium-badge.danger {
+            background: #f8d7da;
+            color: #842029;
+            border: 1px solid #f5c2c7;
+        }
+
+    .hover-elevate {
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+        cursor: pointer;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
+
+    .premium-modal {
+        border-radius: 24px !important;
+        overflow: hidden;
+    }
+</style>

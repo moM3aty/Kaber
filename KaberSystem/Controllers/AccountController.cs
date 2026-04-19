@@ -1,6 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Security.Claims;
+﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +26,6 @@ namespace KaberSystem.Controllers
         [HttpPost]
         public async Task<IActionResult> Login(string username, string password)
         {
-            // 📌 قراءة البيانات من قاعدة البيانات بدلاً من القاموس الثابت
             var user = await _context.SystemUsers
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower() && u.Password == password);
 
@@ -33,8 +34,20 @@ namespace KaberSystem.Controllers
                 var claims = new List<Claim>
                 {
                     new Claim(ClaimTypes.Name, user.Username),
-                    new Claim(ClaimTypes.Role, user.Role)
+                    new Claim(ClaimTypes.Role, user.Role) // الدور الأساسي
                 };
+
+                // 📌 التحديث السحري الجذري هنا: حقن الصلاحيات الإضافية كأدوار (Roles) في جلسة المستخدم
+                if (!string.IsNullOrEmpty(user.Permissions))
+                {
+                    // تقسيم الصلاحيات (التي تم حفظها مفصولة بفاصلة)
+                    var extraPermissions = user.Permissions.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var perm in extraPermissions)
+                    {
+                        // إضافة كل صلاحية إضافية كـ Role جديد للمتصفح
+                        claims.Add(new Claim(ClaimTypes.Role, perm.Trim()));
+                    }
+                }
 
                 var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
                 var principal = new ClaimsPrincipal(identity);
