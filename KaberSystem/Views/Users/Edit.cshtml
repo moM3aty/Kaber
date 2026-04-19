@@ -68,50 +68,50 @@
                             <span class="input-group-text bg-light fw-bold">ر.س</span>
                         </div>
                     </div>
-                    <!-- 📌 نظام الصلاحيات المرنة المحددة مسبقاً (تمت إضافة الـ HR) -->
+                    <!-- 📌 نظام الصلاحيات المرنة المحددة مسبقاً (تم تعديل الـ value والـ Contains لتطابق الكنترولر) -->
                     <div class="col-12 mt-4">
                         <h5 class="fw-bold border-bottom pb-2 text-dark"><i class="fa-solid fa-user-shield text-warning me-2"></i> الصلاحيات المخصصة (المرنة)</h5>
                         <div class="row g-3 bg-light p-3 rounded-4 border mt-2">
                             <div class="col-md-4">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageOrders" id="pe1" @(currentPermissions.Contains("ManageOrders") ? "checked" : "")>
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="Orders" id="pe1" @(currentPermissions.Contains("Orders") ? "checked" : "")>
                                     <label class="form-check-label fw-bold" for="pe1">إدارة طلبات الصيانة</label>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageInventory" id="pe2" @(currentPermissions.Contains("ManageInventory") ? "checked" : "")>
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="Inventory" id="pe2" @(currentPermissions.Contains("Inventory") ? "checked" : "")>
                                     <label class="form-check-label fw-bold" for="pe2">إدارة المخزون والعهد</label>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManagePurchases" id="pe3" @(currentPermissions.Contains("ManagePurchases") ? "checked" : "")>
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="Purchasing" id="pe3" @(currentPermissions.Contains("Purchasing") ? "checked" : "")>
                                     <label class="form-check-label fw-bold" for="pe3">دورة المشتريات والتسعير</label>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageInvoices" id="pe4" @(currentPermissions.Contains("ManageInvoices") ? "checked" : "")>
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="Accounting" id="pe4" @(currentPermissions.Contains("Accounting") ? "checked" : "")>
                                     <label class="form-check-label fw-bold" for="pe4">الفواتير والحسابات</label>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageTechnicians" id="pe5" @(currentPermissions.Contains("ManageTechnicians") ? "checked" : "")>
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="Technicians" id="pe5" @(currentPermissions.Contains("Technicians") ? "checked" : "")>
                                     <label class="form-check-label fw-bold" for="pe5">إدارة الفنيين</label>
                                 </div>
                             </div>
                             <!-- 📌 الصلاحية المرنة للـ HR -->
                             <div class="col-md-4">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ManageHR" id="pe7" @(currentPermissions.Contains("ManageHR") ? "checked" : "")>
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="HR" id="pe7" @(currentPermissions.Contains("HR") ? "checked" : "")>
                                     <label class="form-check-label fw-bold text-success" for="pe7">إدارة الموارد البشرية والرواتب</label>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="ViewReports" id="pe6" @(currentPermissions.Contains("ViewReports") ? "checked" : "")>
+                                    <input class="form-check-input" type="checkbox" name="SelectedPermissions" value="Reports" id="pe6" @(currentPermissions.Contains("Reports") ? "checked" : "")>
                                     <label class="form-check-label fw-bold text-primary" for="pe6">رؤية التقارير</label>
                                 </div>
                             </div>
