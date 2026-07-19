@@ -1,0 +1,134 @@
+﻿<!-- مسار الملف: Views/Inventory/Stocktake.cshtml -->
+@model IEnumerable<KaberSystem.Models.SparePart>
+@{
+    ViewData["Title"] = "عمليات الجرد الفعلي";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header fade-in-up">
+    <div>
+        <h1 class="sys-page-title text-success"><i class="fa-solid fa-clipboard-check me-2"></i> الجرد الفعلي للمخزون</h1>
+        <p class="sys-page-desc">مقارنة الرصيد الدفتري في النظام مع الرصيد الفعلي في الرفوف لتسوية العجز آلياً</p>
+    </div>
+    <a href="/Inventory/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2 hover-elevate">
+        <i class="fa-solid fa-arrow-right"></i> عودة للمستودع
+    </a>
+</div>
+
+<div class="premium-card fade-in-up" style="animation-delay: 0.1s;">
+    <div class="table-responsive p-3">
+        <table class="table premium-table align-middle text-center mb-0 w-100 sys-table">
+            <thead class="bg-light text-muted small fw-bold text-uppercase">
+                <tr>
+                    <th class="text-start ps-4">الصنف والباركود</th>
+                    <th>تكلفة القطعة</th>
+                    <th>الرصيد الدفتري (النظام)</th>
+                    <th style="width: 280px;">الرصيد الفعلي في الرف (الجرد)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model)
+                {
+                    <tr style="border-bottom: 1px solid #f8f9fa;">
+                        <td class="text-start ps-4">
+                            <span class="fw-bolder text-dark d-block mb-1">@item.Name</span>
+                            <span class="badge bg-dark rounded-pill"><i class="fa-solid fa-barcode me-1"></i> @item.PartCode</span>
+                        </td>
+                        <td class="text-danger fw-bold">@item.PurchasePrice <span class="small">ر.س</span></td>
+                        <td>
+                            <span class="badge bg-light text-dark border px-3 py-2 fs-6 shadow-sm">@item.MainStockQuantity</span>
+                        </td>
+                        <td>
+                            <form asp-action="SubmitStocktake" method="post" class="d-flex align-items-center gap-2 m-0 p-0" onsubmit="return confirm('تأكيد الجرد؟ إذا كان هناك عجز سيتم تسجيله كخسارة فوراً.');">
+                                <input type="hidden" name="partId" value="@item.PartId" />
+                                <input type="number" name="actualQuantity" class="form-control text-center fw-bolder border-primary" style="width: 100px;" value="@item.MainStockQuantity" min="0" required />
+                                <button type="submit" class="btn btn-primary fw-bold shadow-sm"><i class="fa-solid fa-check"></i> تسوية</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    :root {
+        --prem-surface: #ffffff;
+        --prem-border: #e2e8f0;
+        --prem-text: #1e293b;
+        --prem-muted: #64748b;
+        --prem-primary: #f1950b;
+        --prem-radius: 20px;
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .premium-card {
+        background: var(--prem-surface);
+        border-radius: var(--prem-radius);
+        border: 1px solid var(--prem-border);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        overflow: hidden;
+    }
+
+    .premium-table th {
+        font-weight: 800;
+        color: var(--prem-muted);
+        border-bottom: 2px solid var(--prem-border) !important;
+        padding: 16px;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+    }
+
+    .premium-table td {
+        padding: 16px;
+        vertical-align: middle;
+    }
+
+    .premium-table tr:hover td {
+        background-color: #f8fafc;
+    }
+
+    .hover-elevate {
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+        cursor: pointer;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
+</style>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('.sys-table').DataTable({
+                "language": { "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/ar.json" },
+                "pageLength": 50,
+                "ordering": false // ترك الترتيب الافتراضي (الكميات فوق الصفر أولاً)
+            });
+        });
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                <text>Swal.fire({ icon: 'success', title: 'تمت التسوية', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'rounded-4' } });</text>
+        }
+    </script>
+}

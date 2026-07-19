@@ -36,10 +36,9 @@ namespace KaberSystem.Controllers
             });
         }
 
-        // 📌 التحديث الجذري: دالة خصم قيمة الشراء وتطبيق لوجيك "تمويل العجز" من الخزنة العامة
+        // دالة خصم قيمة الشراء وتطبيق لوجيك "تمويل العجز" من الخزنة العامة
         private async Task DeductPurchaseCostAsync(decimal totalCost, string itemName, PaymentMethod paymentMethod)
         {
-            // نحسب رصيد خزنة المشتريات الحالي للطريقة اللي الدفع بيها (لو كاش نشوف كاش المشتريات، لو شبكة نشوف بنك المشتريات)
             var purchasingTransactions = await _context.SafeTransactions
                 .Where(s => s.TargetSafe == SafeType.Purchasing && s.PaymentMethod == paymentMethod)
                 .ToListAsync();
@@ -47,7 +46,6 @@ namespace KaberSystem.Controllers
             decimal purchasingBalance = purchasingTransactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount)
                                       - purchasingTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
 
-            // 1. لو رصيد المشتريات يغطي التكلفة بالكامل -> يتم الخصم منه فوراً
             if (purchasingBalance >= totalCost)
             {
                 _context.SafeTransactions.Add(new SafeTransaction
@@ -63,10 +61,8 @@ namespace KaberSystem.Controllers
             }
             else
             {
-                // 2. لو رصيد المشتريات لا يكفي -> نسحب كل المتاح فيه، وناخد الباقي "سلفة" من الأرباح العامة
                 decimal deficit = totalCost - purchasingBalance;
 
-                // أ. سحب وتصفير ما تبقى في خزنة المشتريات (إن وجد)
                 if (purchasingBalance > 0)
                 {
                     _context.SafeTransactions.Add(new SafeTransaction
@@ -81,20 +77,34 @@ namespace KaberSystem.Controllers
                     });
                 }
 
-                // ب. سحب العجز من الخزنة العامة كتمويل
                 _context.SafeTransactions.Add(new SafeTransaction
                 {
                     Amount = deficit,
                     Type = SafeTransactionType.DepositToBank,
-                    TargetSafe = SafeType.General, // 🌟 العجز يُخصم من أرباح المؤسسة كتمويل
+                    TargetSafe = SafeType.General,
                     PaymentMethod = paymentMethod,
                     Description = $"سلفة لتمويل عجز المشتريات لشراء: {itemName}",
                     RecordedBy = User.Identity?.Name ?? "System",
                     Date = DateTime.Now
                 });
-
-                LogAction("تمويل عجز مشتريات", $"تم سحب سلفة بقيمة {deficit} من الخزنة العامة لإتمام شراء {itemName}");
             }
+        }
+
+        // 📌 التحديث: دالة لإرجاع المبالغ المحسومة مسبقاً للخزنة عند الحذف أو التعديل
+        private void RefundPurchaseCost(decimal totalCost, string itemName, PaymentMethod paymentMethod)
+        {
+            // إرجاع الأموال إلى الخزنة العامة (لأننا لا نعلم كم سحبنا من كل خزنة بالضبط، فالأضمن إعادتها للعامة أو المشتريات)
+            // سنعيدها لخزنة المشتريات لتكون متاحة للشراء مجدداً
+            _context.SafeTransactions.Add(new SafeTransaction
+            {
+                Amount = totalCost,
+                Type = SafeTransactionType.Income,
+                TargetSafe = SafeType.Purchasing,
+                PaymentMethod = paymentMethod,
+                Description = $"استرداد قيمة شراء (تعديل/إلغاء فاتورة): {itemName}",
+                RecordedBy = User.Identity?.Name ?? "System",
+                Date = DateTime.Now
+            });
         }
 
         [Authorize(Roles = "Admin,PurchasingManager,PurchasingRep,Store")]
@@ -115,25 +125,116 @@ namespace KaberSystem.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,PurchasingRep")]
-        public async Task<IActionResult> Create([Bind("ItemName,Quantity,PurchasePrice,SupplierName,SupplierPhone,SupplierLocation,PaymentMethod")] PurchaseOrder purchaseOrder)
+        public async Task<IActionResult> Create([Bind("ItemName,Quantity,PurchasePrice,TaxAmount,SupplierName,SupplierPhone,SupplierLocation,PaymentMethod")] PurchaseOrder purchaseOrder, IFormFile? invoiceReceipt)
         {
             if (ModelState.IsValid)
             {
                 purchaseOrder.PurchaseDate = DateTime.Now;
                 purchaseOrder.IsReceivedByStore = false;
 
-                // 📌 استدعاء دالة الخصم الذكية
-                decimal totalPurchaseCost = purchaseOrder.Quantity * purchaseOrder.PurchasePrice;
+
+                // 📌 رفع وحفظ صورة الفاتورة إن وجدت
+                if (invoiceReceipt != null && invoiceReceipt.Length > 0)
+                {
+                    string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "purchases");
+                    if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+
+                    string uniqueFileName = Guid.NewGuid().ToString() + "_" + invoiceReceipt.FileName;
+                    string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+
+                    using (var fileStream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await invoiceReceipt.CopyToAsync(fileStream);
+                    }
+                    purchaseOrder.InvoiceReceiptPath = "/uploads/purchases/" + uniqueFileName;
+                }
+
+                // 📌 التحديث: إضافة قيمة الضريبة اليدوية إلى التكلفة الإجمالية
+                decimal totalPurchaseCost = (purchaseOrder.Quantity * purchaseOrder.PurchasePrice) + purchaseOrder.TaxAmount;
                 await DeductPurchaseCostAsync(totalPurchaseCost, purchaseOrder.ItemName, purchaseOrder.PaymentMethod);
 
                 _context.Add(purchaseOrder);
-                LogAction("إنشاء أمر شراء", $"تم طلب شراء {purchaseOrder.Quantity} من {purchaseOrder.ItemName} عبر {purchaseOrder.PaymentMethod}");
+                LogAction("إنشاء أمر شراء", $"تم طلب شراء {purchaseOrder.Quantity} من {purchaseOrder.ItemName} بتكلفة إجمالية (مع الضريبة) {totalPurchaseCost} عبر {purchaseOrder.PaymentMethod}");
                 await _context.SaveChangesAsync();
 
                 TempData["SuccessMessage"] = "تم تسجيل المشتريات وخصم التكلفة بنجاح.";
                 return RedirectToAction(nameof(Index));
             }
             return View(purchaseOrder);
+        }
+
+        // 📌 التحديث: شاشة التعديل للعمليات الشرائية
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Edit(int? id)
+        {
+            if (id == null) return NotFound();
+            var purchase = await _context.PurchaseOrders.FindAsync(id);
+            if (purchase == null) return NotFound();
+
+            return View(purchase);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Edit(int id, PurchaseOrder updatedPurchase, IFormFile? invoiceReceipt)
+        {
+            if (id != updatedPurchase.PurchaseId) return NotFound();
+
+            var oldPurchase = await _context.PurchaseOrders.FindAsync(id);
+            if (oldPurchase == null) return NotFound();
+
+            // 1. حساب التكاليف القديمة والجديدة
+            decimal oldTotalCost = oldPurchase.Quantity * oldPurchase.PurchasePrice;
+            decimal newTotalCost = updatedPurchase.Quantity * updatedPurchase.PurchasePrice;
+
+            // 2. إذا تم تغيير التكلفة أو طريقة الدفع، نقوم باسترداد القديم وخصم الجديد
+            if (oldTotalCost != newTotalCost || oldPurchase.PaymentMethod != updatedPurchase.PaymentMethod)
+            {
+                RefundPurchaseCost(oldTotalCost, oldPurchase.ItemName, oldPurchase.PaymentMethod);
+                await DeductPurchaseCostAsync(newTotalCost, updatedPurchase.ItemName, updatedPurchase.PaymentMethod);
+            }
+
+            // 3. إذا تم تغيير الكمية وكان الصنف مستلماً بالمخزن، يجب تعديل الرصيد
+            if (oldPurchase.IsReceivedByStore)
+            {
+                var sparePart = await _context.SpareParts.FirstOrDefaultAsync(p => p.Barcode == oldPurchase.Barcode || p.Name == oldPurchase.ItemName);
+                if (sparePart != null)
+                {
+                    // إرجاع الكمية القديمة ثم إضافة الجديدة
+                    sparePart.MainStockQuantity -= oldPurchase.Quantity;
+                    sparePart.MainStockQuantity += updatedPurchase.Quantity;
+                    sparePart.PurchasePrice = updatedPurchase.PurchasePrice; // تحديث السعر الجديد
+                    _context.Update(sparePart);
+                }
+            }
+
+            // 4. تحديث البيانات الأساسية
+            oldPurchase.ItemName = updatedPurchase.ItemName;
+            oldPurchase.Quantity = updatedPurchase.Quantity;
+            oldPurchase.PurchasePrice = updatedPurchase.PurchasePrice;
+            oldPurchase.SupplierName = updatedPurchase.SupplierName;
+            oldPurchase.SupplierPhone = updatedPurchase.SupplierPhone;
+            oldPurchase.SupplierLocation = updatedPurchase.SupplierLocation;
+            oldPurchase.PaymentMethod = updatedPurchase.PaymentMethod;
+
+            // 5. تحديث المرفق (الفاتورة)
+            if (invoiceReceipt != null && invoiceReceipt.Length > 0)
+            {
+                string uploadsFolder = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "purchases");
+                if (!Directory.Exists(uploadsFolder)) Directory.CreateDirectory(uploadsFolder);
+                string uniqueFileName = Guid.NewGuid().ToString() + "_" + invoiceReceipt.FileName;
+                string filePath = Path.Combine(uploadsFolder, uniqueFileName);
+                using (var fileStream = new FileStream(filePath, FileMode.Create)) { await invoiceReceipt.CopyToAsync(fileStream); }
+                oldPurchase.InvoiceReceiptPath = "/uploads/purchases/" + uniqueFileName;
+            }
+
+            _context.Update(oldPurchase);
+            LogAction("تعديل فاتورة شراء", $"تم تعديل فاتورة المشتريات للصنف {oldPurchase.ItemName} وتحديث الميزانية والمخزون بناءً على ذلك.");
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = "تم تحديث فاتورة الشراء وتعديل الحسابات (والمخزون إن لزم الأمر) بنجاح.";
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]
@@ -209,7 +310,7 @@ namespace KaberSystem.Controllers
             {
                 purchase.IsPricedByManager = true;
 
-                var part = await _context.SpareParts.FirstOrDefaultAsync(p => p.Name == purchase.ItemName);
+                var part = await _context.SpareParts.FirstOrDefaultAsync(p => p.Barcode == purchase.Barcode || p.Name == purchase.ItemName);
                 if (part != null)
                 {
                     part.SellingPrice = sellingPrice;
@@ -225,17 +326,34 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Pricing));
         }
 
+        // 📌 التحديث: دالة الحذف المعقدة (إرجاع المال، وخصم المخزون إن وُجد)
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
             var purchase = await _context.PurchaseOrders.FindAsync(id);
             if (purchase != null)
             {
+                // 1. إرجاع الأموال للخزنة
+                decimal totalCost = purchase.Quantity * purchase.PurchasePrice;
+                RefundPurchaseCost(totalCost, purchase.ItemName, purchase.PaymentMethod);
+
+                // 2. إذا كانت البضاعة مستلمة، يجب خصمها من المخزن
+                if (purchase.IsReceivedByStore)
+                {
+                    var sparePart = await _context.SpareParts.FirstOrDefaultAsync(p => p.Barcode == purchase.Barcode || p.Name == purchase.ItemName);
+                    if (sparePart != null)
+                    {
+                        sparePart.MainStockQuantity -= purchase.Quantity;
+                        if (sparePart.MainStockQuantity < 0) sparePart.MainStockQuantity = 0;
+                        _context.Update(sparePart);
+                    }
+                }
+
                 _context.PurchaseOrders.Remove(purchase);
-                LogAction("إلغاء فاتورة شراء", $"تم إلغاء فاتورة المشتريات الخاصة بالصنف {purchase.ItemName}");
+                LogAction("إلغاء فاتورة شراء", $"تم إلغاء فاتورة المشتريات للصنف {purchase.ItemName} وإرجاع المبلغ ({totalCost}) وخصم الكمية من المخزن.");
 
                 await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم حذف فاتورة المشتريات بنجاح.";
+                TempData["SuccessMessage"] = "تم حذف فاتورة المشتريات وإرجاع المبالغ للخزنة (وخصم القطع من المخزون) بنجاح.";
             }
             return RedirectToAction(nameof(Index));
         }
@@ -269,7 +387,6 @@ namespace KaberSystem.Controllers
                 return RedirectToAction(nameof(PartRequests));
             }
 
-            // 📌 استدعاء دالة الخصم الذكية عند شراء النواقص لتسوية الخزنات
             decimal totalPurchaseCost = request.Quantity * purchasePrice;
             await DeductPurchaseCostAsync(totalPurchaseCost, request.NewPartName, paymentMethod);
 

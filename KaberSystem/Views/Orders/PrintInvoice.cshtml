@@ -3,11 +3,26 @@
 @{
     Layout = null;
 
-    // حساب المتبقي
-    decimal remainingAmount = Model.FinalPrice - Model.AdvancePayment;
+    decimal partsTotal = Model.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
+    decimal appliedLaborFee = Model.IsFeeApplied ? Model.EstimatedPrice : 0;
+
+    // 📌 التحديث: حساب الإجمالي الفعلي بإضافة الضريبة اليدوية
+    decimal actualFinalPrice = appliedLaborFee + partsTotal + Model.TaxAmount;
+
+    decimal totalPaidSoFar = ViewBag.TotalPaid ?? 0;
+    if (Model.AdvancePayment > 0 && totalPaidSoFar == 0)
+    {
+        totalPaidSoFar = Model.AdvancePayment;
+    }
+
+    decimal remainingAmount = actualFinalPrice - totalPaidSoFar;
     if (remainingAmount < 0) remainingAmount = 0;
 
-    // 📌 تحديد اسم الخدمة ديناميكياً بناءً على نوع الطلب
+    // 📌 التحديث: قراءة قيمة الضريبة من الموديل مباشرة بدلاً من حسابها كنسبة ثابتة
+    decimal vatAmount = Model.TaxAmount;
+    decimal subTotal = actualFinalPrice - vatAmount;
+
+    // تحديد اسم الخدمة ديناميكياً بناءً على نوع الطلب
     string serviceName = "أجور اليد / تكلفة الفحص";
     switch (Model.Type)
     {
@@ -30,7 +45,7 @@
 
     string phone = Model.PhoneNumber.StartsWith("0") ? Model.PhoneNumber.Substring(1) : Model.PhoneNumber;
     string waNumber = "966" + phone;
-    string whatsappMessage = $"أهلاً بك عميلنا العزيز {Model.CustomerName}،\n\nفاتورتك (INV-#{Model.OrderId}):\nالإجمالي: {Model.FinalPrice} ريال\nالمدفوع مقدماً: {Model.AdvancePayment} ريال\n*المتبقي سداده:* {remainingAmount} ريال\n\nشكراً لتعاملك مع مؤسسة كابر للصيانة والتكييف 🛠️.";
+    string whatsappMessage = $"أهلاً بك عميلنا العزيز {Model.CustomerName}،\n\nفاتورتك (INV-#{Model.OrderId}):\nالإجمالي: {actualFinalPrice} ريال\nالمدفوع مقدماً: {Model.AdvancePayment} ريال\n*المتبقي سداده:* {remainingAmount} ريال\n\nشكراً لتعاملك مع مؤسسة كابر للصيانة والتكييف 🛠️.";
     string encodedMessage = Uri.EscapeDataString(whatsappMessage);
 }
 <!DOCTYPE html>
@@ -65,20 +80,23 @@
         }
 
         @@media print {
-            body {
-                background: #fff;
-                padding: 0;
-            }
+            body
 
-            .invoice-box {
-                box-shadow: none;
-                border: none;
-                padding: 0;
-            }
+        {
+            background: #fff;
+            padding: 0;
+        }
 
-            .d-print-none {
-                display: none !important;
-            }
+        .invoice-box {
+            box-shadow: none;
+            border: none;
+            padding: 0;
+        }
+
+        .d-print-none {
+            display: none !important;
+        }
+
         }
     </style>
 </head>
@@ -95,7 +113,8 @@
                 <p class="text-dark mb-0 fw-bolder mt-3">كابر لصيانة جميع الأجهزة الكهربائية</p>
                 <p class="text-muted fw-bold mt-1 mb-0 fs-6">سجل تجاري: 7037085128</p>
                 <p class="text-muted fw-bold mb-0">المنطقة الشرقية - الدمام</p>
-                <p class="text-muted fw-bold mt-1 mb-0" dir="rtl"><i class="fa-brands fa-whatsapp text-success me-1"></i> +966 55 579 4669</p>
+                <!-- 📌 تم حل مشكلة ظهور الرقم معكوس بجعله LTR ولكنه يندرج لليمين -->
+                <p class="text-muted fw-bold mt-1 mb-0" style="direction: ltr; text-align: right;">+966 55 579 4669 <i class="fa-brands fa-whatsapp text-success ms-1"></i></p>
             </div>
             <div class="col-3 text-center">
                 <img src="@qrUrl" alt="QR Code" width="110" height="110" class="border p-1 rounded" />
@@ -142,8 +161,8 @@
                     <tr>
                         <td class="fw-bold text-dark text-start ps-3">@serviceName</td>
                         <td class="fw-bold text-muted">1</td>
-                        <td class="fw-bold text-muted">@Model.EstimatedPrice ريال</td>
-                        <td class="fw-bold text-dark">@Model.EstimatedPrice ريال</td>
+                        <td class="fw-bold text-muted">@Model.EstimatedPrice.ToString("N2") ريال</td>
+                        <td class="fw-bold text-dark">@Model.EstimatedPrice.ToString("N2") ريال</td>
                     </tr>
                 }
                 else
@@ -163,32 +182,41 @@
                         <tr>
                             <td class="fw-bold text-dark text-start ps-3">@part.SparePart?.Name</td>
                             <td class="fw-bold text-muted">@part.QuantityUsed</td>
-                            <td class="fw-bold text-muted">@part.SellingPriceAtTime ريال</td>
-                            <td class="fw-bold text-dark">@(part.QuantityUsed* part.SellingPriceAtTime) ريال</td>
+                            <td class="fw-bold text-muted">@part.SellingPriceAtTime.ToString("N2") ريال</td>
+                            <td class="fw-bold text-dark">@((part.QuantityUsed * part.SellingPriceAtTime).ToString("N2")) ريال</td>
                         </tr>
                     }
                 }
             </tbody>
         </table>
 
-        <!-- الإجماليات الدقيقة -->
         <div class="row justify-content-end mt-4">
             <div class="col-md-7">
                 <div class="border p-4 rounded-3 bg-light shadow-sm">
-                    <div class="d-flex justify-content-between mb-3 border-bottom pb-2">
-                        <span class="fw-bold text-muted fs-5">إجمالي الفاتورة:</span>
-                        <span class="fw-bold fs-5 text-dark">@Model.FinalPrice ريال</span>
+                    <div class="d-flex justify-content-between mb-2 pb-2">
+                        <span class="fw-bold text-muted">الإجمالي قبل الضريبة:</span>
+                        <span class="fw-bold text-dark">@subTotal.ToString("N2") ريال</span>
                     </div>
-                    @if (Model.AdvancePayment > 0)
+                    <div class="d-flex justify-content-between mb-3 border-bottom pb-3 border-secondary border-opacity-25">
+                        <span class="fw-bold text-muted">ضريبة القيمة المضافة (VAT):</span>
+                        <span class="fw-bold text-dark">@vatAmount.ToString("N2") ريال</span>
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-3">
+                        <span class="fw-bold text-muted fs-5">إجمالي الفاتورة:</span>
+                        <span class="fw-bold fs-5 text-dark">@actualFinalPrice.ToString("N2") ريال</span>
+                    </div>
+
+                    @if (totalPaidSoFar > 0)
                     {
                         <div class="d-flex justify-content-between mb-3 text-danger border-bottom pb-2 border-danger">
-                            <span class="fw-bold">دفعات مقدمة (عربون):</span>
-                            <span class="fw-bold fs-5">- @Model.AdvancePayment ريال</span>
+                            <span class="fw-bold">دفعات مقدمة (عربون מخصوم):</span>
+                            <span class="fw-bold fs-5">- @Model.AdvancePayment.ToString("N2") ريال</span>
                         </div>
                     }
                     <div class="d-flex justify-content-between mt-3 align-items-center">
                         <span class="fw-bold fs-4 text-primary">المبلغ الصافي المستحق:</span>
-                        <span class="fw-bold fs-2 text-success bg-success bg-opacity-10 px-3 py-1 rounded-3">@remainingAmount ريال</span>
+                        <span class="fw-bold fs-2 text-success bg-success bg-opacity-10 px-3 py-1 rounded-3">@remainingAmount.ToString("N2") ريال</span>
                     </div>
                 </div>
             </div>

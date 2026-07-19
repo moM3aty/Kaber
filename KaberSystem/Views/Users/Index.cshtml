@@ -38,7 +38,7 @@
                 {
                     <tr>
                         <td class="text-end fw-bold">
-                            <img src="https://ui-avatars.com/api/?name=@item.Username&background=010217&color=fff" class="rounded-circle me-2" width="35">
+                            <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(item.Username)&background=010217&color=fff" class="rounded-circle me-2" width="35">
                             @item.Username
                         </td>
                         <td class="text-muted fw-bold">@item.Username</td>
@@ -83,12 +83,33 @@
 </div>
 
 @section Scripts {
-    @if (TempData["SuccessMessage"] != null)
-    {
-        <script>Swal.fire({ icon: 'success', title: 'نجاح', text: '@Html.Raw(TempData["SuccessMessage"])', confirmButtonColor: '#f1950b' });</script>
-    }
-    @if (TempData["ErrorMessage"] != null)
-    {
-        <script>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(TempData["ErrorMessage"])', confirmButtonColor: '#ee5d50' });</script>
-    }
+    <script>
+        @if (TempData["SuccessMessage"] != null)
+        {
+                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                <text>
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'نجاح',
+                        html: @Html.Raw(msg),
+                        confirmButtonColor: '#f1950b',
+                        customClass: { popup: 'rounded-4' }
+                    });
+                </text>
+        }
+
+        @if (TempData["ErrorMessage"] != null)
+        {
+                var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
+                <text>
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'تنبيه',
+                        html: @Html.Raw(errMsg),
+                        confirmButtonColor: '#ee5d50',
+                        customClass: { popup: 'rounded-4' }
+                    });
+                </text>
+        }
+    </script>
 }

@@ -40,12 +40,20 @@
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-bold text-dark fs-5"><i class="fa-solid fa-hand-holding-dollar text-primary me-2"></i> الدفعة المقدمة المطلوبة</label>
+                        <label class="form-label fw-bold text-dark fs-5"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i> قيمة الضريبة المضافة (يدوي) <span class="text-danger">*</span></label>
                         <div class="input-group input-group-lg">
+                            <input type="number" step="0.01" name="taxAmount" class="form-control bg-light border-secondary border-end-0" value="0" required />
+                            <span class="input-group-text bg-white border-secondary border-start-0 fw-bold">ر.س</span>
+                        </div>
+                        <div class="form-text mt-1 text-muted fw-bold small">اكتب 0 إذا كان الطلب غير خاضع للضريبة.</div>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold text-dark fs-5"><i class="fa-solid fa-hand-holding-dollar text-primary me-2"></i> الدفعة المقدمة المطلوبة (عربون)</label>
+                        <div class="input-group input-group-lg w-50">
                             <input type="number" step="0.01" name="advancePayment" class="form-control bg-light border-secondary border-end-0" value="0" />
                             <span class="input-group-text bg-white border-secondary border-start-0 fw-bold">ر.س</span>
                         </div>
-                        <div class="form-text mt-1 text-muted fw-bold small">اكتب 0 إذا لم يكن هناك دفعة مقدمة</div>
                     </div>
 
                     <div class="col-12 mt-5 text-end">

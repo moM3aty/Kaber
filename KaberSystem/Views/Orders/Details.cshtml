@@ -10,14 +10,19 @@
     decimal partsTotal = Model.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
     decimal appliedLaborFee = Model.IsFeeApplied ? Model.EstimatedPrice : 0;
 
-    decimal actualFinalPrice = appliedLaborFee + partsTotal;
+    decimal actualFinalPrice = appliedLaborFee + partsTotal + Model.TaxAmount;
 
-    decimal remainingToPay = actualFinalPrice - Model.AdvancePayment;
+    decimal totalPaidSoFar = ViewBag.TotalPaid ?? 0;
+    if (Model.AdvancePayment > 0 && totalPaidSoFar == 0)
+    {
+        totalPaidSoFar = Model.AdvancePayment;
+    }
+
+    decimal remainingToPay = actualFinalPrice - totalPaidSoFar;
     if (remainingToPay < 0) remainingToPay = 0;
 
     var partRequests = ViewBag.PartRequests as IEnumerable<KaberSystem.Models.OrderPartRequest>;
 }
-
 <!-- الرأس العلوي -->
 <div class="d-flex justify-content-between align-items-center mb-5 d-print-none fade-in-up">
     <div class="d-flex align-items-center gap-3">
@@ -107,7 +112,6 @@
             </div>
 
             <div class="card-body-premium">
-                <!-- 📌 التحديث: عرض تنبيه البلاك لست -->
                 @if (Model.IsBlacklisted)
                 {
                     <div class="alert alert-danger py-2 fw-bolder rounded-3 shadow-sm d-flex align-items-center mb-4">
@@ -214,7 +218,6 @@
                         </select>
                     </div>
 
-                    <!-- 📌 التحديث: إضافة خيار البلاك لست في أجور اليد -->
                     <div class="mb-4">
                         <label class="premium-label">أجور اليد (رسوم الفحص)</label>
                         <select name="isFeeApplied" class="premium-input form-select fw-bold">
@@ -321,7 +324,6 @@
                                 }
                             </td>
                             <td>
-                                <!-- 📌 التحديث: عرض الصور المتعددة لنواقص الشراء -->
                                 @if (!string.IsNullOrEmpty(req.ImagePath))
                                 {
                                     <div class="d-flex justify-content-center gap-1 flex-wrap">
@@ -466,17 +468,21 @@
                     <span class="label">إجمالي قطع الغيار</span>
                     <span class="value">@partsTotal.ToString("N2") ر.س</span>
                 </div>
+                <div class="receipt-line text-warning">
+                    <span class="label fw-bold text-dark">الضريبة المضافة (VAT)</span>
+                    <span class="value text-dark">@Model.TaxAmount.ToString("N2") ر.س</span>
+                </div>
 
                 <div class="receipt-line total-line">
                     <span class="label text-dark fw-bolder">المجموع الكلي للفاتورة</span>
                     <span class="value text-dark fw-bolder fs-5">@actualFinalPrice.ToString("N2") ر.س</span>
                 </div>
 
-                @if (Model.AdvancePayment > 0)
+                @if (totalPaidSoFar > 0)
                 {
-                    <div class="receipt-line text-danger mt-3 pt-3 border-top border-danger border-opacity-25">
-                        <span class="label fw-bold">مدفوع مقدماً (عربون مخصوم)</span>
-                        <span class="value fw-bold">- @Model.AdvancePayment.ToString("N2") ر.س</span>
+                    <div class="receipt-line text-success mt-3 pt-3 border-top border-success border-opacity-25">
+                        <span class="label fw-bold">ما تم سداده مسبقاً (عربون/دفعات)</span>
+                        <span class="value fw-bold">- @totalPaidSoFar.ToString("N2") ر.س</span>
                     </div>
                 }
             </div>
@@ -489,10 +495,10 @@
             @if (Model.Status == KaberSystem.Models.OrderStatus.Completed || Model.Status == KaberSystem.Models.OrderStatus.Approved)
             {
                 <div class="p-4 bg-white text-center">
-                    @if (!Model.IsPaid)
+                    @if (!Model.IsPaid && remainingToPay > 0)
                     {
                         <button class="btn btn-success w-100 fw-bolder py-3 rounded-pill shadow-lg payment-btn-pulse fs-5" data-bs-toggle="modal" data-bs-target="#paymentModal">
-                            <i class="fa-solid fa-cash-register me-2"></i> تحصيل الدفعة (@remainingToPay ريال)
+                            <i class="fa-solid fa-cash-register me-2"></i> تحصيل الدفعة المتبقية
                         </button>
                     }
                     else
@@ -500,11 +506,11 @@
                         <div class="paid-stamp">
                             <i class="fa-solid fa-check-double text-success mb-2 d-block fs-1"></i>
                             <h5 class="fw-bolder text-success m-0">تم السداد بنجاح</h5>
-                            <p class="text-muted fw-bold small mt-2 mb-0">طريقة الدفع: @Model.PaymentMethod</p>
+                            <p class="text-muted fw-bold small mt-2 mb-0">تم تحصيل قيمة الفاتورة كاملة</p>
                             @if (!string.IsNullOrEmpty(Model.PaymentReceiptPath))
                             {
                                 <a href="@Model.PaymentReceiptPath" target="_blank" class="btn btn-sm btn-light border text-success fw-bold rounded-pill px-4 mt-3 hover-elevate">
-                                    <i class="fa-solid fa-paperclip me-1"></i> عرض الإيصال
+                                    <i class="fa-solid fa-paperclip me-1"></i> عرض الإيصال المرفق
                                 </a>
                             }
                         </div>
@@ -516,46 +522,60 @@
 </div>
 
 <!-- 📌 Modals -->
-<!-- Modal التحصيل (يشمل مدى) -->
+<!-- Modal التحصيل المطور (الدفع المجزأ Split Payment) -->
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content premium-modal border-0 shadow-lg">
             <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
-                <h4 class="fw-bolder text-dark m-0"><i class="fa-solid fa-money-bill-wave text-success me-2"></i> تحصيل المستحقات</h4>
+                <h4 class="fw-bolder text-dark m-0"><i class="fa-solid fa-money-bill-wave text-success me-2"></i> تحصيل المستحقات المتبقية</h4>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form asp-action="ProcessPayment" method="post" enctype="multipart/form-data">
+            <form asp-action="ProcessPayment" method="post" enctype="multipart/form-data" id="paymentForm">
                 <div class="modal-body p-4 text-start">
                     <input type="hidden" name="orderId" value="@Model.OrderId" />
 
                     <div class="text-center mb-4 pb-4 border-bottom border-dashed">
-                        <p class="text-muted fw-bold mb-1">المبلغ المتبقي للتحصيل</p>
-                        <h1 class="display-4 fw-bolder text-success m-0">@remainingToPay.ToString("N2") <span class="fs-4 text-muted">ر.س</span></h1>
+                        <p class="text-muted fw-bold mb-1">إجمالي المطلوب سداده لإغلاق الفاتورة</p>
+                        <h1 class="display-4 fw-bolder text-success m-0" id="requiredAmountText">@remainingToPay.ToString("N2") <span class="fs-4 text-muted">ر.س</span></h1>
+                        <input type="hidden" id="requiredAmount" value="@remainingToPay" />
                     </div>
 
-                    <label class="premium-label mb-3">طريقة الدفع المستخدمة <span class="text-danger">*</span></label>
+                    <div class="premium-alert info py-2 px-3 mb-4 small fw-bold">
+                        <i class="fa-solid fa-circle-info me-2"></i> يمكنك تسجيل المبلغ المحصل كاملاً في طريقة واحدة، أو تجزئته بين الطرق (مثال: جزء كاش وجزء شبكة).
+                    </div>
+
                     <div class="row g-3 mb-4">
+                        <!-- الدفع الكاش -->
                         <div class="col-12">
-                            <input type="radio" class="btn-check" name="paymentMethod" id="pay1" value="Cash" autocomplete="off" required checked>
-                            <label class="btn btn-outline-success payment-method-card w-100 text-start" for="pay1">
-                                <i class="fa-solid fa-money-bills fs-3 me-3"></i>
-                                <div><h6 class="fw-bold m-0">كاش (نقدي)</h6><span class="small opacity-75">سيتم التوريد للخزنة النقدية</span></div>
-                            </label>
+                            <label class="premium-label text-success"><i class="fa-solid fa-money-bills me-1"></i> المبلغ المدفوع نقداً (كاش)</label>
+                            <div class="input-group shadow-sm">
+                                <input type="number" step="0.01" name="cashAmount" id="cashAmount" class="form-control premium-input border-end-0 fw-bold fs-5 text-success" value="@remainingToPay" oninput="calculateTotalPaid()" />
+                                <span class="input-group-text bg-light border-start-0 fw-bolder">ر.س</span>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <input type="radio" class="btn-check" name="paymentMethod" id="pay2" value="POS" autocomplete="off">
-                            <label class="btn btn-outline-info text-dark payment-method-card w-100 text-start" for="pay2">
-                                <i class="fa-solid fa-credit-card fs-4 mb-2 d-block"></i>
-                                <h6 class="fw-bold m-0">شبكة (POS)</h6>
-                            </label>
+
+                        <!-- الدفع شبكة -->
+                        <div class="col-12">
+                            <label class="premium-label text-info"><i class="fa-solid fa-credit-card me-1"></i> المبلغ المدفوع شبكة (POS)</label>
+                            <div class="input-group shadow-sm">
+                                <input type="number" step="0.01" name="posAmount" id="posAmount" class="form-control premium-input border-end-0 fw-bold fs-5 text-info" value="0" oninput="calculateTotalPaid()" />
+                                <span class="input-group-text bg-light border-start-0 fw-bolder">ر.س</span>
+                            </div>
                         </div>
-                        <div class="col-6">
-                            <input type="radio" class="btn-check" name="paymentMethod" id="pay3" value="BankTransfer" autocomplete="off">
-                            <label class="btn btn-outline-primary payment-method-card w-100 text-start" for="pay3">
-                                <i class="fa-solid fa-building-columns fs-4 mb-2 d-block"></i>
-                                <h6 class="fw-bold m-0">تحويل بنكي</h6>
-                            </label>
+
+                        <!-- الدفع تحويل -->
+                        <div class="col-12">
+                            <label class="premium-label text-primary"><i class="fa-solid fa-building-columns me-1"></i> المبلغ المدفوع تحويل بنكي</label>
+                            <div class="input-group shadow-sm">
+                                <input type="number" step="0.01" name="bankTransferAmount" id="bankTransferAmount" class="form-control premium-input border-end-0 fw-bold fs-5 text-primary" value="0" oninput="calculateTotalPaid()" />
+                                <span class="input-group-text bg-light border-start-0 fw-bolder">ر.س</span>
+                            </div>
                         </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center bg-light p-3 rounded-3 border mb-4">
+                        <span class="fw-bold text-dark">مجموع الدفعات المسجلة الآن:</span>
+                        <span class="fw-bolder fs-4" id="totalPaidDisplay">@remainingToPay.ToString("N2") ر.س</span>
                     </div>
 
                     <div class="mb-2">
@@ -564,7 +584,7 @@
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
-                    <button type="submit" class="btn btn-success w-100 fw-bolder py-3 rounded-pill fs-5 shadow-sm hover-elevate">تأكيد الدفع وإغلاق الطلب</button>
+                    <button type="submit" class="btn btn-success w-100 fw-bolder py-3 rounded-pill fs-5 shadow-sm hover-elevate" id="btnSubmitPayment">تأكيد الدفع وإغلاق الطلب</button>
                 </div>
             </form>
         </div>
@@ -616,7 +636,6 @@
                 <h4 class="fw-bolder text-dark m-0"><i class="fa-solid fa-cart-plus text-warning me-2"></i> طلب شراء خارجي (نواقص)</h4>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <!-- 📌 التحديث: إضافة enctype لتمكين رفع الصور المتعددة -->
             <form asp-action="RequestPurchase" method="post" enctype="multipart/form-data">
                 <div class="modal-body p-4 text-start">
                     <input type="hidden" name="orderId" value="@Model.OrderId" />
@@ -642,7 +661,6 @@
                             </select>
                         </div>
 
-                        <!-- 📌 التحديث: السماح بتحديد أكثر من صورة عن طريق (multiple) وتغيير الاسم إلى (partImages) -->
                         <div class="col-12 mt-4">
                             <div class="file-upload-wrapper text-center p-4 rounded-4 border-dashed bg-light hover-elevate">
                                 <i class="fa-solid fa-cloud-arrow-up fs-1 text-primary mb-3"></i>
@@ -701,15 +719,43 @@
 
 @section Scripts {
     <script>
+        // 📌 التحديث: التحقق التفاعلي من مجموع المبالغ المدفوعة في المودال الجديد
+        function calculateTotalPaid() {
+            var cash = parseFloat(document.getElementById('cashAmount').value) || 0;
+            var pos = parseFloat(document.getElementById('posAmount').value) || 0;
+            var bank = parseFloat(document.getElementById('bankTransferAmount').value) || 0;
+            var required = parseFloat(document.getElementById('requiredAmount').value) || 0;
+
+            var total = cash + pos + bank;
+            var displaySpan = document.getElementById('totalPaidDisplay');
+            var submitBtn = document.getElementById('btnSubmitPayment');
+
+            displaySpan.innerText = total.toFixed(2) + ' ر.س';
+
+            if (total === required) {
+                displaySpan.className = "fw-bolder fs-4 text-success";
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = "تأكيد الدفع وإغلاق الطلب";
+            } else if (total > required) {
+                displaySpan.className = "fw-bolder fs-4 text-danger";
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = "المبلغ المكتوب أكبر من المطلوب!";
+            } else {
+                displaySpan.className = "fw-bolder fs-4 text-warning";
+                submitBtn.disabled = false; // السماح بالدفع الجزئي إن أردت (يمكنك جعلها true لو أردت إجبار التسديد الكامل)
+                submitBtn.innerHTML = "تأكيد الدفع (جزئي)";
+            }
+        }
+
         @if (TempData["SuccessMessage"] != null)
         {
-                    var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
-                    <text>Swal.fire({ icon: 'success', title: 'تم بنجاح', text: @Html.Raw(msg), confirmButtonColor: '#f1950b', customClass: { popup: 'premium-swal' } });</text>
+                        var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                        <text>Swal.fire({ icon: 'success', title: 'تم بنجاح', text: @Html.Raw(msg), confirmButtonColor: '#f1950b', customClass: { popup: 'premium-swal' } });</text>
         }
         @if (TempData["ErrorMessage"] != null)
         {
-                    var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
-                    <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
+                        var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
+                        <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
         }
     </script>
 }
@@ -1093,32 +1139,6 @@
             transform: scale(1.1);
         }
 
-    .payment-method-card {
-        border-width: 2px;
-        padding: 15px !important;
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-
-    .btn-check:checked + .btn-outline-success {
-        background-color: #ecfdf5;
-        color: #10b981;
-        border-color: #10b981;
-    }
-
-    .btn-check:checked + .btn-outline-info {
-        background-color: #f0f9ff;
-        color: #0ea5e9;
-        border-color: #0ea5e9;
-    }
-
-    .btn-check:checked + .btn-outline-primary {
-        background-color: #eff6ff;
-        color: #3b82f6;
-        border-color: #3b82f6;
-    }
-
     .payment-btn-pulse {
         animation: pulseGreen 2s infinite;
     }
@@ -1167,6 +1187,16 @@
             .premium-alert.danger .icon-box {
                 background: #ffe4e6;
                 color: #e11d48;
+            }
+
+        .premium-alert.info {
+            background: #f0f9ff;
+            border-color: #bae6fd;
+        }
+
+            .premium-alert.info .icon-box {
+                background: #bae6fd;
+                color: #0ea5e9;
             }
 
         .premium-alert .icon-box {

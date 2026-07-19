@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("KaberSystem")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+130604977c47ab4f9c81ee5295f15d25c9e8c739")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5f9f19a68a16c98848f14c08e1d3456abf64aeb5")]
 [assembly: System.Reflection.AssemblyProductAttribute("KaberSystem")]
 [assembly: System.Reflection.AssemblyTitleAttribute("KaberSystem")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

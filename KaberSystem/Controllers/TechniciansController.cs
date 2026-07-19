@@ -1,4 +1,5 @@
-﻿using KaberSystem.Models;
+﻿// مسار الملف: Controllers/TechniciansController.cs
+using KaberSystem.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -7,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace KaberSystem.Controllers
 {
-    [Authorize(Roles = "Admin,CallCenter,Technicians,Orders")]
+    [Authorize(Roles = "Admin,CallCenter,Technicians,Orders,Technician")]
     public class TechniciansController : Controller
     {
         private readonly ApplicationDbContext _context;
@@ -17,7 +18,6 @@ namespace KaberSystem.Controllers
             _context = context;
         }
 
-        // عرض قائمة الفنيين والموقف الحالي لهم (مشغول / متاح)
         public async Task<IActionResult> Index()
         {
             var technicians = await _context.Technicians
@@ -27,7 +27,6 @@ namespace KaberSystem.Controllers
             return View(technicians);
         }
 
-        // عرض تفاصيل الفني شاملة الطلبات الحالية، المكتملة، والعهدة
         public async Task<IActionResult> Details(int? id)
         {
             if (id == null) return NotFound();
@@ -40,9 +39,28 @@ namespace KaberSystem.Controllers
 
             if (technician == null) return NotFound();
 
-            ViewData["AvailableParts"] = await _context.SpareParts.Where(p => p.MainStockQuantity > 0).ToListAsync();
+            ViewData["AvailableParts"] = await _context.SpareParts.Where(p => p.MainStockQuantity > 0 && !p.IsDeleted).ToListAsync();
 
             return View(technician);
+        }
+
+        // 📌 التحديث: البحث عن الفني بشكل غير حساس لحالة الأحرف
+        [Authorize(Roles = "Technician")]
+        public async Task<IActionResult> MyStock()
+        {
+            string loggedInUser = User.Identity.Name?.Trim() ?? "";
+
+            var myAccount = await _context.Technicians
+                .Include(t => t.Inventory)
+                    .ThenInclude(i => i.SparePart)
+                .FirstOrDefaultAsync(t => t.Name == loggedInUser);
+
+            if (myAccount == null)
+            {
+                return NotFound("عذراً، لم يتم العثور على ملف فني مرتبط باسم الدخول الخاص بك. الرجاء من الإدارة إنشاء ملف لك في شاشة الفنيين بنفس اسم الدخول.");
+            }
+
+            return View(myAccount);
         }
 
         [Authorize(Roles = "Admin,CallCenter")]
@@ -58,10 +76,11 @@ namespace KaberSystem.Controllers
         {
             ModelState.Remove("Inventory");
             ModelState.Remove("AssignedOrders");
-            ModelState.Remove("Expenses"); // إصلاح مشكلة الـ Validation
+            ModelState.Remove("Expenses");
 
             if (ModelState.IsValid)
             {
+                technician.Name = technician.Name.Trim(); // منع المسافات الزائدة
                 technician.IsAvailable = true;
                 technician.TotalIncome = 0;
                 _context.Add(technician);
@@ -149,13 +168,12 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Details), new { id = technicianId });
         }
 
-        // 📌 حل المشكلة 1: جلب المصروفات لحل مشكلة انهيار تقرير الأرباح
         [Authorize(Roles = "Admin,Accounting")]
         public async Task<IActionResult> IncomeReport()
         {
             var technicians = await _context.Technicians
                 .Include(t => t.AssignedOrders)
-                .Include(t => t.Expenses) // 👈 هذا السطر كان مفقوداً ويسبب الخطأ
+                .Include(t => t.Expenses)
                 .ToListAsync();
 
             return View(technicians);
@@ -179,6 +197,7 @@ namespace KaberSystem.Controllers
 
             if (ModelState.IsValid)
             {
+                technician.Name = technician.Name.Trim();
                 _context.Update(technician);
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "تم تعديل بيانات الفني بنجاح!";
@@ -187,12 +206,10 @@ namespace KaberSystem.Controllers
             return View(technician);
         }
 
-        // 📌 حل مشكلة الحذف الآمن: فك الارتباط بالطلبات، المصروفات، وإرجاع العهدة
         [HttpGet]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
-            // جلب الفني مع كافة متعلقاته المرتبطة في قاعدة البيانات لتجنب خطأ Foreign Key Constraint
             var technician = await _context.Technicians
                 .Include(t => t.Inventory)
                 .Include(t => t.AssignedOrders)
@@ -201,7 +218,6 @@ namespace KaberSystem.Controllers
 
             if (technician != null)
             {
-                // 1. إرجاع قطع الغيار من عهدة الفني إلى المخزن العام لكي لا تضيع الأصول
                 if (technician.Inventory != null && technician.Inventory.Any())
                 {
                     foreach (var stock in technician.Inventory)
@@ -216,32 +232,27 @@ namespace KaberSystem.Controllers
                     _context.TechnicianStocks.RemoveRange(technician.Inventory);
                 }
 
-                // 2. فك ارتباط الفني بالطلبات (حماية الطلبات من الحذف وإضافة ملاحظة للتوضيح)
                 if (technician.AssignedOrders != null && technician.AssignedOrders.Any())
                 {
                     foreach (var order in technician.AssignedOrders)
                     {
-                        order.TechnicianId = null; // إزالة الفني ليصبح الطلب معلقاً
-
+                        order.TechnicianId = null;
                         string noteHeader = string.IsNullOrEmpty(order.TechnicianNotes) ? "" : "\n----------------\n";
                         order.TechnicianNotes += $"{noteHeader}[نظام الإدارة]: تم حذف حساب الفني ({technician.Name}) الذي كان مكلفاً بهذا الطلب.";
-
                         _context.Update(order);
                     }
                 }
 
-                // 3. فك ارتباط الفني بالمصروفات والسلف (حماية السجلات المحاسبية)
                 if (technician.Expenses != null && technician.Expenses.Any())
                 {
                     foreach (var exp in technician.Expenses)
                     {
-                        exp.TechnicianId = null; // فك الارتباط
+                        exp.TechnicianId = null;
                         exp.Description += $" [كانت مسجلة على الفني المحذوف: {technician.Name}]";
                         _context.Update(exp);
                     }
                 }
 
-                // 4. حذف سجل الفني بسلام
                 _context.Technicians.Remove(technician);
                 await _context.SaveChangesAsync();
                 TempData["SuccessMessage"] = "تم حذف الفني بنجاح، وإرجاع عهدته للمخزن، والاحتفاظ بطلباته وحساباته بأمان!";

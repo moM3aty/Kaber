@@ -1,0 +1,189 @@
+﻿<!-- مسار الملف: Views/Purchases/Edit.cshtml -->
+@model KaberSystem.Models.PurchaseOrder
+@{
+    ViewData["Title"] = "تعديل فاتورة مشتريات";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header">
+    <div>
+        <h1 class="sys-page-title text-warning"><i class="fa-solid fa-pen-to-square me-2"></i> تعديل أمر الشراء #@Model.PurchaseId</h1>
+        <p class="sys-page-desc">تعديل التكاليف أو الكميات. النظام سيقوم آلياً بمعالجة الفروقات في الخزنة والمخزون.</p>
+    </div>
+    <a href="/Purchases/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2 hover-elevate">
+        <i class="fa-solid fa-arrow-right"></i> إلغاء والعودة
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="sys-card border-top border-4 border-warning p-4 rounded-4 shadow-lg bg-white">
+
+            <div class="alert alert-warning py-3 px-4 mb-4 fw-bold border-0 shadow-sm rounded-3">
+                <i class="fa-solid fa-triangle-exclamation text-warning fs-5 me-2"></i>
+                <span class="text-dark">أي تعديل في <b>السعر</b> أو <b>الكمية</b> أو <b>طريقة الدفع</b> سيؤدي إلى إرجاع التكلفة القديمة وسحب التكلفة الجديدة من الخزنة لضمان توازن الحسابات.</span>
+                @if (Model.IsReceivedByStore)
+                {
+                    <br />
+                
+                    <i class="fa-solid fa-boxes-stacked text-success ms-4 me-2 mt-2"></i>
+                    <span class="text-success mt-2 d-inline-block">تم استلام هذه البضاعة، وسيتم تحديث الكميات في المخزن الفعلي بناءً على تعديلك.</span>
+                }
+            </div>
+
+            <form asp-action="Edit" method="post" enctype="multipart/form-data">
+                <input type="hidden" asp-for="PurchaseId" />
+                <input type="hidden" asp-for="PurchaseDate" />
+                <input type="hidden" asp-for="IsReceivedByStore" />
+                <input type="hidden" asp-for="IsPricedByManager" />
+                <input type="hidden" asp-for="Barcode" />
+                <input type="hidden" asp-for="InvoiceReceiptPath" />
+
+                <div class="row g-4">
+                    <div class="col-md-12">
+                        <label asp-for="ItemName" class="form-label fw-bolder text-dark">اسم الصنف <span class="text-danger">*</span></label>
+                        <input asp-for="ItemName" class="form-control sys-input" required />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="Quantity" class="form-label fw-bolder text-dark">الكمية <span class="text-danger">*</span></label>
+                        <input asp-for="Quantity" type="number" class="form-control sys-input text-primary fw-bolder fs-5" required />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="PurchasePrice" class="form-label fw-bolder text-dark">سعر الشراء (للوحدة) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control sys-input border-end-0 text-danger fw-bolder fs-5" required />
+                            <span class="input-group-text bg-light fw-bold text-muted border-start-0" style="border-radius: 12px 0 0 12px; border: 2px solid var(--sys-border);">ر.س</span>
+                        </div>
+                    </div>
+
+                    <!-- 📌 التحديث: إضافة حقل تعديل الضريبة -->
+                    <div class="col-md-4">
+                        <label asp-for="TaxAmount" class="form-label fw-bolder text-dark">الضريبة المضافة</label>
+                        <div class="input-group">
+                            <input asp-for="TaxAmount" type="number" step="0.01" class="form-control sys-input border-end-0" />
+                            <span class="input-group-text bg-light fw-bold text-muted border-start-0" style="border-radius: 12px 0 0 12px; border: 2px solid var(--sys-border);">ر.س</span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-12 mt-4">
+                        <label class="form-label fw-bolder text-dark mb-3">طريقة سداد المشتريات (تُخصم من): <span class="text-danger">*</span></label>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <input type="radio" class="btn-check" name="PaymentMethod" id="pay1" value="Cash" required @(Model.PaymentMethod == KaberSystem.Models.PaymentMethod.Cash ? "checked" : "")>
+                                <label class="btn btn-outline-success w-100 text-start fw-bold p-3 rounded-3 d-flex align-items-center" for="pay1" style="border-width: 2px;">
+                                    <i class="fa-solid fa-money-bills fs-4 me-2"></i>
+                                    <div><span class="d-block">كاش</span></div>
+                                </label>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="radio" class="btn-check" name="PaymentMethod" id="pay2" value="POS" @(Model.PaymentMethod == KaberSystem.Models.PaymentMethod.POS ? "checked" : "")>
+                                <label class="btn btn-outline-info text-dark w-100 text-start fw-bold p-3 rounded-3 d-flex align-items-center" for="pay2" style="border-width: 2px;">
+                                    <i class="fa-solid fa-credit-card fs-4 me-2"></i> بطاقة شركة
+                                </label>
+                            </div>
+                            <div class="col-md-4">
+                                <input type="radio" class="btn-check" name="PaymentMethod" id="pay3" value="BankTransfer" @(Model.PaymentMethod == KaberSystem.Models.PaymentMethod.BankTransfer ? "checked" : "")>
+                                <label class="btn btn-outline-primary w-100 text-start fw-bold p-3 rounded-3 d-flex align-items-center" for="pay3" style="border-width: 2px;">
+                                    <i class="fa-solid fa-building-columns fs-4 me-2"></i> تحويل بنكي
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- إرفاق فاتورة جديدة (إن أراد) -->
+                    <div class="col-md-12">
+                        <div class="p-3 bg-light border border-dashed rounded-4 mt-2">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label fw-bolder text-primary mb-0"><i class="fa-solid fa-receipt me-1"></i> تحديث صورة الفاتورة</label>
+                                @if (!string.IsNullOrEmpty(Model.InvoiceReceiptPath))
+                                {
+                                    <a href="@Model.InvoiceReceiptPath" target="_blank" class="badge bg-success text-decoration-none px-3 py-2 rounded-pill"><i class="fa-solid fa-eye me-1"></i> الفاتورة الحالية</a>
+                                }
+                            </div>
+                            <input type="file" name="invoiceReceipt" class="form-control sys-input bg-white" accept="image/*,application/pdf" />
+                            <small class="text-muted fw-bold d-block mt-2">اترك الحقل فارغاً للاحتفاظ بالفاتورة القديمة.</small>
+                        </div>
+                    </div>
+
+                    <div class="col-12 border-top pt-3 mt-4">
+                        <h5 class="fw-bold text-primary mb-3">بيانات المورد</h5>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="SupplierName" class="form-label fw-bold text-dark">اسم المورد</label>
+                        <input asp-for="SupplierName" class="form-control sys-input" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="SupplierPhone" class="form-label fw-bold text-dark">رقم الجوال</label>
+                        <input asp-for="SupplierPhone" class="form-control sys-input" dir="ltr" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="SupplierLocation" class="form-label fw-bold text-dark">العنوان</label>
+                        <input asp-for="SupplierLocation" class="form-control sys-input" />
+                    </div>
+
+                    <div class="col-12 mt-5 text-end border-top pt-4">
+                        <button type="submit" class="sys-btn btn-warning text-dark px-5 py-3 fs-5 rounded-pill shadow-sm hover-elevate fw-bolder">
+                            <i class="fa-solid fa-save me-2"></i> حفظ التعديلات وإعادة ضبط الحسابات
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sys-input {
+        border: 2px solid var(--sys-border);
+        padding: 14px 18px;
+        border-radius: 12px;
+        font-weight: 600;
+        color: var(--sys-text-main);
+        background-color: #f8fafc;
+        transition: 0.3s;
+    }
+
+        .sys-input:focus {
+            background-color: #fff;
+            border-color: var(--sys-primary);
+            box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1);
+            outline: none;
+        }
+
+    .btn-check:checked + .btn-outline-success {
+        background-color: #ecfdf5;
+        color: #10b981;
+        border-color: #10b981;
+    }
+
+    .btn-check:checked + .btn-outline-info {
+        background-color: #f0f9ff;
+        color: #0ea5e9;
+        border-color: #0ea5e9;
+    }
+
+    .btn-check:checked + .btn-outline-primary {
+        background-color: #eff6ff;
+        color: #3b82f6;
+        border-color: #3b82f6;
+    }
+
+    .border-dashed {
+        border-style: dashed !important;
+    }
+
+    .hover-elevate {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
+</style>

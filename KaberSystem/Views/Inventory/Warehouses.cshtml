@@ -1,0 +1,174 @@
+﻿<!-- مسار الملف: Views/Inventory/Warehouses.cshtml -->
+@model IEnumerable<KaberSystem.Models.Warehouse>
+@{
+    ViewData["Title"] = "إدارة المستودعات";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+}
+
+<div class="sys-page-header fade-in-up">
+    <div>
+        <h1 class="sys-page-title text-primary"><i class="fa-solid fa-building-flag me-2"></i> إدارة فروع المستودعات</h1>
+        <p class="sys-page-desc">إنشاء وتقسيم المستودعات (مخزن رئيسي، فروع، مناطق أخرى)</p>
+    </div>
+    <button class="btn btn-primary fw-bold px-4 rounded-pill shadow-sm hover-elevate border-2" data-bs-toggle="modal" data-bs-target="#addWarehouseModal">
+        <i class="fa-solid fa-plus me-1"></i> مستودع جديد
+    </button>
+</div>
+
+<div class="row g-4 fade-in-up" style="animation-delay: 0.1s;">
+    @foreach (var w in Model)
+    {
+        <div class="col-md-4">
+            <div class="premium-card p-4 h-100 text-center @(w.IsMain ? "border-success border-top border-4" : "border-info border-top border-4")">
+                <div class="icon-box @(w.IsMain ? "bg-success" : "bg-info") text-white bg-opacity-75 mx-auto mb-3" style="width:60px; height:60px; font-size:24px;">
+                    <i class="fa-solid @(w.IsMain ? "fa-building-circle-check" : "fa-warehouse")"></i>
+                </div>
+                <h4 class="fw-bolder text-dark mb-2">@w.Name</h4>
+                <p class="text-muted fw-bold small"><i class="fa-solid fa-location-dot me-1 text-danger"></i> @(w.Location ?? "الموقع غير محدد")</p>
+
+                @if (w.IsMain)
+                {
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-3 py-2 mt-2">مستودع رئيسي</span>
+                }
+                else
+                {
+                    <span class="badge bg-info bg-opacity-10 text-dark border border-info rounded-pill px-3 py-2 mt-2">فرع / منطقة أخرى</span>
+                }
+            </div>
+        </div>
+    }
+</div>
+
+<!-- Modal إضافة مستودع -->
+<div class="modal fade" id="addWarehouseModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content premium-modal border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+                <h5 class="modal-title fw-bolder text-primary"><i class="fa-solid fa-building me-2"></i> إنشاء مستودع جديد</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form asp-action="CreateWarehouse" method="post">
+                <div class="modal-body py-4 px-4 text-start">
+                    <div class="mb-3">
+                        <label class="premium-label">اسم المستودع <span class="text-danger">*</span></label>
+                        <input type="text" name="name" class="form-control premium-input" placeholder="مثال: مخزن الدمام الفرعي" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="premium-label">الموقع / العنوان</label>
+                        <input type="text" name="location" class="form-control premium-input" placeholder="عنوان المخزن" />
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="isMain" value="true" id="isMainCheck">
+                            <label class="form-check-label fw-bold ms-2" for="isMainCheck">تعيين كمستودع رئيسي</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light fw-bold px-4 rounded-pill" data-bs-dismiss="modal">إلغاء</button>
+                    <button type="submit" class="btn btn-primary fw-bolder px-4 rounded-pill shadow-sm hover-elevate">حفظ وإضافة <i class="fa-solid fa-check ms-1"></i></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    :root {
+        --prem-surface: #ffffff;
+        --prem-border: #e2e8f0;
+        --prem-text: #1e293b;
+        --prem-muted: #64748b;
+        --prem-primary: #f1950b;
+        --prem-radius: 20px;
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .premium-card {
+        background: var(--prem-surface);
+        border-radius: var(--prem-radius);
+        border: 1px solid var(--prem-border);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        overflow: hidden;
+    }
+
+    .icon-box {
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .premium-label {
+        font-weight: 800;
+        color: var(--prem-muted);
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    .premium-input {
+        background-color: #f8fafc;
+        border: 1px solid var(--prem-border);
+        border-radius: 12px;
+        padding: 14px 20px;
+        font-weight: 700;
+        color: var(--prem-text);
+        box-shadow: none !important;
+        transition: all 0.3s ease;
+    }
+
+        .premium-input:focus {
+            background-color: #fff;
+            border-color: var(--prem-primary);
+            box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1) !important;
+        }
+
+    .premium-modal {
+        border-radius: 24px;
+        overflow: hidden;
+    }
+
+    .hover-elevate {
+        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
+        cursor: pointer;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
+
+    .form-switch .form-check-input {
+        width: 2.5em;
+        height: 1.25em;
+        cursor: pointer;
+    }
+</style>
+
+@section Scripts {
+    <script>
+        @if (TempData["SuccessMessage"] != null)
+        {
+                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'premium-modal' } });</text>
+        }
+    </script>
+}

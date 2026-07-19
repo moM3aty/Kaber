@@ -1,4 +1,4 @@
-﻿// مسار الملف: Models/Models.cs
+﻿// مسار الملف: Models/SystemWorkflowModels.cs
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -27,10 +27,11 @@ namespace KaberSystem.Models
         public DbSet<LeaveRequest> LeaveRequests { get; set; }
         public DbSet<PayrollSchedule> PayrollSchedules { get; set; }
         public DbSet<Partner> Partners { get; set; }
-
-        // 📌 جداول الـ HR الجديدة
         public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
         public DbSet<PayrollRecord> PayrollRecords { get; set; }
+
+        // 📌 التحديث: إضافة جدول المستودعات (رئيسي وفرعي)
+        public DbSet<Warehouse> Warehouses { get; set; }
 
         protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
         {
@@ -44,20 +45,12 @@ namespace KaberSystem.Models
 
     public class SystemUser
     {
-        [Key]
-        public int UserId { get; set; }
-        [Required(ErrorMessage = "اسم المستخدم مطلوب")]
-        public string Username { get; set; }
-        [Required(ErrorMessage = "كلمة المرور مطلوبة")]
-        public string Password { get; set; }
-        [Required(ErrorMessage = "الصلاحية مطلوبة")]
-        public string Role { get; set; }
-
+        [Key] public int UserId { get; set; }
+        [Required(ErrorMessage = "اسم المستخدم مطلوب")] public string Username { get; set; }
+        [Required(ErrorMessage = "كلمة المرور مطلوبة")] public string Password { get; set; }
+        [Required(ErrorMessage = "الصلاحية مطلوبة")] public string Role { get; set; }
         public string? Permissions { get; set; }
-
-        // 📌 الراتب الأساسي للموظف
         public decimal BaseSalary { get; set; } = 0;
-
         public DateTime CreatedAt { get; set; } = DateTime.Now;
     }
 
@@ -70,8 +63,40 @@ namespace KaberSystem.Models
         public DateTime Timestamp { get; set; } = DateTime.Now;
     }
 
+    // 📌 التحديث: موديل المستودع
+    public class Warehouse
+    {
+        [Key] public int Id { get; set; }
+        [Required] public string Name { get; set; } // مثال: مستودع الدمام الرئيسي، مستودع الخبر الفرعي
+        public bool IsMain { get; set; } = false;
+        public string? Location { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.Now;
+    }
+
+    public class SparePart
+    {
+        [Key] public int PartId { get; set; }
+        [Required] public string PartCode { get; set; }
+        [Required] public string Name { get; set; }
+        public bool IsCommon { get; set; } = true;
+        public string? TargetModel { get; set; }
+        public decimal PurchasePrice { get; set; }
+        public decimal TaxAmount { get; set; } = 0; // 📌 حقل الضريبة المضاف
+        public decimal SellingPrice { get; set; }
+        public int MainStockQuantity { get; set; }
+        public string? SupplierName { get; set; }
+        public string? SupplierPhone { get; set; }
+        public string? SupplierLocation { get; set; }
+        public string? Barcode { get; set; }
+
+        // 📌 التحديثات الجديدة للقطع
+        public bool IsDeleted { get; set; } = false; // الحذف الآمن للحفاظ على الفواتير القديمة
+        public int? WarehouseId { get; set; } // ربط القطعة بمستودع محدد
+        [ForeignKey("WarehouseId")] public Warehouse? Warehouse { get; set; }
+    }
+
     public class Order
-    { /* الكود الحالي للطلب كما هو لتوفير المساحة */
+    {
         [Key] public int OrderId { get; set; }
         [Required] public string CustomerName { get; set; }
         [Required] public string PhoneNumber { get; set; }
@@ -90,6 +115,10 @@ namespace KaberSystem.Models
         public string? DeviceImagePath { get; set; }
         [ForeignKey("TechnicianId")] public Technician? Technician { get; set; }
         public decimal EstimatedPrice { get; set; }
+
+        // 📌 التحديث: إضافة حقل الضريبة اليدوية للطلب
+        public decimal TaxAmount { get; set; } = 0;
+
         public decimal AdvancePayment { get; set; }
         public decimal FinalPrice { get; set; }
         public ICollection<Invoice>? Invoices { get; set; }
@@ -121,8 +150,6 @@ namespace KaberSystem.Models
 
     public class Technician { [Key] public int TechnicianId { get; set; } [Required] public string Name { get; set; } [Required] public string Phone { get; set; } public bool IsAvailable { get; set; } = true; public decimal TotalIncome { get; set; } = 0; public ICollection<Order>? AssignedOrders { get; set; } public ICollection<TechnicianStock>? Inventory { get; set; } public ICollection<Expense>? Expenses { get; set; } }
 
-    public class SparePart { [Key] public int PartId { get; set; } [Required] public string PartCode { get; set; } [Required] public string Name { get; set; } public bool IsCommon { get; set; } = true; public string? TargetModel { get; set; } public decimal PurchasePrice { get; set; } public decimal SellingPrice { get; set; } public int MainStockQuantity { get; set; } public string? SupplierName { get; set; } public string? SupplierPhone { get; set; } public string? SupplierLocation { get; set; } public string? Barcode { get; set; } }
-
     public class OrderPartRequest { [Key] public int Id { get; set; } public int OrderId { get; set; } [ForeignKey("OrderId")] public Order? Order { get; set; } public PartRequestType RequestType { get; set; } public int? PartId { get; set; } [ForeignKey("PartId")] public SparePart? SparePart { get; set; } public string? NewPartName { get; set; } public string? DeviceModel { get; set; } public bool IsCommonRequest { get; set; } public string? ImagePath { get; set; } public int Quantity { get; set; } public PartRequestStatus Status { get; set; } public DateTime RequestDate { get; set; } = DateTime.Now; }
     public enum PartRequestStatus { PendingWarehouse, PendingPurchasing, PurchasedWaitingStore, ReadyForInstallation, Installed, Rejected }
     public enum PartRequestType { FromWarehouse, PurchaseNew }
@@ -131,7 +158,23 @@ namespace KaberSystem.Models
 
     public class OrderSparePart { [Key] public int Id { get; set; } public int OrderId { get; set; } public int PartId { get; set; } public int QuantityUsed { get; set; } public decimal SellingPriceAtTime { get; set; } [ForeignKey("OrderId")] public Order? Order { get; set; } [ForeignKey("PartId")] public SparePart? SparePart { get; set; } }
 
-    public class PurchaseOrder { [Key] public int PurchaseId { get; set; } [Required] public string ItemName { get; set; } public int Quantity { get; set; } public decimal PurchasePrice { get; set; } public DateTime PurchaseDate { get; set; } public bool IsReceivedByStore { get; set; } = false; public bool IsPricedByManager { get; set; } = false; public string? SupplierName { get; set; } public string? SupplierPhone { get; set; } public string? SupplierLocation { get; set; } public string? Barcode { get; set; } public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash; }
+    public class PurchaseOrder
+    {
+        [Key] public int PurchaseId { get; set; }
+        [Required] public string ItemName { get; set; }
+        public int Quantity { get; set; }
+        public decimal PurchasePrice { get; set; }
+        public decimal TaxAmount { get; set; } = 0; // 📌 حقل الضريبة المضاف
+        public DateTime PurchaseDate { get; set; }
+        public bool IsReceivedByStore { get; set; } = false;
+        public bool IsPricedByManager { get; set; } = false;
+        public string? SupplierName { get; set; }
+        public string? SupplierPhone { get; set; }
+        public string? SupplierLocation { get; set; }
+        public string? Barcode { get; set; }
+        public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash;
+        public string? InvoiceReceiptPath { get; set; }
+    }
 
     public enum DeductionSource { Company, Technician }
     public class Expense { [Key] public int Id { get; set; } [Required] public string Description { get; set; } public decimal Amount { get; set; } public DateTime Date { get; set; } = DateTime.Now; public string? RecordedBy { get; set; } public DeductionSource DeductionFrom { get; set; } = DeductionSource.Company; public int? TechnicianId { get; set; } [ForeignKey("TechnicianId")] public Technician? Technician { get; set; } public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Cash; }
@@ -140,9 +183,6 @@ namespace KaberSystem.Models
 
     public class Partner { [Key] public int Id { get; set; } [Required] public string Name { get; set; } public decimal SharePercentage { get; set; } }
 
-    // ==========================================
-    // 📌 موديلز الـ HR الجديدة 
-    // ==========================================
     public enum LeaveType { Annual, Sick, Emergency, Unpaid }
     public enum LeaveStatus { Pending, Approved, Rejected }
 

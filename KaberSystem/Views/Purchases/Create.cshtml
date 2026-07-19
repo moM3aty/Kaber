@@ -1,5 +1,4 @@
-﻿<!-- مسار الملف: Views/Purchases/Create.cshtml -->
-@model KaberSystem.Models.PurchaseOrder
+﻿@model KaberSystem.Models.PurchaseOrder
 @{
     ViewData["Title"] = "تسجيل مشتريات";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
@@ -18,22 +17,31 @@
 <div class="row g-4">
     <div class="col-lg-8">
         <div class="sys-card border-top border-4 border-primary p-4 rounded-4 shadow-sm bg-white">
-            <form asp-action="Create" method="post">
+            <!-- 📌 التحديث: إضافة enctype لرفع الملفات -->
+            <form asp-action="Create" method="post" enctype="multipart/form-data">
                 <div class="row g-4">
                     <div class="col-md-12">
                         <label asp-for="ItemName" class="form-label fw-bolder text-dark">اسم الصنف المشتراة <span class="text-danger">*</span></label>
                         <input asp-for="ItemName" class="form-control sys-input" placeholder="اكتب اسم الصنف بدقة" required />
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label asp-for="Quantity" class="form-label fw-bolder text-dark">الكمية <span class="text-danger">*</span></label>
                         <input asp-for="Quantity" type="number" class="form-control sys-input" placeholder="الكمية بالعدد" required />
                     </div>
 
-                    <div class="col-md-6">
-                        <label asp-for="PurchasePrice" class="form-label fw-bolder text-dark">سعر الشراء (للوحدة) <span class="text-danger">*</span></label>
+                    <div class="col-md-4">
+                        <label asp-for="PurchasePrice" class="form-label fw-bolder text-dark">سعر الوحدة <span class="text-danger">*</span></label>
                         <div class="input-group">
                             <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control sys-input border-end-0" placeholder="0.00" required />
+                            <span class="input-group-text bg-light fw-bold text-muted border-start-0" style="border-radius: 12px 0 0 12px; border: 2px solid var(--sys-border);">ر.س</span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label asp-for="TaxAmount" class="form-label fw-bolder text-dark">الضريبة الإجمالية (يدوي)</label>
+                        <div class="input-group">
+                            <input asp-for="TaxAmount" type="number" step="0.01" class="form-control sys-input border-end-0" placeholder="0.00" value="0" />
                             <span class="input-group-text bg-light fw-bold text-muted border-start-0" style="border-radius: 12px 0 0 12px; border: 2px solid var(--sys-border);">ر.س</span>
                         </div>
                     </div>
@@ -64,6 +72,14 @@
                         </div>
                     </div>
 
+                    <!-- 📌 التحديث: إضافة حقل رفع صورة الفاتورة -->
+                    <div class="col-md-12">
+                        <div class="p-3 bg-light border border-dashed rounded-4 mt-2">
+                            <label class="form-label fw-bolder text-primary mb-2"><i class="fa-solid fa-receipt me-1"></i> إرفاق فاتورة الشراء من المورد <span class="text-muted fw-normal small">(اختياري ولكن مفضل)</span></label>
+                            <input type="file" name="invoiceReceipt" class="form-control sys-input bg-white" accept="image/*,application/pdf" />
+                        </div>
+                    </div>
+
                     <div class="col-12 border-top pt-3 mt-4">
                         <h5 class="fw-bold text-primary mb-3">بيانات المورد (اختياري)</h5>
                     </div>
@@ -84,8 +100,8 @@
                     </div>
 
                     <div class="col-12 mt-5 text-end border-top pt-4">
-                        <button type="submit" class="sys-btn sys-btn-primary px-5 py-3 fs-5 rounded-pill shadow-sm">
-                            <i class="fa-solid fa-check-double me-2"></i> تسجيل الفاتورة
+                        <button type="submit" class="sys-btn sys-btn-primary px-5 py-3 fs-5 rounded-pill shadow-sm hover-elevate">
+                            <i class="fa-solid fa-check-double me-2"></i> تسجيل الفاتورة واعتماد الشراء
                         </button>
                     </div>
                 </div>
@@ -129,4 +145,17 @@
         color: #3b82f6;
         border-color: #3b82f6;
     }
+
+    .border-dashed {
+        border-style: dashed !important;
+    }
+
+    .hover-elevate {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+        .hover-elevate:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
+        }
 </style>

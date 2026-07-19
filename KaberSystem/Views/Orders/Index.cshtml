@@ -18,22 +18,20 @@
 
     var activeOrders = Model.Where(o => o.Status != OrderStatus.Approved && o.Status != OrderStatus.Cancelled).ToList();
 
-    // 📌 التحديث هنا: صعود الطلبات الجاهزة للتركيب في "السجل" أيضاً إلى أعلى القائمة
     var pastOrders = Model.Where(o => o.Status == OrderStatus.Approved || o.Status == OrderStatus.Cancelled)
-                          .OrderByDescending(o => ordersWithReadyParts.Contains(o.OrderId)) // يصعد لأعلى
+                          .OrderByDescending(o => ordersWithReadyParts.Contains(o.OrderId))
                           .ThenByDescending(o => o.CreatedAt)
                           .ToList();
 
-    // 📌 التحديث: حساب عدد كل الطلبات التي تحتاج لجدولة تركيب (سواء كانت نشطة أو في السجل)
     int readyOrdersCount = ordersWithReadyParts.Count;
 
     var todayOrders = activeOrders.Where(o => o.ScheduledDate?.Date <= DateTime.Today || o.ScheduledDate == null)
-                                  .OrderByDescending(o => ordersWithReadyParts.Contains(o.OrderId)) // يصعد لأعلى
+                                  .OrderByDescending(o => ordersWithReadyParts.Contains(o.OrderId))
                                   .ThenByDescending(o => o.CreatedAt)
                                   .ToList();
 
     var futureOrders = activeOrders.Where(o => o.ScheduledDate?.Date > DateTime.Today)
-                                   .OrderByDescending(o => ordersWithReadyParts.Contains(o.OrderId)) // يصعد لأعلى
+                                   .OrderByDescending(o => ordersWithReadyParts.Contains(o.OrderId))
                                    .ThenByDescending(o => o.ScheduledDate)
                                    .ToList();
 }
@@ -50,9 +48,15 @@
     </div>
     @if (User.IsInRole("Admin") || User.IsInRole("CallCenter"))
     {
-        <a href="/Orders/Create" class="btn btn-primary fw-bolder px-4 rounded-pill shadow-sm hover-elevate py-2">
-            <i class="fa-solid fa-plus me-1"></i> إنشاء طلب جديد
-        </a>
+        <div class="d-flex gap-2">
+            <!-- 📌 التحديث: زر فتح الـ Canvas لطلب الضمان -->
+            <button class="btn btn-warning text-dark fw-bolder px-4 rounded-pill shadow-sm hover-elevate py-2" type="button" data-bs-toggle="offcanvas" data-bs-target="#warrantyCanvas" aria-controls="warrantyCanvas">
+                <i class="fa-solid fa-shield-halved me-1"></i> حجز موعد ضمان
+            </button>
+            <a href="/Orders/Create" class="btn btn-primary fw-bolder px-4 rounded-pill shadow-sm hover-elevate py-2">
+                <i class="fa-solid fa-plus me-1"></i> إنشاء طلب جديد
+            </a>
+        </div>
     }
 </div>
 
@@ -67,7 +71,6 @@
     </div>
 }
 
-<!-- 📌 التحديث: التنبيه العلوي يقرأ الآن جميع الطلبات المتبقية للتركيب -->
 @if ((User.IsInRole("Admin") || User.IsInRole("CallCenter")) && readyOrdersCount > 0)
 {
     <div class="premium-alert success fade-in-up mb-4" style="border-color: #10b981; background-color: #ecfdf5;">
@@ -143,7 +146,7 @@
                                 string phoneStr = item.PhoneNumber.StartsWith("0") ? item.PhoneNumber.Substring(1) : item.PhoneNumber;
                                 string whatsappNumber = "966" + phoneStr;
                                 bool isReadyForInstall = ordersWithReadyParts.Contains(item.OrderId);
-                                string rowClass = isReadyForInstall ? "ready-install-row" : ""; // إعطاء لون مميز
+                                string rowClass = isReadyForInstall ? "ready-install-row" : "";
 
                                 <tr class="@rowClass" style="border-bottom: 1px solid #f1f5f9;">
                                     <td class="text-start ps-4"><span class="premium-badge default fs-6 shadow-sm border">#@item.OrderId</span></td>
@@ -302,7 +305,7 @@
                                 string phoneStr = item.PhoneNumber.StartsWith("0") ? item.PhoneNumber.Substring(1) : item.PhoneNumber;
                                 string whatsappNumber = "966" + phoneStr;
                                 bool isReadyForInstall = ordersWithReadyParts.Contains(item.OrderId);
-                                string rowClass = isReadyForInstall ? "ready-install-row" : ""; // إعطاء لون مميز
+                                string rowClass = isReadyForInstall ? "ready-install-row" : "";
 
                                 <tr class="@rowClass" style="border-bottom: 1px solid #f1f5f9;">
                                     <td class="text-start ps-4"><span class="premium-badge default fs-6 shadow-sm border">#@item.OrderId</span></td>
@@ -324,15 +327,12 @@
                                                 <span class="premium-badge primary-light"><i class="fa-solid fa-wrench me-1"></i> صيانة</span>
                                                 break;
                                             case KaberSystem.Models.OrderType.NewInstallation:
-
                                                 <span class="premium-badge success"><i class="fa-solid fa-plug me-1"></i> تركيب</span>
                                                 break;
                                             case KaberSystem.Models.OrderType.Warranty:
-
                                                 <span class="premium-badge warning"><i class="fa-solid fa-shield me-1"></i> ضمان</span>
                                                 break;
                                             case KaberSystem.Models.OrderType.ACWashing:
-
                                                 <span class="premium-badge info"><i class="fa-solid fa-shower me-1"></i> غسيل</span>
                                                 break;
                                         }
@@ -367,7 +367,6 @@
                                             }
                                             else
                                             {
-
                                                 <span class="premium-badge warning"><i class="fa-solid fa-clock me-1"></i> بانتظار التعيين</span>
                                             }
                                         </td>
@@ -379,28 +378,25 @@
                                                 <span class="premium-badge default shadow-sm">جديد</span>
                                                 break;
                                             case KaberSystem.Models.OrderStatus.Assigned:
-
                                                 <span class="premium-badge primary shadow-sm">تم التعيين</span>
                                                 break;
                                             case KaberSystem.Models.OrderStatus.Confirmed:
-
                                                 <span class="premium-badge warning shadow-sm">مؤكد</span>
                                                 break;
                                             case KaberSystem.Models.OrderStatus.InProgress:
-
                                                 <span class="premium-badge info shadow-sm">قيد التنفيذ</span>
                                                 break;
                                             case KaberSystem.Models.OrderStatus.Completed:
-
                                                 <span class="premium-badge dark shadow-sm"><i class="fa-solid fa-clock me-1"></i> للمراجعة / يطبع فاتورة</span>
                                                 break;
                                             case KaberSystem.Models.OrderStatus.Approved:
-
                                                 <span class="premium-badge success shadow-sm"><i class="fa-solid fa-check-double me-1"></i> معتمد نهائي</span>
                                                 break;
                                             case KaberSystem.Models.OrderStatus.Returned:
-
                                                 <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-rotate-left me-1"></i> مُرجع للفني</span>
+                                                break;
+                                            case KaberSystem.Models.OrderStatus.Cancelled:
+                                                <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-ban me-1"></i> ملغي</span>
                                                 break;
                                         }
                                     </td>
@@ -443,7 +439,7 @@
                 </div>
             </div>
 
-            <!-- 📌 3. تبويب السجل الماضي (المعتمدة والملغاة) -->
+            <!-- 📌 3. تبويب السجل الماضي -->
             <div class="tab-pane fade" id="past" role="tabpanel">
                 <div class="table-responsive p-0">
                     <table class="table premium-table align-middle text-center mb-0 w-100">
@@ -466,7 +462,6 @@
                             {
                                 string phoneStr = item.PhoneNumber.StartsWith("0") ? item.PhoneNumber.Substring(1) : item.PhoneNumber;
                                 string whatsappNumber = "966" + phoneStr;
-                                // 📌 التحديث: إضافة خيار تحديد الموعد في تبويب السجل أيضاً
                                 bool isReadyForInstall = ordersWithReadyParts.Contains(item.OrderId);
                                 string rowClass = isReadyForInstall ? "ready-install-row" : "";
 
@@ -490,15 +485,12 @@
                                                 <span class="premium-badge primary-light"><i class="fa-solid fa-wrench me-1"></i> صيانة</span>
                                                 break;
                                             case KaberSystem.Models.OrderType.NewInstallation:
-
                                                 <span class="premium-badge success"><i class="fa-solid fa-plug me-1"></i> تركيب</span>
                                                 break;
                                             case KaberSystem.Models.OrderType.Warranty:
-
                                                 <span class="premium-badge warning"><i class="fa-solid fa-shield me-1"></i> ضمان</span>
                                                 break;
                                             case KaberSystem.Models.OrderType.ACWashing:
-
                                                 <span class="premium-badge info"><i class="fa-solid fa-shower me-1"></i> غسيل</span>
                                                 break;
                                         }
@@ -525,7 +517,6 @@
                                         }
                                         else if (item.Status == OrderStatus.Cancelled)
                                         {
-
                                             <span class="premium-badge danger shadow-sm"><i class="fa-solid fa-ban me-1"></i> ملغي</span>
                                         }
                                     </td>
@@ -541,7 +532,6 @@
 
                                                 @if (isReadyForInstall)
                                                 {
-                                                    // 📌 التحديث هنا: تم إضافة زر (تحديد موعد تركيب) في تبويب السجل
                                                     <button type="button" class="btn btn-sm btn-success fw-bold px-3 rounded-pill text-white hover-elevate shadow-sm payment-btn-pulse" data-bs-toggle="modal" data-bs-target="#scheduleModal" onclick="setupScheduleModal(@item.OrderId, '@Html.Raw(item.CustomerName.Replace("'", "\\'"))', @(item.TechnicianId ?? 0))"><i class="fa-solid fa-calendar-plus me-1"></i> تحديد موعد تركيب</button>
                                                 }
                                             }
@@ -610,11 +600,20 @@
                             </select>
                         </div>
 
-                        <div class="mb-4">
-                            <label class="premium-label">رسوم التركيب الإضافية (إن وجدت)</label>
-                            <div class="input-group shadow-sm">
-                                <input type="number" step="0.01" name="additionalInstallFee" id="schedLaborFee" class="premium-input form-control border-0 bg-light rounded-end" value="0" required />
-                                <span class="input-group-text bg-white border-0 rounded-start fw-bolder text-success px-4">ر.س</span>
+                        <div class="row g-3 mb-4">
+                            <div class="col-6">
+                                <label class="premium-label">رسوم التركيب الإضافية</label>
+                                <div class="input-group shadow-sm">
+                                    <input type="number" step="0.01" name="additionalInstallFee" id="schedLaborFee" class="premium-input form-control border-0 bg-light rounded-end" value="0" required />
+                                    <span class="input-group-text bg-white border-0 rounded-start fw-bolder text-success px-4">ر.س</span>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <label class="premium-label">الضريبة المضافة</label>
+                                <div class="input-group shadow-sm">
+                                    <input type="number" step="0.01" name="taxAmount" class="premium-input form-control border-0 bg-light rounded-end" value="0" required />
+                                    <span class="input-group-text bg-white border-0 rounded-start fw-bolder text-success px-4">ر.س</span>
+                                </div>
                             </div>
                         </div>
 
@@ -662,6 +661,61 @@
                             </button>
                         </div>
                     </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 📌 التحديث: إضافة نافذة الـ Canvas الجانبية للبحث وحجز موعد الضمان السريع -->
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="warrantyCanvas" aria-labelledby="warrantyCanvasLabel" style="width: 450px;">
+        <div class="offcanvas-header border-bottom pb-3">
+            <h5 class="offcanvas-title fw-bolder text-warning d-flex align-items-center" id="warrantyCanvasLabel">
+                <i class="fa-solid fa-shield-halved fs-3 me-2"></i> حجز زيارة ضمان
+            </h5>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body">
+            <div class="mb-4">
+                <label class="premium-label">البحث عن الفاتورة السابقة للعميل</label>
+                <div class="input-group">
+                    <input type="text" id="warrantySearchInput" class="form-control premium-input border-end-0" placeholder="رقم الجوال، الاسم، أو الفاتورة..." />
+                    <button class="btn btn-primary px-3 fw-bold border-2" type="button" onclick="searchWarrantyOrder()">بحث</button>
+                </div>
+                <div id="warrantySearchSpinner" class="text-center mt-2 d-none">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div> جاري البحث...
+                </div>
+            </div>
+
+            <!-- حاوية عرض النتائج -->
+            <div id="warrantySearchResults" class="list-group mb-4"></div>
+
+            <!-- فورم تأكيد وحجز الضمان (تظهر بعد اختيار العميل) -->
+            <div id="warrantyFormContainer" class="d-none mt-3 pt-3 border-top">
+                <div class="premium-alert warning py-2 px-3 mb-3 small fw-bold">
+                    سيتم فتح طلب جديد مرتبط بالفاتورة السابقة بدون أي رسوم كشف.
+                </div>
+
+                <form asp-action="CreateWarrantyOrder" method="post" id="warrantyForm">
+                    <input type="hidden" name="originalOrderId" id="warrantyOriginalOrderId" />
+
+                    <div class="mb-3">
+                        <label class="premium-label">العميل المختار</label>
+                        <input type="text" id="warrantyCustomerName" class="form-control premium-input bg-light" readonly />
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="premium-label">تحديد موعد الزيارة <span class="text-muted fw-normal">(اختياري)</span></label>
+                        <input type="datetime-local" name="scheduledDate" class="form-control premium-input" />
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="premium-label">شكوى العميل للضمان <span class="text-danger">*</span></label>
+                        <textarea name="problemDescription" class="form-control premium-input" rows="3" placeholder="اكتب شكوى العميل (مثال: الجهاز عاد لنفس المشكلة بعد يومين)" required></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-warning w-100 fw-bolder py-3 shadow-sm hover-elevate rounded-pill text-dark fs-5">
+                        <i class="fa-solid fa-check-circle me-1"></i> فتح طلب الضمان
+                    </button>
                 </form>
             </div>
         </div>
@@ -816,11 +870,6 @@
             color: #4f46e5;
         }
 
-        .premium-badge.dark-light {
-            background: #f1f5f9;
-            color: #0f172a;
-        }
-
     .premium-alert {
         background: #fffbfa;
         border: 1px solid #fee2e2;
@@ -853,6 +902,16 @@
                 color: #16a34a;
             }
 
+        .premium-alert.warning {
+            background: #fffbf0;
+            border-color: #fef08a;
+        }
+
+            .premium-alert.warning .icon-box {
+                background: #fef08a;
+                color: #ca8a04;
+            }
+
         .premium-alert .icon-box {
             width: 45px;
             height: 45px;
@@ -867,7 +926,7 @@
     .premium-table th {
         font-weight: 800;
         color: var(--prem-muted);
-        border-bottom: 2px solid var(--prem-border);
+        border-bottom: 2px solid var(--prem-border) !important;
         padding: 16px;
         font-size: 0.85rem;
         text-transform: uppercase;
@@ -882,7 +941,6 @@
         background-color: #f8fafc;
     }
 
-    /* 📌 التحديث: تلوين مميز لصف الطلب الجاهز للتركيب */
     .ready-install-row td {
         background-color: rgba(25, 135, 84, 0.08) !important;
     }
@@ -974,7 +1032,6 @@
             }
         }
 
-        // 📌 التحديث الجديد: سكربت فتح مودال تعديل الموعد وإلغاؤه
         function openEditScheduleModal(orderId, currentDateStr) {
             document.getElementById('editSchedOrderId').value = orderId;
             document.getElementById('editSchedInput').value = currentDateStr;
@@ -987,15 +1044,81 @@
             document.getElementById('editScheduleForm').submit();
         }
 
+        // 📌 التحديث الجديد: دالة البحث عن الطلب لإنشاء الضمان عبر AJAX
+        function searchWarrantyOrder() {
+            var query = document.getElementById('warrantySearchInput').value;
+            var resultsContainer = document.getElementById('warrantySearchResults');
+            var spinner = document.getElementById('warrantySearchSpinner');
+            var formContainer = document.getElementById('warrantyFormContainer');
+
+            if (query.trim() === '') {
+                resultsContainer.innerHTML = '<div class="alert alert-warning py-2 small fw-bold">الرجاء إدخال رقم جوال، اسم عميل، أو رقم فاتورة للبحث.</div>';
+                return;
+            }
+
+            resultsContainer.innerHTML = '';
+            formContainer.classList.add('d-none');
+            spinner.classList.remove('d-none');
+
+            $.ajax({
+                url: '/Orders/SearchPreviousOrders',
+                type: 'GET',
+                data: { query: query },
+                success: function (response) {
+                    spinner.classList.add('d-none');
+                    if (response.success && response.data.length > 0) {
+                        let html = '';
+                        response.data.forEach(function (order) {
+                            html += `
+                                <button type="button" class="list-group-item list-group-item-action p-3 mb-2 border rounded-3 shadow-sm hover-elevate" onclick="selectWarrantyOrder(${order.orderId}, '${order.customerName}')">
+                                    <div class="d-flex w-100 justify-content-between">
+                                        <h6 class="mb-1 fw-bolder text-primary">العميل: ${order.customerName}</h6>
+                                        <small class="text-muted fw-bold" dir="ltr">${order.date}</small>
+                                    </div>
+                                    <p class="mb-1 fw-bold text-dark"><i class="fa-solid fa-mobile-screen text-muted me-1"></i> ${order.phoneNumber}</p>
+                                    <small class="text-muted d-block fw-bold"><i class="fa-solid fa-plug text-muted me-1"></i> الجهاز: ${order.deviceName}</small>
+                                    <small class="text-muted d-block fw-bold mt-1"><i class="fa-solid fa-file-invoice text-warning me-1"></i> الفاتورة: #INV-${order.orderId}</small>
+                                </button>
+                            `;
+                        });
+                        resultsContainer.innerHTML = html;
+                    } else {
+                        resultsContainer.innerHTML = '<div class="alert alert-danger py-2 small fw-bold"><i class="fa-solid fa-xmark me-2"></i> لا يوجد فواتير (معتمدة أو مكتملة) تطابق هذا البحث.</div>';
+                    }
+                },
+                error: function () {
+                    spinner.classList.add('d-none');
+                    resultsContainer.innerHTML = '<div class="alert alert-danger py-2 small fw-bold">حدث خطأ أثناء البحث، يرجى المحاولة مرة أخرى.</div>';
+                }
+            });
+        }
+
+        // دالة يتم استدعاؤها عند الضغط على إحدى النتائج في الـ Canvas
+        function selectWarrantyOrder(orderId, customerName) {
+            document.getElementById('warrantyOriginalOrderId').value = orderId;
+            document.getElementById('warrantyCustomerName').value = customerName + ' (فاتورة #'+orderId+')';
+
+            document.getElementById('warrantySearchResults').innerHTML = ''; // إخفاء النتائج
+            document.getElementById('warrantyFormContainer').classList.remove('d-none'); // إظهار فورم التسجيل
+        }
+
+        // إتاحة البحث بالضغط على Enter في حقل البحث
+        document.getElementById("warrantySearchInput")?.addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                searchWarrantyOrder();
+            }
+        });
+
         @if (TempData["SuccessMessage"] != null)
         {
-                    var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
-                    <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'premium-swal' } });</text>
+                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'premium-swal' } });</text>
         }
         @if (TempData["ErrorMessage"] != null)
         {
-                    var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
-                    <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
+                var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
+                <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
         }
     </script>
 }

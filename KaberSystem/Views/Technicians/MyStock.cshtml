@@ -1,0 +1,162 @@
+﻿<!-- مسار الملف: Views/Technicians/MyStock.cshtml -->
+@model KaberSystem.Models.Technician
+@{
+    ViewData["Title"] = "العهدة والمخزون الشخصي";
+    Layout = "~/Views/Shared/_SystemLayout.cshtml";
+
+    // حساب إجمالي قيمة العهدة المتوفرة بسيارة الفني بناءً على سعر البيع التقريبي
+    decimal totalStockValue = Model.Inventory?.Sum(i => i.Quantity * (i.SparePart?.SellingPrice ?? 0)) ?? 0;
+}
+
+<div class="sys-page-header fade-in-up">
+    <div>
+        <h1 class="sys-page-title text-primary"><i class="fa-solid fa-truck-pickup me-2"></i> عهدة سيارة الصيانة الخاصة بك</h1>
+        <p class="sys-page-desc">متابعة دقيقة لقطع الغيار المتوفرة معك لاستخدامها فوراً في منازل العملاء</p>
+    </div>
+</div>
+
+<div class="row g-4 mb-4 fade-in-up" style="animation-delay: 0.1s;">
+    <div class="col-md-6">
+        <div class="premium-card p-4 h-100 d-flex align-items-center bg-primary bg-opacity-10 border-0 border-start border-4 border-primary">
+            <div class="bg-primary text-white rounded-circle d-flex justify-content-center align-items-center me-4 shadow-sm" style="width: 60px; height: 60px;">
+                <i class="fa-solid fa-boxes-stacked fs-3"></i>
+            </div>
+            <div>
+                <p class="text-muted fw-bold mb-1 text-uppercase small tracking-wider">إجمالي القطع بعهدتك</p>
+                <h3 class="fw-bolder text-dark m-0">@(Model.Inventory?.Sum(i => i.Quantity) ?? 0) <span class="fs-6 fw-normal text-muted">قطعة</span></h3>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="premium-card p-4 h-100 d-flex align-items-center bg-success bg-opacity-10 border-0 border-start border-4 border-success">
+            <div class="bg-success text-white rounded-circle d-flex justify-content-center align-items-center me-4 shadow-sm" style="width: 60px; height: 60px;">
+                <i class="fa-solid fa-sack-dollar fs-3"></i>
+            </div>
+            <div>
+                <p class="text-muted fw-bold mb-1 text-uppercase small tracking-wider">القيمة التقديرية للعهدة (بيع)</p>
+                <h3 class="fw-bolder text-success m-0">@totalStockValue.ToString("N2") <span class="fs-6 fw-normal text-muted">ر.س</span></h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="premium-card fade-in-up" style="animation-delay: 0.2s;">
+    <div class="card-header-premium bg-white border-bottom pt-4 pb-3 px-4">
+        <h5 class="fw-bolder text-dark mb-0"><i class="fa-solid fa-list-ul text-primary me-2"></i> تفاصيل المخزون المتوفر معك</h5>
+    </div>
+    <div class="card-body-premium p-0">
+        @if (Model.Inventory != null && Model.Inventory.Any(i => i.Quantity > 0))
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle text-center mb-0 w-100 premium-table">
+                    <thead class="bg-light text-muted small fw-bold text-uppercase">
+                        <tr>
+                            <th class="py-3 text-start ps-4">كود الصنف</th>
+                            <th class="py-3 text-start">البيان (القطعة)</th>
+                            <th class="py-3">الكمية المتوفرة بسيارتك</th>
+                            <th class="py-3 pe-4">قيمة المبيع التقريبية</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.Inventory.Where(i => i.Quantity > 0).OrderByDescending(i => i.Quantity))
+                        {
+                            <tr style="border-bottom: 1px solid #f1f5f9;">
+                                <td class="text-start ps-4">
+                                    <span class="badge bg-dark bg-opacity-10 text-dark border px-3 py-1 rounded-pill"><i class="fa-solid fa-barcode me-1"></i> @(item.SparePart?.PartCode ?? "N/A")</span>
+                                </td>
+                                <td class="fw-bolder text-dark text-start fs-6">
+                                    @item.SparePart?.Name
+                                    <div class="small mt-1">
+                                        @if (item.SparePart?.IsCommon == true)
+                                        {
+                                            <span class="text-info fw-bold small"><i class="fa-solid fa-link me-1"></i> عامة</span>
+                                        }
+                                        else
+                                        {
+
+                                            <span class="text-muted fw-bold small"><i class="fa-solid fa-tag me-1"></i> مخصصة</span>
+                                        }
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge @(item.Quantity > 2 ? "bg-success" : "bg-warning text-dark") fs-5 px-3 py-2 rounded-pill shadow-sm">@item.Quantity</span>
+                                </td>
+                                <td class="fw-bolder text-success pe-4">
+                                    @((item.Quantity * (item.SparePart?.SellingPrice ?? 0)).ToString("N2")) <span class="small fw-normal text-muted">ر.س</span>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <div class="text-center py-5 text-muted">
+                <div class="bg-light rounded-circle d-inline-flex align-items-center justify-content-center mb-3 shadow-sm" style="width: 80px; height: 80px;">
+                    <i class="fa-solid fa-box-open fs-2 text-muted opacity-50"></i>
+                </div>
+                <h5 class="fw-bold m-0 text-dark">سيارتك فارغة من قطع الغيار!</h5>
+                <p class="text-muted mt-2">قم بالتواصل مع أمين المخزن لصرف قطع غيار لعهدتك.</p>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    :root {
+        --prem-surface: #ffffff;
+        --prem-border: #e2e8f0;
+        --prem-text: #1e293b;
+        --prem-muted: #64748b;
+        --prem-primary: #f1950b;
+        --prem-radius: 20px;
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+
+    @@keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .premium-card {
+        background: var(--prem-surface);
+        border-radius: var(--prem-radius);
+        border: 1px solid var(--prem-border);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        overflow: hidden;
+    }
+
+    .premium-table th {
+        font-weight: 800;
+        color: var(--prem-muted);
+        border-bottom: 2px solid var(--prem-border) !important;
+        padding: 16px;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+    }
+
+    .premium-table td {
+        padding: 16px;
+        vertical-align: middle;
+    }
+
+    .premium-table tr:hover td {
+        background-color: #f8fafc;
+    }
+
+    .tracking-wider {
+        letter-spacing: 0.5px;
+    }
+</style>

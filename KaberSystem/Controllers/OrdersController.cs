@@ -44,14 +44,13 @@ namespace KaberSystem.Controllers
 
             if (User.IsInRole("Technician"))
             {
-                query = query.Where(o => o.Technician.Name == User.Identity.Name
-                                      && o.Status != OrderStatus.Approved
-                                      && o.Status != OrderStatus.Cancelled);
+                // 📌 التحديث: إزالة شرط إخفاء الطلبات المعتمدة والملغاة لكي يتمكن الفني من رؤية السجل الخاص به بالكامل
+                query = query.Where(o => o.Technician.Name == User.Identity.Name);
             }
 
             if (!string.IsNullOrEmpty(searchQuery))
             {
-                query = query.Where(o => o.CustomerName.Contains(searchQuery) || o.PhoneNumber.Contains(searchQuery));
+                query = query.Where(o => o.CustomerName.Contains(searchQuery) || o.PhoneNumber.Contains(searchQuery) || o.OrderId.ToString() == searchQuery);
             }
 
             var orders = await query.OrderByDescending(o => o.CreatedAt).ToListAsync();
@@ -74,6 +73,64 @@ namespace KaberSystem.Controllers
             }
 
             return View(orders);
+        }
+
+        [HttpGet]
+        [Authorize(Roles = "Admin,CallCenter")]
+        public async Task<IActionResult> SearchPreviousOrders(string query)
+        {
+            if (string.IsNullOrEmpty(query)) return Json(new { success = false });
+
+            var orders = await _context.Orders
+                .Where(o => (o.Status == OrderStatus.Completed || o.Status == OrderStatus.Approved) &&
+                            (o.PhoneNumber.Contains(query) || o.CustomerName.Contains(query) || o.OrderId.ToString() == query))
+                .Select(o => new {
+                    o.OrderId,
+                    o.CustomerName,
+                    o.PhoneNumber,
+                    o.DeviceName,
+                    o.Address,
+                    Date = o.CreatedAt.ToString("yyyy-MM-dd")
+                })
+                .OrderByDescending(o => o.OrderId)
+                .Take(5)
+                .ToListAsync();
+
+            return Json(new { success = true, data = orders });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        [Authorize(Roles = "Admin,CallCenter")]
+        public async Task<IActionResult> CreateWarrantyOrder(int originalOrderId, string problemDescription, DateTime? scheduledDate)
+        {
+            var originalOrder = await _context.Orders.FindAsync(originalOrderId);
+            if (originalOrder == null) return NotFound();
+
+            var newOrder = new Order
+            {
+                CustomerName = originalOrder.CustomerName,
+                PhoneNumber = originalOrder.PhoneNumber,
+                Address = originalOrder.Address,
+                LocationMapUrl = originalOrder.LocationMapUrl,
+                DeviceName = originalOrder.DeviceName,
+                ProblemDescription = $"[طلب ضمان للطلب السابق #{originalOrderId}] - {problemDescription}",
+                Type = OrderType.Warranty,
+                Status = OrderStatus.New,
+                CreatedAt = DateTime.Now,
+                ScheduledDate = scheduledDate,
+                EstimatedPrice = 0,
+                AdvancePayment = 0,
+                FinalPrice = 0,
+                IsFeeApplied = false
+            };
+
+            _context.Orders.Add(newOrder);
+            LogAction("إنشاء طلب ضمان", $"تم إنشاء طلب زيارة ضمان للعميل {newOrder.CustomerName} مبني على الفاتورة السابقة #{originalOrderId}");
+            await _context.SaveChangesAsync();
+
+            TempData["SuccessMessage"] = $"تم فتح طلب ضمان جديد برقم #{newOrder.OrderId} للعميل بنجاح.";
+            return RedirectToAction(nameof(Index));
         }
 
         [HttpPost]
@@ -190,7 +247,6 @@ namespace KaberSystem.Controllers
             return View(order);
         }
 
-        // 📌 التحديث الأهم: استقبال الصور (deviceImages) وتحديث الدفعة المقدمة
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,CallCenter")]
@@ -201,7 +257,6 @@ namespace KaberSystem.Controllers
             var existingOrder = await _context.Orders.FindAsync(id);
             if (existingOrder == null) return NotFound();
 
-            // تحديث البيانات الأساسية
             existingOrder.CustomerName = order.CustomerName;
             existingOrder.PhoneNumber = order.PhoneNumber;
             existingOrder.DeviceName = order.DeviceName;
@@ -210,15 +265,14 @@ namespace KaberSystem.Controllers
             existingOrder.LocationMapUrl = order.LocationMapUrl;
             existingOrder.Type = order.Type;
             existingOrder.EstimatedPrice = order.EstimatedPrice;
-            existingOrder.AdvancePayment = order.AdvancePayment; // 👈 ضمان تحديث الدفعة المقدمة
+            existingOrder.TaxAmount = order.TaxAmount; // 📌 التحديث: حفظ الضريبة عند التعديل
+            existingOrder.AdvancePayment = order.AdvancePayment;
             existingOrder.ScheduledDate = order.ScheduledDate;
 
-            // 📌 معالجة رفع الصور الإضافية (لا تحذف الصور القديمة)
             if (deviceImages != null && deviceImages.Count > 0)
             {
                 var imagePaths = new List<string>();
 
-                // جلب الصور القديمة للاحتفاظ بها
                 if (!string.IsNullOrEmpty(existingOrder.DeviceImagePath))
                 {
                     imagePaths.AddRange(existingOrder.DeviceImagePath.Split(',', StringSplitOptions.RemoveEmptyEntries));
@@ -242,7 +296,6 @@ namespace KaberSystem.Controllers
                     }
                 }
 
-                // دمج الصور القديمة مع الجديدة
                 existingOrder.DeviceImagePath = string.Join(",", imagePaths);
             }
 
@@ -266,7 +319,8 @@ namespace KaberSystem.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,CallCenter")]
-        public async Task<IActionResult> ScheduleInstallation(int orderId, int technicianId, DateTime scheduledDate, decimal additionalInstallFee, string adminNotes)
+        // 📌 التحديث: إضافة taxAmount لجدولة نواقص التركيب
+        public async Task<IActionResult> ScheduleInstallation(int orderId, int technicianId, DateTime scheduledDate, decimal additionalInstallFee, decimal taxAmount, string adminNotes)
         {
             var oldOrder = await _context.Orders.FindAsync(orderId);
             if (oldOrder != null)
@@ -290,9 +344,10 @@ namespace KaberSystem.Controllers
                     ScheduledDate = scheduledDate,
                     TechnicianId = technicianId,
                     EstimatedPrice = additionalInstallFee,
+                    TaxAmount = taxAmount, // 📌 التحديث: حفظ الضريبة
                     IsFeeApplied = additionalInstallFee > 0,
                     AdvancePayment = 0,
-                    FinalPrice = additionalInstallFee
+                    FinalPrice = additionalInstallFee + taxAmount // إضافة الضريبة للإجمالي
                 };
 
                 _context.Orders.Add(newOrder);
@@ -376,7 +431,8 @@ namespace KaberSystem.Controllers
         [HttpPost]
         [Authorize(Roles = "Admin,CallCenter")]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Confirm(int id, DateTime scheduledDate, decimal estimatedPrice, decimal advancePayment)
+        // 📌 التحديث: إضافة حقل الضريبة أثناء تأكيد الموعد
+        public async Task<IActionResult> Confirm(int id, DateTime scheduledDate, decimal estimatedPrice, decimal advancePayment, decimal taxAmount)
         {
             var order = await _context.Orders.FindAsync(id);
             if (order != null)
@@ -384,8 +440,9 @@ namespace KaberSystem.Controllers
                 order.ScheduledDate = scheduledDate;
                 order.EstimatedPrice = estimatedPrice;
                 order.AdvancePayment = advancePayment;
+                order.TaxAmount = taxAmount; // 📌 التحديث: حفظ الضريبة
                 order.Status = OrderStatus.Confirmed;
-                order.FinalPrice = estimatedPrice;
+                order.FinalPrice = estimatedPrice + taxAmount; // الإجمالي المبدئي
 
                 if (advancePayment > 0)
                 {
@@ -437,11 +494,16 @@ namespace KaberSystem.Controllers
 
             if (User.IsInRole("Technician"))
             {
-                if (order.Technician?.Name != User.Identity.Name ||
-                    order.Status == OrderStatus.Approved)
+                if (order.Technician?.Name != User.Identity.Name)
                 {
-                    TempData["ErrorMessage"] = "تم إغلاق هذا الطلب واعتماده نهائياً من الإدارة، ولا يمكنك التعديل عليه.";
+                    TempData["ErrorMessage"] = "عفواً، لا تملك الصلاحية لعرض تفاصيل هذا الطلب لأنه مسند لفني آخر.";
                     return RedirectToAction(nameof(Index));
+                }
+
+                // 📌 التحديث: رسالة توضيحية للفني داخل شاشة الطلب بأنه للمراجعة فقط ولا يمكن تعديله
+                if (order.Status == OrderStatus.Approved || order.Status == OrderStatus.Cancelled)
+                {
+                    TempData["InfoMessage"] = "هذا الطلب منتهي ومغلق بالكامل، يمكنك مراجعته والاطلاع عليه فقط.";
                 }
             }
 
@@ -452,6 +514,12 @@ namespace KaberSystem.Controllers
                 .ToListAsync();
 
             ViewData["AvailableParts"] = await _context.SpareParts.Where(p => p.MainStockQuantity > 0).ToListAsync();
+
+            var orderTransactions = await _context.SafeTransactions
+                .Where(t => t.OrderId == id && t.Type == SafeTransactionType.Income)
+                .ToListAsync();
+
+            ViewBag.TotalPaid = orderTransactions.Sum(t => t.Amount);
 
             return View(order);
         }
@@ -466,16 +534,25 @@ namespace KaberSystem.Controllers
 
             if (order != null)
             {
-                if (User.IsInRole("Technician") && (newStatus == OrderStatus.Approved || newStatus == OrderStatus.Returned))
+                // 📌 التحديث: حماية خلفية قوية لمنع الفني من تعديل أي شيء إذا كان الطلب معتمداً أو ملغياً
+                if (User.IsInRole("Technician"))
                 {
-                    return Unauthorized();
+                    if (order.Status == OrderStatus.Approved || order.Status == OrderStatus.Cancelled)
+                    {
+                        TempData["ErrorMessage"] = "عفواً، لا يمكنك التعديل على طلب تم إغلاقه واعتماده.";
+                        return RedirectToAction(nameof(Details), new { id = id });
+                    }
+
+                    if (newStatus == OrderStatus.Approved || newStatus == OrderStatus.Returned)
+                    {
+                        return Unauthorized();
+                    }
                 }
 
                 string oldStatusStr = order.Status.ToString();
                 order.Status = newStatus;
                 order.TechnicianNotes = technicianNotes;
 
-                // 📌 التحديث الجديد: معالجة نظام البلاك لست وإعفاء الرسوم
                 if (isFeeApplied == 1)
                 {
                     order.IsFeeApplied = true;
@@ -486,7 +563,7 @@ namespace KaberSystem.Controllers
                     order.IsFeeApplied = false;
                     order.IsBlacklisted = false;
                 }
-                else if (isFeeApplied == -1) // 👈 حالة البلاك لست
+                else if (isFeeApplied == -1)
                 {
                     order.IsFeeApplied = false;
                     order.IsBlacklisted = true;
@@ -496,7 +573,8 @@ namespace KaberSystem.Controllers
                 decimal partsTotal = order.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
                 decimal appliedFee = order.IsFeeApplied ? order.EstimatedPrice : 0;
 
-                order.FinalPrice = appliedFee + partsTotal;
+                // 📌 التحديث: احتساب الضريبة المحفوظة من قبل ضمن الفاتورة النهائية
+                order.FinalPrice = appliedFee + partsTotal + order.TaxAmount;
 
                 if (newStatus == OrderStatus.Approved)
                 {
@@ -532,6 +610,7 @@ namespace KaberSystem.Controllers
             }
             return RedirectToAction(nameof(Details), new { id = id });
         }
+
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,Technician,CallCenter")]
@@ -566,7 +645,8 @@ namespace KaberSystem.Controllers
                     decimal appliedFee = order.IsFeeApplied ? order.EstimatedPrice : 0;
                     decimal currentPartsTotal = order.UsedSpareParts.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) + (quantity * part.SellingPrice);
 
-                    order.FinalPrice = appliedFee + currentPartsTotal;
+                    // 📌 التحديث: إضافة الضريبة
+                    order.FinalPrice = appliedFee + currentPartsTotal + order.TaxAmount;
                     _context.Update(order);
 
                     LogAction("استهلاك عهدة", $"تركيب قطعة ({part.Name}) بكمية ({quantity}) في الطلب #{orderId}");
@@ -639,7 +719,7 @@ namespace KaberSystem.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> ProcessPayment(int orderId, PaymentMethod paymentMethod, IFormFile paymentReceipt)
+        public async Task<IActionResult> ProcessPayment(int orderId, decimal cashAmount, decimal posAmount, decimal bankTransferAmount, IFormFile paymentReceipt)
         {
             var order = await _context.Orders
                 .Include(o => o.Invoices)
@@ -649,8 +729,12 @@ namespace KaberSystem.Controllers
 
             if (order == null) return NotFound();
 
-            order.PaymentMethod = paymentMethod;
-            order.IsPaid = true;
+            decimal totalPaidNow = cashAmount + posAmount + bankTransferAmount;
+            if (totalPaidNow <= 0)
+            {
+                TempData["ErrorMessage"] = "الرجاء إدخال مبلغ صحيح للتحصيل.";
+                return RedirectToAction(nameof(Details), new { id = orderId });
+            }
 
             if (paymentReceipt != null && paymentReceipt.Length > 0)
             {
@@ -662,55 +746,63 @@ namespace KaberSystem.Controllers
                 order.PaymentReceiptPath = "/uploads/receipts/" + uniqueFileName;
             }
 
-            if (order.Invoices != null)
+            decimal totalPartsCost = order.UsedSpareParts?.Sum(p => p.QuantityUsed * (p.SparePart?.PurchasePrice ?? 0)) ?? 0;
+
+            var previousTransactions = await _context.SafeTransactions.Where(t => t.OrderId == orderId && t.Type == SafeTransactionType.Income).ToListAsync();
+            decimal previouslyPaidCost = previousTransactions.Where(t => t.TargetSafe == SafeType.Purchasing).Sum(t => t.Amount);
+
+            decimal remainingCostToCover = totalPartsCost - previouslyPaidCost;
+            if (remainingCostToCover < 0) remainingCostToCover = 0;
+
+            void ProcessPaymentPortion(decimal amount, PaymentMethod method)
             {
-                foreach (var invoice in order.Invoices) { invoice.Status = InvoiceStatus.Paid; }
+                if (amount <= 0) return;
+
+                if (remainingCostToCover > 0)
+                {
+                    if (amount <= remainingCostToCover)
+                    {
+                        _context.SafeTransactions.Add(new SafeTransaction { Amount = amount, Type = SafeTransactionType.Income, TargetSafe = SafeType.Purchasing, PaymentMethod = method, Description = $"استرداد رأس مال قطع للطلب #{order.OrderId}", OrderId = order.OrderId, RecordedBy = User.Identity?.Name ?? "System", Date = DateTime.Now });
+                        remainingCostToCover -= amount;
+                    }
+                    else
+                    {
+                        _context.SafeTransactions.Add(new SafeTransaction { Amount = remainingCostToCover, Type = SafeTransactionType.Income, TargetSafe = SafeType.Purchasing, PaymentMethod = method, Description = $"استرداد رأس مال قطع للطلب #{order.OrderId}", OrderId = order.OrderId, RecordedBy = User.Identity?.Name ?? "System", Date = DateTime.Now });
+                        decimal profitPart = amount - remainingCostToCover;
+                        _context.SafeTransactions.Add(new SafeTransaction { Amount = profitPart, Type = SafeTransactionType.Income, TargetSafe = SafeType.General, PaymentMethod = method, Description = $"تحصيل أجور وأرباح للطلب #{order.OrderId}", OrderId = order.OrderId, RecordedBy = User.Identity?.Name ?? "System", Date = DateTime.Now });
+                        remainingCostToCover = 0;
+                    }
+                }
+                else
+                {
+                    _context.SafeTransactions.Add(new SafeTransaction { Amount = amount, Type = SafeTransactionType.Income, TargetSafe = SafeType.General, PaymentMethod = method, Description = $"تحصيل أجور وأرباح للطلب #{order.OrderId}", OrderId = order.OrderId, RecordedBy = User.Identity?.Name ?? "System", Date = DateTime.Now });
+                }
             }
 
-            decimal remainingAmountToCollect = order.FinalPrice - order.AdvancePayment;
+            ProcessPaymentPortion(cashAmount, PaymentMethod.Cash);
+            ProcessPaymentPortion(posAmount, PaymentMethod.POS);
+            ProcessPaymentPortion(bankTransferAmount, PaymentMethod.BankTransfer);
 
-            if (remainingAmountToCollect > 0)
+            if (cashAmount >= posAmount && cashAmount >= bankTransferAmount) order.PaymentMethod = PaymentMethod.Cash;
+            else if (posAmount >= cashAmount && posAmount >= bankTransferAmount) order.PaymentMethod = PaymentMethod.POS;
+            else order.PaymentMethod = PaymentMethod.BankTransfer;
+
+            decimal totalPaidAllTime = previousTransactions.Sum(t => t.Amount) + totalPaidNow;
+            if (totalPaidAllTime >= order.FinalPrice)
             {
-                decimal partsCost = order.UsedSpareParts?.Sum(p => p.QuantityUsed * (p.SparePart?.PurchasePrice ?? 0)) ?? 0;
-
-                if (partsCost > 0)
+                order.IsPaid = true;
+                if (order.Invoices != null)
                 {
-                    _context.SafeTransactions.Add(new SafeTransaction
-                    {
-                        Amount = partsCost,
-                        Type = SafeTransactionType.Income,
-                        TargetSafe = SafeType.Purchasing,
-                        PaymentMethod = paymentMethod,
-                        Description = $"استرداد رأس مال قطع للطلب #{order.OrderId}",
-                        OrderId = order.OrderId,
-                        RecordedBy = User.Identity?.Name ?? "System",
-                        Date = DateTime.Now
-                    });
+                    foreach (var invoice in order.Invoices) { invoice.Status = InvoiceStatus.Paid; }
                 }
-
-                decimal generalProfit = remainingAmountToCollect - partsCost;
-                if (generalProfit > 0)
-                {
-                    _context.SafeTransactions.Add(new SafeTransaction
-                    {
-                        Amount = generalProfit,
-                        Type = SafeTransactionType.Income,
-                        TargetSafe = SafeType.General,
-                        PaymentMethod = paymentMethod,
-                        Description = $"تحصيل أجور وأرباح للطلب #{order.OrderId}",
-                        OrderId = order.OrderId,
-                        RecordedBy = User.Identity?.Name ?? "System",
-                        Date = DateTime.Now
-                    });
-                }
-
-                LogAction("تحصيل مقسم للخزنات", $"تم تحصيل {remainingAmountToCollect} (منها {partsCost} للمشتريات و {generalProfit} أرباح عامة). طريقة الدفع: {paymentMethod}");
             }
+
+            LogAction("تحصيل مجزأ", $"تم تحصيل ({totalPaidNow} ريال) للطلب #{orderId} مجزأة (كاش:{cashAmount}, شبكة:{posAmount}, تحويل:{bankTransferAmount})");
 
             _context.Update(order);
             await _context.SaveChangesAsync();
 
-            TempData["SuccessMessage"] = "تم تأكيد التحصيل بنجاح وتوجيه الأرباح ورأس المال للخزنات المختصة.";
+            TempData["SuccessMessage"] = "تم تسجيل المدفوعات وتوجيهها للخزنات بنجاح.";
             return RedirectToAction(nameof(Details), new { id = orderId });
         }
 
@@ -810,7 +902,6 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Details), new { id = request?.OrderId });
         }
 
-        // 📌 التحديث الجديد: دعم رفع أكثر من صورة لنواقص المخزن
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> RequestPurchase(int orderId, string partName, string deviceModel, int quantity, bool isCommon, List<IFormFile> partImages)
@@ -848,7 +939,7 @@ namespace KaberSystem.Controllers
                 DeviceModel = deviceModel,
                 IsCommonRequest = isCommon,
                 Quantity = quantity,
-                ImagePath = finalImagePaths, // 👈 حفظ المسارات المتعددة
+                ImagePath = finalImagePaths,
                 Status = PartRequestStatus.PendingPurchasing
             };
 

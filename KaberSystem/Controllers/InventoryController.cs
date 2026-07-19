@@ -1,4 +1,5 @@
-﻿using System;
+﻿// مسار الملف: Controllers/InventoryController.cs
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
@@ -33,35 +34,69 @@ namespace KaberSystem.Controllers
             });
         }
 
-        // 📌 التحديث هنا: إضافة خاصية البحث الشامل في المخزون
-        public async Task<IActionResult> Index(string searchQuery)
+        // 📌 التحديث: عرض المنتجات (مع فرز المنتجات المخلصة للأسفل وإخفاء المحذوفة)
+        public async Task<IActionResult> Index(string searchQuery, int? warehouseId)
         {
             ViewData["CurrentSearch"] = searchQuery;
+            ViewData["CurrentWarehouse"] = warehouseId;
+            ViewData["WarehousesList"] = new SelectList(await _context.Warehouses.ToListAsync(), "Id", "Name");
 
-            var query = _context.SpareParts.AsQueryable();
+            var query = _context.SpareParts
+                .Include(p => p.Warehouse)
+                .Where(p => !p.IsDeleted) // إخفاء المحذوف
+                .AsQueryable();
+
+            if (warehouseId.HasValue)
+            {
+                query = query.Where(p => p.WarehouseId == warehouseId);
+            }
 
             if (!string.IsNullOrEmpty(searchQuery))
             {
                 query = query.Where(p =>
                     p.Name.Contains(searchQuery) ||
                     (p.PartCode != null && p.PartCode.Contains(searchQuery)) ||
-                    (p.TargetModel != null && p.TargetModel.Contains(searchQuery)) ||
-                    (p.SupplierName != null && p.SupplierName.Contains(searchQuery))
+                    (p.TargetModel != null && p.TargetModel.Contains(searchQuery))
                 );
             }
 
-            var parts = await query.OrderByDescending(p => p.PartId).ToListAsync();
+            // 📌 التحديث: الترتيب الذكي (الكمية الأكبر من 0 تظهر فوق، المخلّص ينزل تحت)
+            var parts = await query
+                .OrderByDescending(p => p.MainStockQuantity > 0)
+                .ThenByDescending(p => p.PartId)
+                .ToListAsync();
+
             return View(parts);
         }
 
-        public IActionResult Create()
+        // 📌 التحديث: إدارة المستودعات الرئيسية والفرعية
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> Warehouses()
         {
+            var w = await _context.Warehouses.ToListAsync();
+            return View(w);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateWarehouse(string name, string location, bool isMain)
+        {
+            _context.Warehouses.Add(new Warehouse { Name = name, Location = location, IsMain = isMain });
+            await _context.SaveChangesAsync();
+            LogAction("إضافة مستودع", $"تم إنشاء مستودع جديد: {name}");
+            TempData["SuccessMessage"] = "تم إنشاء المستودع بنجاح.";
+            return RedirectToAction(nameof(Warehouses));
+        }
+
+        public async Task<IActionResult> Create()
+        {
+            ViewData["WarehouseId"] = new SelectList(await _context.Warehouses.ToListAsync(), "Id", "Name");
             return View();
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("PartCode,Name,IsCommon,TargetModel,PurchasePrice,SellingPrice,MainStockQuantity,SupplierName,SupplierPhone,SupplierLocation")] SparePart sparePart)
+        public async Task<IActionResult> Create([Bind("PartCode,Name,IsCommon,TargetModel,PurchasePrice,SellingPrice,MainStockQuantity,SupplierName,SupplierPhone,SupplierLocation,WarehouseId")] SparePart sparePart)
         {
             if (string.IsNullOrEmpty(sparePart.PartCode))
             {
@@ -73,6 +108,13 @@ namespace KaberSystem.Controllers
                 sparePart.TargetModel = null;
             }
 
+            // إذا لم يحدد مستودع، ابحث عن المستودع الرئيسي
+            if (!sparePart.WarehouseId.HasValue)
+            {
+                var mainW = await _context.Warehouses.FirstOrDefaultAsync(w => w.IsMain);
+                if (mainW != null) sparePart.WarehouseId = mainW.Id;
+            }
+
             if (ModelState.IsValid)
             {
                 _context.Add(sparePart);
@@ -82,6 +124,7 @@ namespace KaberSystem.Controllers
                 TempData["SuccessMessage"] = "تم إضافة الصنف وتكويده في المخزون بنجاح!";
                 return RedirectToAction(nameof(Index));
             }
+            ViewData["WarehouseId"] = new SelectList(await _context.Warehouses.ToListAsync(), "Id", "Name", sparePart.WarehouseId);
             return View(sparePart);
         }
 
@@ -90,12 +133,14 @@ namespace KaberSystem.Controllers
             if (id == null) return NotFound();
             var part = await _context.SpareParts.FindAsync(id);
             if (part == null) return NotFound();
+
+            ViewData["WarehouseId"] = new SelectList(await _context.Warehouses.ToListAsync(), "Id", "Name", part.WarehouseId);
             return View(part);
         }
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("PartId,PartCode,Name,IsCommon,TargetModel,PurchasePrice,SellingPrice,MainStockQuantity,SupplierName,SupplierPhone,SupplierLocation")] SparePart sparePart)
+        public async Task<IActionResult> Edit(int id, [Bind("PartId,PartCode,Name,IsCommon,TargetModel,PurchasePrice,SellingPrice,MainStockQuantity,SupplierName,SupplierPhone,SupplierLocation,WarehouseId")] SparePart sparePart)
         {
             if (id != sparePart.PartId) return NotFound();
 
@@ -116,6 +161,7 @@ namespace KaberSystem.Controllers
                     existingPart.TargetModel = sparePart.IsCommon ? null : sparePart.TargetModel;
                     existingPart.PurchasePrice = sparePart.PurchasePrice;
                     existingPart.SellingPrice = sparePart.SellingPrice;
+                    existingPart.WarehouseId = sparePart.WarehouseId;
 
                     existingPart.SupplierName = sparePart.SupplierName;
                     existingPart.SupplierPhone = sparePart.SupplierPhone;
@@ -139,7 +185,52 @@ namespace KaberSystem.Controllers
                 }
                 return RedirectToAction(nameof(Index));
             }
+            ViewData["WarehouseId"] = new SelectList(await _context.Warehouses.ToListAsync(), "Id", "Name", sparePart.WarehouseId);
             return View(sparePart);
+        }
+
+        // 📌 التحديث: شاشة جرد المستودع الفعلي
+        [Authorize(Roles = "Admin,Store")]
+        public async Task<IActionResult> Stocktake()
+        {
+            var parts = await _context.SpareParts
+                .Where(p => !p.IsDeleted)
+                .OrderByDescending(p => p.MainStockQuantity > 0)
+                .ToListAsync();
+            return View(parts);
+        }
+
+        [HttpPost]
+        [Authorize(Roles = "Admin,Store")]
+        public async Task<IActionResult> SubmitStocktake(int partId, int actualQuantity, string notes)
+        {
+            var part = await _context.SpareParts.FindAsync(partId);
+            if (part != null)
+            {
+                int difference = actualQuantity - part.MainStockQuantity;
+
+                if (difference < 0)
+                {
+                    // عجز (تالف أو مفقود)
+                    int lossQuantity = Math.Abs(difference);
+                    _context.DamagedParts.Add(new DamagedPart
+                    {
+                        PartId = part.PartId,
+                        Quantity = lossQuantity,
+                        Reason = $"[تسوية جردية]: عجز في الرصيد. الملاحظات: {notes}",
+                        Date = DateTime.Now,
+                        TotalLoss = lossQuantity * part.PurchasePrice
+                    });
+                }
+
+                part.MainStockQuantity = actualQuantity;
+                _context.Update(part);
+
+                LogAction("جرد مخزون", $"تم تسوية جرد الصنف {part.Name}. الرصيد الفعلي المسجل: {actualQuantity}");
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = "تم اعتماد الجرد وتسوية الرصيد بنجاح.";
+            }
+            return RedirectToAction(nameof(Stocktake));
         }
 
         public async Task<IActionResult> DamagedParts()
@@ -153,7 +244,7 @@ namespace KaberSystem.Controllers
 
         public async Task<IActionResult> RecordDamage()
         {
-            ViewData["PartId"] = new SelectList(await _context.SpareParts.Where(p => p.MainStockQuantity > 0).ToListAsync(), "PartId", "Name");
+            ViewData["PartId"] = new SelectList(await _context.SpareParts.Where(p => p.MainStockQuantity > 0 && !p.IsDeleted).ToListAsync(), "PartId", "Name");
             return View();
         }
 
@@ -179,21 +270,25 @@ namespace KaberSystem.Controllers
             }
 
             TempData["ErrorMessage"] = "حدث خطأ! تأكد من أن الكمية المدخلة متوفرة في المخزن.";
-            ViewData["PartId"] = new SelectList(await _context.SpareParts.Where(p => p.MainStockQuantity > 0).ToListAsync(), "PartId", "Name", damagedPart.PartId);
+            ViewData["PartId"] = new SelectList(await _context.SpareParts.Where(p => p.MainStockQuantity > 0 && !p.IsDeleted).ToListAsync(), "PartId", "Name", damagedPart.PartId);
             return View(damagedPart);
         }
 
+        // 📌 التحديث: حذف آمن (Soft Delete) لعدم تدمير الحسابات
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
             var part = await _context.SpareParts.FindAsync(id);
             if (part != null)
             {
-                _context.SpareParts.Remove(part);
-                LogAction("حذف صنف", $"تم حذف الصنف ({part.Name}) نهائياً من المخزون العام");
+                part.IsDeleted = true; // إخفاء فقط
+                part.MainStockQuantity = 0; // تصفير الرصيد
+                _context.Update(part);
+
+                LogAction("حذف صنف آمن", $"تم أرشفة وحذف الصنف ({part.Name}) مع تصفير رصيده، لضمان عدم تأثر الفواتير القديمة.");
 
                 await _context.SaveChangesAsync();
-                TempData["SuccessMessage"] = "تم حذف الصنف من المخزون العام.";
+                TempData["SuccessMessage"] = "تم أرشفة وحذف الصنف بنجاح وبشكل آمن يحفظ الدفاتر المحاسبية.";
             }
             return RedirectToAction(nameof(Index));
         }

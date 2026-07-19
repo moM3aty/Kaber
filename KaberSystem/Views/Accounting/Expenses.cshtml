@@ -36,6 +36,9 @@
             </div>
             <div class="card-body p-4">
                 <form asp-action="AddExpense" method="post">
+                    <!-- 📌 التحديث هنا: إرسال الشهر المحدد للكنترولر ليتم تقفيل المصروف فيه -->
+                    <input type="hidden" name="targetMonth" value="@currentMonthYear" />
+
                     <div class="mb-3">
                         <label class="form-label fw-bold text-muted small text-uppercase">البيان (راتب / بنزين / سلفة) <span class="text-danger">*</span></label>
                         <input type="text" name="Description" class="form-control sys-input fw-bold" placeholder="مثال: راتب شهر مارس، فاتورة كهرباء" required />
@@ -110,7 +113,7 @@
     <div class="col-lg-8 fade-in-up" style="animation-delay: 0.2s;">
         <div class="card border-0 rounded-4 shadow-sm h-100 overflow-hidden">
             <div class="card-header bg-white border-bottom pt-4 pb-3 px-4 d-flex justify-content-between align-items-center">
-                <h5 class="fw-bolder text-dark mb-0"><i class="fa-solid fa-list-ul text-primary me-2"></i> سجل قيود شهر (@ViewBag.MonthName)</h5>
+                <h5 class="fw-bolder text-dark mb-0"><i class="fa-solid fa-list-ul text-primary me-2"></i> سجل قيود شهر (@currentMonthYear)</h5>
             </div>
             <div class="card-body p-0">
                 <div class="table-responsive">
@@ -224,8 +227,8 @@
 
         @if (TempData["SuccessMessage"] != null)
         {
-                var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
-                <text>Swal.fire({ icon: 'success', title: 'تم بنجاح', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'rounded-4' } });</text>
+                    var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                    <text>Swal.fire({ icon: 'success', title: 'تم بنجاح', text: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'rounded-4' } });</text>
         }
     </script>
 }

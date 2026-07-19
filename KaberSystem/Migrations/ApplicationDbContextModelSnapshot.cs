@@ -260,6 +260,9 @@ namespace KaberSystem.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("decimal(18,2)");
+
                     b.Property<int?>("TechnicianId")
                         .HasColumnType("int");
 
@@ -457,6 +460,9 @@ namespace KaberSystem.Migrations
                     b.Property<string>("Barcode")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("InvoiceReceiptPath")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("IsPricedByManager")
                         .HasColumnType("bit");
 
@@ -487,6 +493,9 @@ namespace KaberSystem.Migrations
 
                     b.Property<string>("SupplierPhone")
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("decimal(18,2)");
 
                     b.HasKey("PurchaseId");
 
@@ -548,6 +557,9 @@ namespace KaberSystem.Migrations
                     b.Property<bool>("IsCommon")
                         .HasColumnType("bit");
 
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
                     b.Property<int>("MainStockQuantity")
                         .HasColumnType("int");
 
@@ -577,7 +589,15 @@ namespace KaberSystem.Migrations
                     b.Property<string>("TargetModel")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<decimal>("TaxAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int?>("WarehouseId")
+                        .HasColumnType("int");
+
                     b.HasKey("PartId");
+
+                    b.HasIndex("WarehouseId");
 
                     b.ToTable("SpareParts");
                 });
@@ -697,6 +717,32 @@ namespace KaberSystem.Migrations
                     b.ToTable("TechnicianStocks");
                 });
 
+            modelBuilder.Entity("KaberSystem.Models.Warehouse", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsMain")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Location")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Warehouses");
+                });
+
             modelBuilder.Entity("KaberSystem.Models.AttendanceRecord", b =>
                 {
                     b.HasOne("KaberSystem.Models.SystemUser", "User")
@@ -813,6 +859,15 @@ namespace KaberSystem.Migrations
                         .HasForeignKey("OrderId");
 
                     b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("KaberSystem.Models.SparePart", b =>
+                {
+                    b.HasOne("KaberSystem.Models.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId");
+
+                    b.Navigation("Warehouse");
                 });
 
             modelBuilder.Entity("KaberSystem.Models.TechnicianStock", b =>

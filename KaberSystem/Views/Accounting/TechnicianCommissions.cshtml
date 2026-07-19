@@ -19,6 +19,15 @@
     </div>
 </div>
 
+<!-- 📌 تنبيه هام للمحاسب لتجنب مشكلة السالب -->
+<div class="alert alert-primary shadow-sm border-0 rounded-4 p-3 mb-4 fade-in-up d-flex align-items-center gap-3">
+    <i class="fa-solid fa-lightbulb fs-3 text-primary"></i>
+    <div>
+        <h6 class="fw-bolder text-dark mb-1">نصيحة محاسبية لتقفيل الدفاتر (تجنب السالب)</h6>
+        <p class="mb-0 small fw-bold text-muted">عند تقفيل حساب شهر منتهي (مثلاً شهر 5) وأنت الآن في شهر (6)، تأكد من اختيار شهر (5) من الفلتر أدناه. النظام سيقوم آلياً بتسجيل حركة الصرف في الدقائق الأخيرة من شهر 5 لكي لا تظهر خزنة شهر 6 بالسالب.</p>
+    </div>
+</div>
+
 <div class="premium-card mb-4 bg-light border-0 shadow-sm p-4 fade-in-up">
     <form method="get" asp-action="TechnicianCommissions" class="row g-4 align-items-end">
         <div class="col-md-5">
@@ -36,7 +45,7 @@
             </select>
         </div>
         <div class="col-md-4">
-            <label class="premium-label text-dark">اختر شهر التصفية:</label>
+            <label class="premium-label text-dark">اختر شهر التصفية (المراد تقفيله):</label>
             <input type="month" name="monthYear" class="form-control form-control-lg fw-bold shadow-none border-secondary" value="@Context.Request.Query["monthYear"]" required />
         </div>
         <div class="col-md-3">
@@ -80,10 +89,9 @@
         <div class="col-md-3">
             <div class="premium-card bg-warning bg-opacity-10 border-0 h-100 p-4 text-center border-top border-4 border-warning">
                 <div class="icon-box bg-white text-warning mx-auto mb-3 shadow-sm"><i class="fa-solid fa-sack-dollar"></i></div>
-                <h6 class="fw-bold text-dark mb-2">الكاش المحصل (مديونية)</h6>
+                <h6 class="fw-bold text-dark mb-2">الكاش المحصل (تراكمي باليد)</h6>
                 <h3 class="fw-bolder text-dark m-0 mb-3">@cashInHand.ToString("N2") <span class="fs-6">ر.س</span></h3>
 
-                <!-- 📌 زر التوريد اليومي السريع -->
                 <button type="button" class="btn btn-sm btn-dark fw-bold rounded-pill px-3 shadow-sm hover-elevate w-100" data-bs-toggle="modal" data-bs-target="#receiveDailyCashModal">
                     <i class="fa-solid fa-hand-holding-dollar me-1 text-warning"></i> استلام وتوريد كاش
                 </button>
@@ -102,6 +110,9 @@
                 <form asp-action="ReceiveDailyCash" method="post">
                     <div class="modal-body p-4 text-start">
                         <input type="hidden" name="techId" value="@selectedTech.TechnicianId" />
+                        <!-- 📌 التحديث: استخدام المتغير الآمن للشهر -->
+                        <input type="hidden" name="targetMonth" value="@ViewBag.CurrentMonthYear" />
+                        <input type="hidden" name="source" value="Commissions" />
 
                         <div class="alert alert-warning py-3 small fw-bold mb-4 border-0 rounded-3 shadow-sm bg-warning bg-opacity-10 text-dark">
                             <i class="fa-solid fa-circle-info text-warning me-1"></i>
@@ -130,8 +141,8 @@
         </div>
     </div>
 
-    <!-- باقي الكود الخاص بحاسبة العمولات (لم يتغير لعدم الإطالة) -->
-    <div class="row g-4 fade-in-up" style="animation-delay: 0.1s;">
+    <!-- باقي الكود الخاص بحاسبة العمولات -->
+    <div class="row g-4 mt-2 fade-in-up" style="animation-delay: 0.1s;">
         <div class="col-lg-6">
             <div class="premium-card h-100 border-primary border-top border-4">
                 <div class="card-header-premium bg-light pb-3">
@@ -174,7 +185,7 @@
         <div class="col-lg-6">
             <div class="premium-card h-100 border-success border-top border-4">
                 <div class="card-header-premium bg-light pb-3">
-                    <h5 class="fw-bolder text-success m-0"><i class="fa-solid fa-percent me-2"></i> 2. عمولة الفني والتصفية النهائية (أخر الشهر)</h5>
+                    <h5 class="fw-bolder text-success m-0"><i class="fa-solid fa-percent me-2"></i> 2. عمولة الفني والتصفية النهائية</h5>
                 </div>
                 <div class="card-body-premium">
 
@@ -242,7 +253,12 @@
                     <div class="modal-body p-4 text-start">
                         <input type="hidden" name="techId" value="@selectedTech.TechnicianId" />
                         <input type="hidden" name="monthYearName" value="@ViewBag.MonthYearName" />
+                        <input type="hidden" name="targetMonth" value="@Context.Request.Query["monthYear"]" />
                         <input type="hidden" name="settleType" id="settleType" value="" />
+
+                        <div class="alert alert-info py-2 small fw-bold text-dark border-0 rounded-3 shadow-sm bg-info bg-opacity-10 mb-3">
+                            <i class="fa-solid fa-calendar-check me-1 text-primary"></i> سيتم إغلاق حساب الفني وتصفير العهدة، <b>وتسجيل الحركة على حسابات شهر (@ViewBag.MonthYearName)</b> لمنع أي أرصدة سالبة في الأشهر اللاحقة.
+                        </div>
 
                         <p class="text-muted fw-bold mb-3 lh-lg" id="modalDesc"></p>
 
@@ -259,10 +275,6 @@
                                 <label class="btn btn-outline-success text-start fw-bold p-3 rounded-3 d-flex align-items-center">
                                     <input type="radio" name="paymentMethod" value="Cash" class="form-check-input me-3 fs-5" required checked>
                                     <div><i class="fa-solid fa-money-bills me-2"></i> كاش (الصندوق النقدي)</div>
-                                </label>
-                                <label class="btn btn-outline-info text-dark text-start fw-bold p-3 rounded-3 d-flex align-items-center">
-                                    <input type="radio" name="paymentMethod" value="POS" class="form-check-input me-3 fs-5">
-                                    <div><i class="fa-solid fa-credit-card me-2"></i> شبكة / فيزا (البنك)</div>
                                 </label>
                                 <label class="btn btn-outline-primary text-start fw-bold p-3 rounded-3 d-flex align-items-center">
                                     <input type="radio" name="paymentMethod" value="BankTransfer" class="form-check-input me-3 fs-5">
@@ -396,7 +408,7 @@
                 btnSubmit.className = "btn btn-success fw-bolder py-3 rounded-pill shadow-sm fs-5 w-100 hover-elevate";
 
                 modalTitle.innerHTML = '<i class="fa-solid fa-money-bill-transfer text-success me-2"></i> صرف مستحقات الفني';
-                modalDesc.innerHTML = 'تم حساب العمولة بعد خصم كافة التكاليف من الأرباح. سيتم <b class="text-success">صرف هذا المبلغ للفني</b>.';
+                modalDesc.innerHTML = 'تم حساب العمولة بعد خصم كافة التكاليف من الأرباح. سيتم <b class="text-success">صرف هذا المبلغ للفني</b> من الخزنة.';
             }
             else if (finalSettlement < 0) {
                 var owesCompany = Math.abs(finalSettlement);
@@ -443,6 +455,7 @@
         --prem-border: #e2e8f0;
         --prem-text: #1e293b;
         --prem-muted: #64748b;
+        --prem-primary: #f1950b;
         --prem-radius: 20px;
     }
 
@@ -538,10 +551,10 @@
         border-color: #3b82f6;
     }
 
-    .btn-check:checked + .btn-outline-info {
-        background-color: #f0f9ff;
-        color: #0ea5e9;
-        border-color: #0ea5e9;
+    .btn-check:checked + .btn-outline-success {
+        background-color: #ecfdf5;
+        color: #198754;
+        border-color: #198754;
     }
 
     label.btn {

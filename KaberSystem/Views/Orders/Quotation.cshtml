@@ -1,11 +1,16 @@
-﻿@model KaberSystem.Models.Order
+﻿<!-- مسار الملف: Views/Orders/Quotation.cshtml -->
+@model KaberSystem.Models.Order
 @{
     ViewData["Title"] = "عرض سعر #" + Model.OrderId;
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 
     decimal partsTotal = Model.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
     decimal laborFee = Model.IsFeeApplied ? Model.EstimatedPrice : 0;
-    decimal grandTotal = partsTotal + laborFee;
+    
+    // 📌 التحديث: إضافة الضريبة اليدوية
+    decimal grandTotal = partsTotal + laborFee + Model.TaxAmount;
+    decimal vatAmount = Model.TaxAmount;
+    decimal subTotal = grandTotal - vatAmount;
 }
 
 <div class="sys-page-header d-print-none">
@@ -39,7 +44,8 @@
                     <p class="text-dark mb-0 fw-bolder mt-3">كابر لصيانة جميع الأجهزة الكهربائية</p>
                     <p class="text-muted fw-bold mt-1 mb-0 fs-6">سجل تجاري: 7037085128</p>
                     <p class="text-muted fw-bold mb-0">المنطقة الشرقية - الدمام</p>
-                    <p class="text-muted fw-bold mt-1 mb-0" dir="rtl"><i class="fa-brands fa-whatsapp text-success me-1"></i> +966 55 579 4669</p>
+                    <!-- 📌 حل مشكلة رقم الجوال المعكوس -->
+                    <p class="text-muted fw-bold mt-1 mb-0" style="direction: ltr; text-align: right;">+966 55 579 4669 <i class="fa-brands fa-whatsapp text-success ms-1"></i></p>
                 </div>
                 <div class="text-end text-start-print mt-3 mt-sm-0">
                     <h2 class="fw-bold text-warning mb-2 border border-2 border-warning px-4 py-2 rounded-3 d-inline-block title-print">عرض سعر (Quotation)</h2>
@@ -107,7 +113,15 @@
                     </tbody>
                     <tfoot class="table-light">
                         <tr>
-                            <td colspan="3" class="text-end fw-bold fs-5 pe-4">الإجمالي النهائي المقدر:</td>
+                            <td colspan="3" class="text-end fw-bold pe-4 text-muted">الإجمالي قبل الضريبة:</td>
+                            <td class="fw-bold text-dark">@subTotal.ToString("N2") ريال</td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" class="text-end fw-bold pe-4 text-muted border-bottom border-secondary border-opacity-25 pb-2">قيمة الضريبة المضافة (VAT):</td>
+                            <td class="fw-bold text-dark border-bottom border-secondary border-opacity-25 pb-2">@vatAmount.ToString("N2") ريال</td>
+                        </tr>
+                        <tr>
+                            <td colspan="3" class="text-end fw-bold fs-5 pe-4">الإجمالي النهائي المقدر (شامل الضريبة):</td>
                             <td class="text-success fw-bold fs-4 print-success-bg">@grandTotal.ToString("N2") <span class="fs-6">ريال</span></td>
                         </tr>
                     </tfoot>
@@ -146,13 +160,11 @@
         list-style:none;
     }
     @@media print {
-        /* إجبار المتصفح على طباعة الألوان والخلفيات */
         * {
             -webkit-print-color-adjust: exact !important;
             color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-        /* ضبط الهوامش وحجم الورقة لتكون A4 */
         @@page {
             size: A4 portrait;
             margin: 1cm;
@@ -164,7 +176,6 @@
             padding: 0 !important;
             font-size: 14px !important;
         }
-        /* إخفاء واجهة النظام (الشريط الجانبي والعلوي والأزرار) */
         .sys-sidebar, .sys-header, .sys-page-header, .d-print-none {
             display: none !important;
         }
@@ -175,14 +186,12 @@
             width: 100% !important;
             max-width: 100% !important;
         }
-        /* تظبيط الكارت الرئيسي */
         .printable-card {
             box-shadow: none !important;
             border: none !important;
             padding: 0 !important;
-            border-top: 8px solid #f1950b !important; /* الاحتفاظ بالخط البرتقالي العلوي */
+            border-top: 8px solid #f1950b !important;
         }
-        /* تظبيط الجداول لتكون واضحة بخطوط سوداء */
         .print-table {
             border-collapse: collapse !important;
             width: 100% !important;
@@ -198,7 +207,6 @@
         .table-light th, .table-light td {
             background-color: #f8f9fa !important;
         }
-        /* تظبيط الأعمدة بجوار بعضها (مهم جداً للـ PDF) */
         .print-row {
             display: flex !important;
             flex-wrap: nowrap !important;
@@ -221,7 +229,6 @@
             background-color: rgba(25, 135, 84, 0.1) !important;
             color: #198754 !important;
         }
-        /* منع انقسام الجداول أو التوقيعات بين صفحتين */
         .prevent-break {
             page-break-inside: avoid !important;
         }
@@ -229,7 +236,6 @@
         tr {
             page-break-inside: avoid !important;
         }
-        /* تظبيط الترويسة */
         .flex-wrap-print {
             display: flex !important;
             justify-content: space-between !important;

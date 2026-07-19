@@ -6,24 +6,27 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 
-// 📌 التحديث الأهم: إضافة ميزة "إعادة المحاولة التلقائية" لحماية الاتصال بقاعدة البيانات الخارجية
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(
         builder.Configuration.GetConnectionString("DefaultConnection"),
         sqlServerOptionsAction: sqlOptions =>
         {
             sqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5, // سيحاول الاتصال 5 مرات قبل أن يستسلم
-                maxRetryDelay: TimeSpan.FromSeconds(30), // أقصى مدة للانتظار بين المحاولات
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(30),
                 errorNumbersToAdd: null);
         }));
 
+// 📌 إعدادات الكوكيز الصارمة والمباشرة لضمان عدم فشل الجلسة
 builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, config =>
+    .AddCookie(options =>
     {
-        config.Cookie.Name = "KaberSystem.Auth";
-        config.LoginPath = "/Account/Login";
-        config.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.Cookie.Name = "Kaber.Session"; // اسم الكوكي
+        options.LoginPath = "/Account/Login";
+        options.LogoutPath = "/Account/Logout";
+        options.AccessDeniedPath = "/Home/Index"; // التوجيه عند نقص الصلاحية
+        options.ExpireTimeSpan = TimeSpan.FromDays(1); // الجلسة تستمر ليوم كامل
+        options.SlidingExpiration = true;
     });
 
 var app = builder.Build();
@@ -39,6 +42,7 @@ app.UseStaticFiles();
 
 app.UseRouting();
 
+// 📌 الترتيب مهم: Authentication ثم Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -48,14 +52,12 @@ using (var scope = app.Services.CreateScope())
     try
     {
         var context = services.GetRequiredService<ApplicationDbContext>();
-
-        // 📌 ملاحظة: بما أنك تستخدم المايجريشن حالياً، تأكد أن الدالة 
-        // context.Database.EnsureCreated() داخل DbInitializer.cs قد تم تعطيلها لكي لا تتعارض مع المايجريشن
-        DbInitializer.Initialize(context);
+        // تأكد أنك لا تستخدم EnsureCreated إذا كنت تستخدم الـ Migrations
+        // DbInitializer.Initialize(context); 
     }
     catch (Exception ex)
     {
-        Console.WriteLine("An error occurred while seeding the database: " + ex.Message);
+        Console.WriteLine("An error occurred: " + ex.Message);
     }
 }
 

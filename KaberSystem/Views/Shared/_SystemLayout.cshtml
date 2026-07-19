@@ -1,5 +1,4 @@
-﻿<!-- مسار الملف: Views/Shared/_SystemLayout.cshtml -->
-@using KaberSystem.Models
+﻿@using KaberSystem.Models
 @using Microsoft.EntityFrameworkCore
 @inject ApplicationDbContext DbContext
 @{
@@ -7,13 +6,11 @@
     var currentAction = ViewContext.RouteData.Values["action"]?.ToString();
     var userName = User.Identity?.Name ?? "الموظف";
 
-    // عرض الدور الأساسي الأول للمستخدم في البروفايل
     var userRole = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "Guest";
 
     int techNewOrdersCount = 0;
     int adminReadyPartsCount = 0;
 
-    // 📌 التحديث: استخدام User.IsInRole لدعم الصلاحيات الإضافية في التنبيهات (Badges)
     if (User.IsInRole("Technician"))
     {
         techNewOrdersCount = DbContext.Orders.Count(o => o.Technician.Name == userName && (o.Status == OrderStatus.Assigned || o.Status == OrderStatus.Returned));
@@ -121,39 +118,43 @@
         .bg-success-badge {
             background-color: #198754 !important;
         }
-
         @@keyframes notifyPulse {
-            0% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(238, 93, 80, 0.7);
-            }
+            0%
 
-            70% {
-                transform: scale(1.1);
-                box-shadow: 0 0 0 6px rgba(238, 93, 80, 0);
-            }
-
-            100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(238, 93, 80, 0);
-            }
+        {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(238, 93, 80, 0.7);
         }
 
+        70% {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 6px rgba(238, 93, 80, 0);
+        }
+
+        100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(238, 93, 80, 0);
+        }
+
+        }
         @@keyframes notifyPulseSuccess {
-            0% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
-            }
+            0%
 
-            70% {
-                transform: scale(1.1);
-                box-shadow: 0 0 0 6px rgba(25, 135, 84, 0);
-            }
+        {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
+        }
 
-            100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
-            }
+        70% {
+            transform: scale(1.1);
+            box-shadow: 0 0 0 6px rgba(25, 135, 84, 0);
+        }
+
+        100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
+        }
+
         }
 
         .pulse-danger {
@@ -204,15 +205,14 @@
                     <img src="/images/logo.png" width="90" style="border-radius: 10px; object-fit: cover;" alt="Kaber" />
                 </a>
 
+                <!-- 📌 شريط التنقل العلوي -->
                 <div class="top-icon-nav flex-grow-1 justify-content-start justify-content-lg-center">
 
-                    <!-- 📌 1. رؤية التقارير والإحصائيات -->
                     @if (User.IsInRole("Admin") || User.IsInRole("Reports"))
                     {
                         <a href="/Dashboard" class="nav-app-icon @(currentController == "Dashboard" ? "active" : "")"><i class="fa-solid fa-chart-pie"></i><span>الرئيسية</span></a>
                     }
 
-                    <!-- 📌 2. إدارة طلبات الصيانة -->
                     @if (User.IsInRole("Admin") || User.IsInRole("CallCenter") || User.IsInRole("Technician") || User.IsInRole("Orders"))
                     {
                         <a href="/Orders" class="nav-app-icon @(currentController == "Orders" ? "active" : "")">
@@ -228,32 +228,37 @@
                         </a>
                     }
 
-                    <!-- 📌 3. إدارة الفنيين -->
                     @if (User.IsInRole("Admin") || User.IsInRole("CallCenter") || User.IsInRole("Technicians"))
                     {
-                        <a href="/Technicians" class="nav-app-icon @(currentController == "Technicians" ? "active" : "")"><i class="fa-solid fa-users-gear"></i><span>الفنيين</span></a>
+                        <a href="/Technicians" class="nav-app-icon @(currentController == "Technicians" && currentAction != "MyStock" ? "active" : "")"><i class="fa-solid fa-users-gear"></i><span>الفنيين</span></a>
                     }
 
-                    <!-- 📌 4. إدارة المخزون والعهد -->
+                    @if (User.IsInRole("Technician"))
+                    {
+                        <a href="/Technicians/MyStock" class="nav-app-icon @(currentAction == "MyStock" ? "active" : "")"><i class="fa-solid fa-truck-pickup text-primary"></i><span>عهدتي والمخزون</span></a>
+                    }
+
                     @if (User.IsInRole("Admin") || User.IsInRole("Store") || User.IsInRole("Inventory"))
                     {
                         <div class="dropdown">
                             <a href="#" class="nav-app-icon @(currentController == "Inventory" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-boxes-stacked"></i><span>المخزون</span></a>
                             <ul class="dropdown-menu text-end">
-                                <li><a class="dropdown-item" href="/Inventory"><i class="fa-solid fa-box-open text-primary me-2"></i> المستودع العام</a></li>
+                                <li><a class="dropdown-item" href="/Inventory"><i class="fa-solid fa-box-open text-primary me-2"></i> المستودع والأصناف</a></li>
+                                <li><a class="dropdown-item" href="/Inventory/Stocktake"><i class="fa-solid fa-clipboard-check text-success me-2"></i> عمليات الجرد</a></li>
+                                <li><a class="dropdown-item" href="/Inventory/Warehouses"><i class="fa-solid fa-building-flag text-info me-2"></i> إدارة الفروع</a></li>
+                                <li><hr class="dropdown-divider"></li>
                                 <li><a class="dropdown-item" href="/Inventory/DamagedParts"><i class="fa-solid fa-trash-can text-danger me-2"></i> سجل التوالف</a></li>
                             </ul>
                         </div>
                     }
 
-                    <!-- 📌 5. دورة المشتريات والتسعير -->
                     @if (User.IsInRole("Admin") || User.IsInRole("Store") || User.IsInRole("Purchasing"))
                     {
                         <div class="dropdown">
                             <a href="#" class="nav-app-icon @(currentController == "Purchases" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-cart-shopping"></i><span>المشتريات</span></a>
                             <ul class="dropdown-menu text-end">
-                                <li><a class="dropdown-item" href="/Purchases"><i class="fa-solid fa-truck-fast text-primary me-2"></i> سجل المشتريات</a></li>
-                                <li><a class="dropdown-item" href="/Purchases/PartRequests"><i class="fa-solid fa-screwdriver-wrench text-warning me-2"></i> نواقص الفنيين</a></li>
+                                <li><a class="dropdown-item" href="/Purchases"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i> فواتير الشراء</a></li>
+                                <li><a class="dropdown-item" href="/Purchases/PartRequests"><i class="fa-solid fa-screwdriver-wrench text-warning me-2"></i> طلبات توفير النواقص</a></li>
                                 @if (User.IsInRole("Admin") || User.IsInRole("Purchasing"))
                                 {
                                     <li><a class="dropdown-item" href="/Purchases/Pricing"><i class="fa-solid fa-tags text-success me-2"></i> تسعير المنتجات</a></li>
@@ -262,7 +267,6 @@
                         </div>
                     }
 
-                    <!-- 📌 6. الفواتير والحسابات -->
                     @if (User.IsInRole("Admin") || User.IsInRole("Accounting"))
                     {
                         <div class="dropdown">
@@ -278,7 +282,6 @@
                         </div>
                     }
 
-                    <!-- 📌 7. إدارة الموارد البشرية والرواتب -->
                     @if (User.IsInRole("Admin") || User.IsInRole("HR"))
                     {
                         <div class="dropdown">
@@ -291,29 +294,41 @@
                         </div>
                     }
 
-                    <!-- (تابع لإدارة الطلبات - العملاء) -->
                     @if (User.IsInRole("Admin") || User.IsInRole("CallCenter") || User.IsInRole("Orders"))
                     {
                         <a href="/Customers" class="nav-app-icon @(currentController == "Customers" ? "active" : "")"><i class="fa-solid fa-users-viewfinder"></i><span>العملاء</span></a>
                     }
 
-                    <!-- 📌 8. الإدارة (الأدمن فقط) -->
                     @if (User.IsInRole("Admin"))
                     {
                         <div class="dropdown">
                             <a href="#" class="nav-app-icon @(currentController == "Users" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-shield-halved"></i><span>الإدارة</span></a>
                             <ul class="dropdown-menu text-end">
                                 <li><a class="dropdown-item" href="/Users"><i class="fa-solid fa-user-shield text-primary me-2"></i> إدارة المستخدمين</a></li>
-                                <li><a class="dropdown-item" href="/Users/SystemLogs"><i class="fa-solid fa-clock-rotate-left text-muted me-2"></i> سجل العمليات</a></li>
+                            </ul>
+                        </div>
+                    }
+
+                    <!-- 📌 أيقونة التقارير الشاملة -->
+                    @if (User.IsInRole("Admin") || User.IsInRole("Reports"))
+                    {
+                        <div class="dropdown">
+                            <a href="#" class="nav-app-icon @(currentController == "Reports" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-chart-column text-info"></i><span class="text-dark">التقارير</span></a>
+                            <ul class="dropdown-menu text-end">
+                                <li><a class="dropdown-item fw-bold" href="/Reports/SpareParts"><i class="fa-solid fa-boxes-packing text-primary me-2"></i> حصر قطع الغيار والأكثر استخداماً</a></li>
+                                <li><a class="dropdown-item fw-bold" href="/Accounting/Index"><i class="fa-solid fa-chart-line text-success me-2"></i> تقارير الأرباح (قائمة الدخل)</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item fw-bold" href="/Users/SystemLogs"><i class="fa-solid fa-clock-rotate-left text-muted me-2"></i> سجل عمليات النظام بالكامل</a></li>
                             </ul>
                         </div>
                     }
                 </div>
 
+                <!-- 📌 منطقة بروفايل المستخدم -->
                 <div class="sys-user-area ms-3 ms-lg-4 d-flex align-items-center gap-2 border-start ps-3">
                     <div class="sys-profile border-0 pe-0 m-0">
                         <div class="sys-profile-info text-end d-none d-md-block pe-2">
-                            <h4 class="fs-6 m-0">@userName</h4>
+                            <h4 class="fs-6 m-0 text-dark fw-bold">@userName</h4>
                             <span class="badge bg-primary bg-opacity-10 text-primary mt-1 border">@userRole</span>
                         </div>
                         <img src="https://ui-avatars.com/api/?name=@Uri.EscapeDataString(userName)&background=f1950b&color=fff&bold=true" alt="User" class="rounded-circle shadow-sm">
@@ -337,20 +352,14 @@
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <!-- 📌 التحديث الأهم: حماية النظام بالكامل من النقر المزدوج المزعج وتكرار الطلبات -->
     <script>
         $(document).ready(function () {
             $('form').on('submit', function () {
                 var $form = $(this);
-
-                // لو الفورم فيها حاجة ناقصة متقفلش الزرار خلي المتصفح يطلع الأخطاء
                 if ($form[0].checkValidity && !$form[0].checkValidity()) {
                     return;
                 }
-
                 var $btn = $form.find('button[type="submit"]');
-
-                // استخدام Timeout صغير جداً بيخلي الفورم تتبعت للسيرفر أولاً وبعدين يعطل الزر
                 setTimeout(function() {
                     $btn.prop('disabled', true);
                     $btn.html('<i class="fa-solid fa-spinner fa-spin me-2"></i> جاري المعالجة...');
@@ -358,7 +367,6 @@
             });
         });
 
-        // دالة الحذف للإدارة
         function confirmAdminDelete(deleteUrl, itemName) {
             Swal.fire({
                 title: 'تأكيد الحذف النهائي؟',
