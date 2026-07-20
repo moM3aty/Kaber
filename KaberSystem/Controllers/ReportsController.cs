@@ -18,13 +18,15 @@ namespace KaberSystem.Controllers
             _context = context;
         }
 
-        // 📌 التحديث: تقرير حصر قطع الغيار والأكثر استخداماً
+        // 📌 تقرير حصر قطع الغيار والأكثر استخداماً
         public async Task<IActionResult> SpareParts()
         {
             // تجميع القطع التي تم استهلاكها في الطلبات للحصول على الأكثر استخداماً والأرباح
             var topParts = await _context.UsedSpareParts
                 .Include(u => u.SparePart)
-                .Where(u => u.Order != null && u.Order.Status != OrderStatus.Cancelled)
+                .Include(u => u.Order)
+                // 📌 التحديث: التأكد من أننا نحسب القطع للطلبات (المكتملة أو المعتمدة) فقط
+                .Where(u => u.Order != null && (u.Order.Status == OrderStatus.Completed || u.Order.Status == OrderStatus.Approved))
                 .GroupBy(u => new { u.PartId, u.SparePart.Name, u.SparePart.PartCode, u.SparePart.PurchasePrice, u.SparePart.TaxAmount })
                 .Select(g => new
                 {
@@ -32,9 +34,11 @@ namespace KaberSystem.Controllers
                     PartCode = g.Key.PartCode,
                     TotalQuantityUsed = g.Sum(x => x.QuantityUsed),
                     TotalCost = g.Sum(x => x.QuantityUsed) * g.Key.PurchasePrice,
-                    TotalTax = g.Sum(x => x.QuantityUsed) * g.Key.TaxAmount, // 📌 إضافة الضريبة التراكمية للقطعة
+                    TotalTax = g.Sum(x => x.QuantityUsed) * g.Key.TaxAmount,
                     TotalSales = g.Sum(x => x.QuantityUsed * x.SellingPriceAtTime),
-                    NetProfit = g.Sum(x => x.QuantityUsed * x.SellingPriceAtTime) - (g.Sum(x => x.QuantityUsed) * g.Key.PurchasePrice) - (g.Sum(x => x.QuantityUsed) * g.Key.TaxAmount)
+                    NetProfit = g.Sum(x => x.QuantityUsed * x.SellingPriceAtTime) - (g.Sum(x => x.QuantityUsed) * g.Key.PurchasePrice) - (g.Sum(x => x.QuantityUsed) * g.Key.TaxAmount),
+                    // 📌 التحديث: تمرير أرقام المواعيد (الطلبات) التي استخدمت فيها القطعة
+                    OrderIds = string.Join(",", g.Select(x => x.OrderId).Distinct())
                 })
                 .OrderByDescending(x => x.TotalQuantityUsed)
                 .ToListAsync();

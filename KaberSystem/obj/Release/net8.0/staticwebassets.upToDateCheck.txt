@@ -1,7 +1,7 @@
 wwwroot\css\all.min.css
 wwwroot\css\bootstrap.min.css
 wwwroot\css\dashboard-premium.css
-wwwroot\css\main.css
+wwwroot\js\main.js
 wwwroot\favicon.ico
 wwwroot\images\about-shape.png
 wwwroot\images\about-us-1.jpg
@@ -34,7 +34,7 @@ wwwroot\images\trust-us.jpg
 wwwroot\images\why-details.jpg
 wwwroot\images\why-us-bg.png
 wwwroot\js\bootstrap.bundle.min.js
-wwwroot\js\main.js
+wwwroot\css\main.css
 wwwroot\lib\bootstrap\dist\css\bootstrap-grid.css
 wwwroot\lib\bootstrap\dist\css\bootstrap-grid.css.map
 wwwroot\lib\bootstrap\dist\css\bootstrap-grid.min.css

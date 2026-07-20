@@ -543,9 +543,31 @@ namespace KaberSystem.Controllers
                         return RedirectToAction(nameof(Details), new { id = id });
                     }
 
-                    if (newStatus == OrderStatus.Approved || newStatus == OrderStatus.Returned)
+                    if (newStatus == OrderStatus.Approved || newStatus == OrderStatus.Returned || newStatus == OrderStatus.Cancelled)
                     {
                         return Unauthorized();
+                    }
+                }
+
+                // 📌 التحديث القوي: إرجاع القطع للعهدة عند الإلغاء لكي لا تُحسب في الأرباح
+                if (newStatus == OrderStatus.Cancelled)
+                {
+                    if (order.UsedSpareParts != null && order.UsedSpareParts.Any() && order.TechnicianId.HasValue)
+                    {
+                        foreach (var up in order.UsedSpareParts)
+                        {
+                            var techStock = await _context.TechnicianStocks.FirstOrDefaultAsync(ts => ts.TechnicianId == order.TechnicianId && ts.PartId == up.PartId);
+                            if (techStock != null)
+                            {
+                                techStock.Quantity += up.QuantityUsed;
+                                _context.Update(techStock);
+                            }
+                            else
+                            {
+                                _context.TechnicianStocks.Add(new TechnicianStock { TechnicianId = order.TechnicianId.Value, PartId = up.PartId, Quantity = up.QuantityUsed });
+                            }
+                        }
+                        _context.UsedSpareParts.RemoveRange(order.UsedSpareParts);
                     }
                 }
 

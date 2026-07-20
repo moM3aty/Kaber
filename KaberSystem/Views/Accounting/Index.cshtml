@@ -231,7 +231,6 @@
                                 <div class="d-flex justify-content-between align-items-end mt-2">
                                     <h5 class="fw-bolder text-success m-0">@partner.Amount.ToString("N2")</h5>
                                     <div class="d-flex gap-2">
-                                        <!-- 📌 التحديث: تمرير الـ monthYear في الدالة لمعالجة التاريخ الصحيح -->
                                         <button type="button" class="btn btn-sm btn-dark rounded-pill fw-bold px-3 shadow-sm" onclick="openSettlePartnerModal(@partner.Id, '@partner.Name', @partner.Amount, '@monthName', '@currentMonthYear')">صرف</button>
                                         <form asp-action="DeletePartner" method="post" onsubmit="return confirm('حذف الشريك؟');"><input type="hidden" name="id" value="@partner.Id" /><button type="submit" class="btn btn-sm btn-outline-danger rounded-circle" style="width:30px; height:30px;"><i class="fa-solid fa-trash-can"></i></button></form>
                                     </div>
@@ -266,6 +265,7 @@
                         <th>مبيعات قطع الغيار<br><span class="text-info small fw-normal">(ترجع لخزنة المشتريات)</span></th>
                         <th>إجمالي السلف / مديونية<br><span class="text-danger small fw-normal">(هذا الشهر)</span></th>
                         <th>العهدة (الكاش المُحصّل)<br><span class="text-primary small fw-normal">(مرحّلة)</span></th>
+                        <th>إجراءات</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -286,50 +286,10 @@
                                 <td class="fw-bold text-danger">@tech.AllTimeDeductions.ToString("N2")</td>
                                 <td><span class="badge bg-primary bg-opacity-10 text-primary fs-6 px-3 py-2 rounded-pill">@tech.WalletBalance.ToString("N2") ر.س</span></td>
                                 <td>
+                                    <!-- زر فتح نافذة التوريد -->
                                     <button type="button" class="btn btn-sm btn-outline-success fw-bold px-3 rounded-pill" data-bs-toggle="modal" data-bs-target="#settleModal_@tech.Id">
                                         <i class="fa-solid fa-hand-holding-dollar me-1"></i> توريد كاش
                                     </button>
-
-                                    <!-- Modal تصفية الكاش -->
-                                    <div class="modal fade" id="settleModal_@tech.Id" tabindex="-1" aria-hidden="true">
-                                        <div class="modal-dialog modal-dialog-centered">
-                                            <div class="modal-content premium-modal border-0 shadow-lg">
-                                                <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
-                                                    <h5 class="modal-title fw-bolder text-success m-0"><i class="fa-solid fa-vault me-2"></i> توريد كاش من الفني: @tech.Name</h5>
-                                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                                </div>
-                                                <form asp-action="ReceiveDailyCash" method="post">
-                                                    <div class="modal-body p-4 text-start">
-                                                        <input type="hidden" name="techId" value="@tech.Id" />
-                                                        <input type="hidden" name="targetMonth" value="@currentMonthYear" />
-                                                        <input type="hidden" name="source" value="Index" />
-
-                                                        <div class="alert alert-info py-2 small fw-bold lh-lg border-0 rounded-3 shadow-sm bg-info bg-opacity-10 text-dark mb-4">
-                                                            <i class="fa-solid fa-circle-info text-info me-1"></i>
-                                                            إجمالي الكاش (التراكمي) الذي استلمه الفني من العملاء بيده ولم يورده: <b class="text-danger fs-6">@tech.WalletBalance.ToString("N2") ريال</b>
-                                                        </div>
-
-                                                        <div class="mb-4">
-                                                            <label class="premium-label">المبلغ المُورّد للخزنة الآن <span class="text-danger">*</span></label>
-                                                            <div class="input-group input-group-lg rounded-4 overflow-hidden shadow-sm">
-                                                                <input type="number" step="0.01" name="amount" class="form-control fw-bolder border-0 bg-light text-success" max="@tech.WalletBalance" required />
-                                                                <span class="input-group-text bg-white border-0 fw-bolder px-4 text-success">ر.س</span>
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="mb-2">
-                                                            <label class="premium-label">البيان / ملاحظات</label>
-                                                            <input type="text" name="notes" class="premium-input form-control" placeholder="مثال: إيراد يوم كذا..." required />
-                                                        </div>
-                                                    </div>
-                                                    <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
-                                                        <button type="button" class="btn btn-light fw-bold px-4 rounded-pill" data-bs-dismiss="modal">إلغاء</button>
-                                                        <button type="submit" class="btn btn-success fw-bolder px-4 rounded-pill shadow-sm hover-elevate">تأكيد التوريد للخزنة <i class="fa-solid fa-check ms-1"></i></button>
-                                                    </div>
-                                                </form>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </td>
                             </tr>
                         }
@@ -339,6 +299,54 @@
         </div>
     </div>
 </div>
+
+<!-- 📌 جميع النوافذ (Modals) المنبثقة تم وضعها في أسفل الصفحة لحل مشكلة التظليل والأزرار الميتة -->
+@if (ViewBag.TechnicianReports != null)
+{
+    foreach (var tech in ViewBag.TechnicianReports)
+    {
+        <!-- Modal تصفية الكاش الخاص بالفني خارج الجدول -->
+        <div class="modal fade" id="settleModal_@tech.Id" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content premium-modal border-0 shadow-lg">
+                    <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+                        <h5 class="modal-title fw-bolder text-success m-0"><i class="fa-solid fa-vault me-2"></i> توريد كاش من الفني: @tech.Name</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <form asp-action="ReceiveDailyCash" method="post">
+                        <div class="modal-body p-4 text-start">
+                            <input type="hidden" name="techId" value="@tech.Id" />
+                            <input type="hidden" name="targetMonth" value="@currentMonthYear" />
+                            <input type="hidden" name="source" value="Index" />
+
+                            <div class="alert alert-info py-2 small fw-bold lh-lg border-0 rounded-3 shadow-sm bg-info bg-opacity-10 text-dark mb-4">
+                                <i class="fa-solid fa-circle-info text-info me-1"></i>
+                                إجمالي الكاش (التراكمي) الذي استلمه الفني من العملاء بيده ولم يورده: <b class="text-danger fs-6">@tech.WalletBalance.ToString("N2") ريال</b>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="premium-label">المبلغ المُورّد للخزنة الآن <span class="text-danger">*</span></label>
+                                <div class="input-group input-group-lg rounded-4 overflow-hidden shadow-sm">
+                                    <input type="number" step="0.01" name="amount" class="form-control fw-bolder border-0 bg-light text-success" max="@tech.WalletBalance.ToString(System.Globalization.CultureInfo.InvariantCulture)" required />
+                                    <span class="input-group-text bg-white border-0 fw-bolder px-4 text-success">ر.س</span>
+                                </div>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="premium-label">البيان / ملاحظات</label>
+                                <input type="text" name="notes" class="premium-input form-control" placeholder="مثال: إيراد يوم كذا..." required />
+                            </div>
+                        </div>
+                        <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                            <button type="button" class="btn btn-light fw-bold px-4 rounded-pill" data-bs-dismiss="modal">إلغاء</button>
+                            <button type="submit" class="btn btn-success fw-bolder px-4 rounded-pill shadow-sm hover-elevate">تأكيد التوريد للخزنة <i class="fa-solid fa-check ms-1"></i></button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+}
 
 <!-- Modal إضافة شريك جديد -->
 <div class="modal fade" id="addPartnerModal" tabindex="-1" aria-hidden="true">
@@ -357,7 +365,7 @@
                     <div class="mb-2">
                         <label class="premium-label">نسبة الشراكة المئوية (%) <span class="text-danger">*</span></label>
                         <div class="input-group input-group-lg rounded-4 overflow-hidden shadow-sm">
-                            <input type="number" step="0.01" name="sharePercentage" class="form-control fw-bolder border-0 bg-light text-primary" max="@remainingShare" required />
+                            <input type="number" step="0.01" name="sharePercentage" class="form-control fw-bolder border-0 bg-light text-primary" max="@remainingShare.ToString(System.Globalization.CultureInfo.InvariantCulture)" required />
                             <span class="input-group-text bg-white border-0 fw-bolder px-4 text-primary">%</span>
                         </div>
                         <small class="text-muted d-block mt-2 fw-bold">الحد الأقصى المتاح للنسبة هو: @remainingShare%</small>
@@ -385,7 +393,6 @@
                     <input type="hidden" name="partnerId" id="modalSettlePartnerId" />
                     <input type="hidden" name="partnerName" id="modalSettlePartnerNameInput" />
                     <input type="hidden" name="monthYearName" value="@monthName" />
-                    <!-- 📌 التحديث: إرسال الشهر المختار ليتم تسجيل التاريخ آلياً فيه -->
                     <input type="hidden" name="targetMonth" id="modalTargetMonth" value="" />
 
                     <div class="alert alert-success py-3 small fw-bold mb-4 border-0 rounded-3 shadow-sm bg-success bg-opacity-10 text-dark">
@@ -625,13 +632,12 @@
             myModal.show();
         }
 
-        // 📌 التحديث: إرسال الشهر المختار للمودال
         function openSettlePartnerModal(id, name, amount, monthName, targetMonth) {
             document.getElementById('modalSettlePartnerId').value = id;
             document.getElementById('modalSettlePartnerNameInput').value = name;
             document.getElementById('modalSettlePartnerName').innerText = name;
             document.getElementById('modalSettleAmount').value = amount.toFixed(2);
-            document.getElementById('modalTargetMonth').value = targetMonth; // تحديد شهر الحركة المحاسبية
+            document.getElementById('modalTargetMonth').value = targetMonth;
 
             var myModal = new bootstrap.Modal(document.getElementById('settlePartnerModal'));
             myModal.show();

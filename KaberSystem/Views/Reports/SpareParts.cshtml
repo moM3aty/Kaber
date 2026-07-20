@@ -65,7 +65,12 @@
                     <tr style="border-bottom: 1px solid #f1f5f9;">
                         <td class="text-start ps-4 fw-bolder text-dark fs-6">@item.PartName</td>
                         <td><span class="badge bg-light text-muted border border-secondary shadow-sm px-3 py-2 rounded-pill"><i class="fa-solid fa-barcode me-1"></i> @item.PartCode</span></td>
-                        <td><span class="badge bg-primary fs-6 px-3 py-2 rounded-pill shadow-sm">@item.TotalQuantityUsed</span></td>
+                        <td>
+                            <!-- 📌 التحديث: تحويل الكمية لزر يفتح نافذة المواعيد -->
+                            <button type="button" class="btn btn-sm btn-primary fw-bold px-3 py-1 rounded-pill shadow-sm hover-elevate" onclick="openOrdersModal('@item.PartName', '@item.OrderIds')">
+                                @item.TotalQuantityUsed <i class="fa-solid fa-eye ms-1 small"></i>
+                            </button>
+                        </td>
                         <td class="fw-bold text-danger">@item.TotalCost.ToString("N2") ر.س</td>
                         <td class="fw-bold text-warning text-dark">@item.TotalTax.ToString("N2") ر.س</td>
                         <td class="fw-bold text-info text-dark">@item.TotalSales.ToString("N2") ر.س</td>
@@ -85,6 +90,31 @@
                 }
             </tbody>
         </table>
+    </div>
+</div>
+
+<!-- 📌 التحديث: نافذة (Modal) عرض المواعيد التي ركبت فيها القطعة -->
+<div class="modal fade d-print-none" id="ordersModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content premium-modal border-0 shadow-lg">
+            <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
+                <h5 class="modal-title fw-bolder text-dark m-0"><i class="fa-solid fa-clipboard-list text-primary me-2"></i> المواعيد المرتبطة</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4 text-start">
+                <div class="alert alert-info py-2 small fw-bold mb-4 border-0 rounded-3 shadow-sm bg-info bg-opacity-10 text-dark">
+                    هذه قائمة بأرقام المواعيد (الطلبات المنجزة) التي تم تركيب القطعة: <br />
+                    <b id="modalPartName" class="text-primary fs-6"></b>
+                </div>
+
+                <div id="ordersLinksContainer" class="d-flex flex-wrap gap-2">
+                    <!-- سيتم إضافة الأزرار هنا عبر الجافاسكريبت -->
+                </div>
+            </div>
+            <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
+                <button type="button" class="btn btn-light fw-bold px-4 rounded-pill w-100" data-bs-dismiss="modal">إغلاق</button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -210,5 +240,30 @@
                 "ordering": false // ترك الترتيب الافتراضي من السيرفر (الأكثر استخداماً في الأعلى)
             });
         });
+
+        // 📌 التحديث: دالة الجافاسكريبت لفتح نافذة المواعيد
+        function openOrdersModal(partName, orderIdsString) {
+            document.getElementById('modalPartName').innerText = partName;
+
+            var container = document.getElementById('ordersLinksContainer');
+            container.innerHTML = ''; // تفريغ القديم
+
+            if (orderIdsString && orderIdsString.trim() !== "") {
+                var orderIds = orderIdsString.split(',');
+                orderIds.forEach(function(id) {
+                    var btn = document.createElement('a');
+                    btn.href = "/Orders/Details/" + id.trim();
+                    btn.target = "_blank"; // فتح في نافذة جديدة
+                    btn.className = "btn btn-outline-dark fw-bold rounded-pill px-3 shadow-sm hover-elevate mb-2";
+                    btn.innerHTML = '<i class="fa-solid fa-hashtag text-warning me-1"></i> ' + id.trim();
+                    container.appendChild(btn);
+                });
+            } else {
+                container.innerHTML = '<span class="text-muted fw-bold small">لا توجد بيانات متاحة.</span>';
+            }
+
+            var ordersModal = new bootstrap.Modal(document.getElementById('ordersModal'));
+            ordersModal.show();
+        }
     </script>
 }

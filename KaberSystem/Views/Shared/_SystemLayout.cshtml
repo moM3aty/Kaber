@@ -205,7 +205,6 @@
                     <img src="/images/logo.png" width="90" style="border-radius: 10px; object-fit: cover;" alt="Kaber" />
                 </a>
 
-                <!-- 📌 شريط التنقل العلوي -->
                 <div class="top-icon-nav flex-grow-1 justify-content-start justify-content-lg-center">
 
                     @if (User.IsInRole("Admin") || User.IsInRole("Reports"))
@@ -252,14 +251,14 @@
                         </div>
                     }
 
-                    @if (User.IsInRole("Admin") || User.IsInRole("Store") || User.IsInRole("Purchasing"))
+                    @if (User.IsInRole("Admin") || User.IsInRole("Store") || User.IsInRole("Purchasing") || User.IsInRole("PurchasingManager") || User.IsInRole("PurchasingRep"))
                     {
                         <div class="dropdown">
                             <a href="#" class="nav-app-icon @(currentController == "Purchases" ? "active" : "")" data-bs-toggle="dropdown"><i class="fa-solid fa-cart-shopping"></i><span>المشتريات</span></a>
                             <ul class="dropdown-menu text-end">
                                 <li><a class="dropdown-item" href="/Purchases"><i class="fa-solid fa-file-invoice-dollar text-primary me-2"></i> فواتير الشراء</a></li>
                                 <li><a class="dropdown-item" href="/Purchases/PartRequests"><i class="fa-solid fa-screwdriver-wrench text-warning me-2"></i> طلبات توفير النواقص</a></li>
-                                @if (User.IsInRole("Admin") || User.IsInRole("Purchasing"))
+                                @if (User.IsInRole("Admin") || User.IsInRole("Purchasing") || User.IsInRole("PurchasingManager"))
                                 {
                                     <li><a class="dropdown-item" href="/Purchases/Pricing"><i class="fa-solid fa-tags text-success me-2"></i> تسعير المنتجات</a></li>
                                 }
@@ -309,7 +308,6 @@
                         </div>
                     }
 
-                    <!-- 📌 أيقونة التقارير الشاملة -->
                     @if (User.IsInRole("Admin") || User.IsInRole("Reports"))
                     {
                         <div class="dropdown">
@@ -324,7 +322,6 @@
                     }
                 </div>
 
-                <!-- 📌 منطقة بروفايل المستخدم -->
                 <div class="sys-user-area ms-3 ms-lg-4 d-flex align-items-center gap-2 border-start ps-3">
                     <div class="sys-profile border-0 pe-0 m-0">
                         <div class="sys-profile-info text-end d-none d-md-block pe-2">
@@ -345,7 +342,6 @@
         </main>
     </div>
 
-    <!-- المكتبات الأساسية -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <script src="/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>

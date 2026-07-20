@@ -1,4 +1,5 @@
-﻿using System;
+﻿// مسار الملف: Controllers/AccountController.cs
+using System;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -27,12 +28,16 @@ namespace KaberSystem.Controllers
             {
                 var role = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value ?? "";
 
-                if (role == "Technician") return RedirectToAction("MyStock", "Technicians");
-                if (role == "Store" || role == "Inventory") return RedirectToAction("Index", "Inventory");
-                if (role == "Accounting") return RedirectToAction("Index", "Accounting");
-                if (role == "CallCenter" || role == "Orders") return RedirectToAction("Index", "Orders");
+                if (role == "Technician") return Redirect("/Technicians/MyStock");
+                if (role == "Store" || role == "Inventory") return Redirect("/Inventory/Index");
+                if (role == "Accounting") return Redirect("/Accounting/Index");
+                if (role == "CallCenter" || role == "Orders") return Redirect("/Orders/Index");
 
-                return RedirectToAction("Index", "Dashboard");
+                // 📌 التحديث: توجيه مديري ومندوبي المشتريات لصفحتهم عند الدخول
+                if (role == "PurchasingManager" || role == "PurchasingRep" || role == "Purchasing")
+                    return Redirect("/Purchases/Index");
+
+                return Redirect("/Dashboard/Index");
             }
             return View();
         }
@@ -47,11 +52,9 @@ namespace KaberSystem.Controllers
                 return View();
             }
 
-            // تنظيف المسافات وجعل اسم المستخدم صغيراً لتجاهل حالة الأحرف
             string cleanUsername = username.Trim().ToLower();
             string cleanPassword = password.Trim();
 
-            // 📌 الحل الأقوى: جلب جميع المستخدمين (لأن عددهم قليل) والمقارنة الدقيقة في الذاكرة لتجاهل أخطاء الـ SQL Server collation
             var allUsers = await _context.SystemUsers.ToListAsync();
 
             var user = allUsers.FirstOrDefault(u =>
@@ -64,7 +67,6 @@ namespace KaberSystem.Controllers
 
                 if (userRole.Equals("Technician", StringComparison.OrdinalIgnoreCase))
                 {
-                    // التحقق من وجود الفني أيضاً في الذاكرة لتجنب أي مشاكل مسافات
                     var allTechs = await _context.Technicians.ToListAsync();
                     bool techExists = allTechs.Any(t => t.Name.Trim().ToLower() == user.Username.Trim().ToLower());
 
@@ -114,23 +116,28 @@ namespace KaberSystem.Controllers
                 });
                 await _context.SaveChangesAsync();
 
-                // التوجيه المباشر والآمن باستخدام RedirectToAction لضمان صحة المسار
+                // 📌 التوجيه المباشر والآمن حسب الصلاحية
                 if (userRole.Equals("Technician", StringComparison.OrdinalIgnoreCase))
-                    return RedirectToAction("MyStock", "Technicians");
+                    return Redirect("/Technicians/MyStock");
 
                 if (userRole.Equals("Store", StringComparison.OrdinalIgnoreCase) || claims.Any(c => c.Value == "Inventory"))
-                    return RedirectToAction("Index", "Inventory");
+                    return Redirect("/Inventory/Index");
 
                 if (userRole.Equals("Accounting", StringComparison.OrdinalIgnoreCase))
-                    return RedirectToAction("Index", "Accounting");
+                    return Redirect("/Accounting/Index");
 
                 if (userRole.Equals("CallCenter", StringComparison.OrdinalIgnoreCase) || claims.Any(c => c.Value == "Orders"))
-                    return RedirectToAction("Index", "Orders");
+                    return Redirect("/Orders/Index");
 
-                return RedirectToAction("Index", "Dashboard");
+                // 📌 التحديث: إضافة توجيه المشتريات
+                if (userRole.Equals("PurchasingManager", StringComparison.OrdinalIgnoreCase) ||
+                    userRole.Equals("PurchasingRep", StringComparison.OrdinalIgnoreCase) ||
+                    claims.Any(c => c.Value == "Purchasing"))
+                    return Redirect("/Purchases/Index");
+
+                return Redirect("/Dashboard/Index");
             }
 
-            // 📌 مساعدة للمطور لمعرفة سبب الرفض
             bool usernameExists = allUsers.Any(u => u.Username.Trim().ToLower() == cleanUsername);
             if (usernameExists)
             {

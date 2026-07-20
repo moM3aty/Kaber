@@ -99,21 +99,24 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // 6. Back To Top Button
-    const backToTop = document.getElementById("backToTop");
-    if (backToTop) {
-        window.addEventListener("scroll", function () {
-            if (window.scrollY > 300) {
-                backToTop.style.display = "flex";
+    // 6. Back To Top Button (Vanilla JS)
+    const backToTopBtn = document.getElementById('backToTop');
+    if (backToTopBtn) {
+        // إظهار وإخفاء الزر بناءً على التمرير
+        window.addEventListener('scroll', function () {
+            if (window.scrollY > 300) { // يظهر بعد النزول 300 بكسل
+                backToTopBtn.classList.add('show');
             } else {
-                backToTop.style.display = "none";
+                backToTopBtn.classList.remove('show');
             }
         });
 
-        backToTop.addEventListener("click", function () {
+        // العودة للأعلى بسلاسة عند الضغط على الزر
+        backToTopBtn.addEventListener('click', function (e) {
+            e.preventDefault();
             window.scrollTo({
                 top: 0,
-                behavior: "smooth"
+                behavior: 'smooth'
             });
         });
     }

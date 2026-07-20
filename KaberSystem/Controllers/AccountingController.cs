@@ -113,7 +113,16 @@ namespace KaberSystem.Controllers
             decimal bankBalance = allBankTransactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount) - allBankTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
 
             var allTechs = await _context.Technicians.Include(t => t.AssignedOrders).ToListAsync();
-            decimal totalCashWithTechs = allTechs.Sum(t => t.AssignedOrders.Where(o => o.IsPaid && o.PaymentMethod == PaymentMethod.Cash).Sum(o => o.FinalPrice) - t.TotalIncome);
+
+            // 📌 التحديث الجذري لمشكلة الدفع المجزأ: نجمع المبالغ المسجلة ككاش فعلياً في جدول الحركات بدلاً من نوع الطلب
+            var allOrderCashTransactions = await _context.SafeTransactions
+                .Include(t => t.Order)
+                .Where(t => t.OrderId != null && t.Type == SafeTransactionType.Income && t.PaymentMethod == PaymentMethod.Cash)
+                .ToListAsync();
+
+            decimal totalCashWithTechs = allTechs.Sum(t =>
+                allOrderCashTransactions.Where(tr => tr.Order != null && tr.Order.TechnicianId == t.TechnicianId).Sum(tr => tr.Amount) - t.TotalIncome
+            );
             if (totalCashWithTechs < 0) totalCashWithTechs = 0;
 
             ViewBag.TotalRevenue = totalRevenue;
@@ -139,7 +148,9 @@ namespace KaberSystem.Controllers
 
             ViewBag.TechnicianReports = allTechs.Select(t => {
                 var currentMonthOrders = t.AssignedOrders.Where(o => o.IsPaid && o.CreatedAt.Year == targetDate.Year && o.CreatedAt.Month == targetDate.Month).ToList();
-                decimal wallet = t.AssignedOrders.Where(o => o.IsPaid && o.PaymentMethod == PaymentMethod.Cash).Sum(o => o.FinalPrice) - t.TotalIncome;
+
+                // 📌 التحديث: حساب المحفظة بدقة من الحركات النقدية
+                decimal wallet = allOrderCashTransactions.Where(tr => tr.Order != null && tr.Order.TechnicianId == t.TechnicianId).Sum(tr => tr.Amount) - t.TotalIncome;
 
                 dynamic expando = new ExpandoObject();
                 expando.Id = t.TechnicianId;
@@ -290,11 +301,17 @@ namespace KaberSystem.Controllers
                 {
                     var monthOrders = tech.AssignedOrders.Where(o => o.IsPaid && o.CreatedAt.Year == targetDate.Year && o.CreatedAt.Month == targetDate.Month).ToList();
 
+                    // 📌 التحديث: حساب المحفظة بدقة للدفع المجزأ
+                    decimal cashCollected = await _context.SafeTransactions
+                        .Where(tr => tr.OrderId != null && tr.Order.TechnicianId == techId && tr.Type == SafeTransactionType.Income && tr.PaymentMethod == PaymentMethod.Cash)
+                        .SumAsync(tr => tr.Amount);
+
                     decimal totalRev = monthOrders.Sum(o => o.FinalPrice);
                     decimal laborRev = monthOrders.Sum(o => o.IsFeeApplied ? o.EstimatedPrice : 0);
                     decimal partsCost = monthOrders.SelectMany(o => o.UsedSpareParts).Sum(p => p.QuantityUsed * (p.SparePart?.PurchasePrice ?? 0));
                     decimal deductions = tech.Expenses?.Where(e => e.DeductionFrom == DeductionSource.Technician && e.Date.Month == targetDate.Month && e.Date.Year == targetDate.Year).Sum(e => e.Amount) ?? 0;
-                    decimal cashInHand = tech.AssignedOrders.Where(o => o.IsPaid && o.PaymentMethod == PaymentMethod.Cash).Sum(o => o.FinalPrice) - tech.TotalIncome;
+
+                    decimal cashInHand = cashCollected - tech.TotalIncome;
 
                     ViewBag.Technician = tech;
                     ViewBag.TotalRevenue = totalRev;
