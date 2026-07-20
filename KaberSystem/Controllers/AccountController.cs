@@ -28,16 +28,29 @@ namespace KaberSystem.Controllers
             {
                 var role = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value ?? "";
 
-                if (role == "Technician") return Redirect("/Technicians/MyStock");
-                if (role == "Store" || role == "Inventory") return Redirect("/Inventory/Index");
-                if (role == "Accounting") return Redirect("/Accounting/Index");
-                if (role == "CallCenter" || role == "Orders") return Redirect("/Orders/Index");
+                // 📌 التحديث: توجيه كل صلاحية لمكانها الصحيح إذا كان مسجل دخول مسبقاً
+                if (role.Equals("Technician", StringComparison.OrdinalIgnoreCase))
+                    return RedirectToAction("MyStock", "Technicians");
 
-                // 📌 التحديث: توجيه مديري ومندوبي المشتريات لصفحتهم عند الدخول
-                if (role == "PurchasingManager" || role == "PurchasingRep" || role == "Purchasing")
-                    return Redirect("/Purchases/Index");
+                if (role.Equals("Store", StringComparison.OrdinalIgnoreCase) || User.Claims.Any(c => c.Value == "Inventory"))
+                    return RedirectToAction("Index", "Inventory");
 
-                return Redirect("/Dashboard/Index");
+                if (role.Equals("Accounting", StringComparison.OrdinalIgnoreCase))
+                    return RedirectToAction("Index", "Accounting");
+
+                if (role.Equals("CallCenter", StringComparison.OrdinalIgnoreCase) || User.Claims.Any(c => c.Value == "Orders"))
+                    return RedirectToAction("Index", "Orders");
+
+                if (role.Equals("PurchasingManager", StringComparison.OrdinalIgnoreCase) ||
+                    role.Equals("PurchasingRep", StringComparison.OrdinalIgnoreCase) ||
+                    User.Claims.Any(c => c.Value == "Purchasing"))
+                    return RedirectToAction("Index", "Purchases");
+
+                if (role.Equals("HR", StringComparison.OrdinalIgnoreCase))
+                    return RedirectToAction("Index", "HR");
+
+                // مدير النظام يذهب للرئيسية
+                return RedirectToAction("Index", "Dashboard");
             }
             return View();
         }
@@ -116,26 +129,29 @@ namespace KaberSystem.Controllers
                 });
                 await _context.SaveChangesAsync();
 
-                // 📌 التوجيه المباشر والآمن حسب الصلاحية
+                // 📌 التحديث: التوجيه المباشر والدقيق حسب كل منصب بعد الدخول الناجح
                 if (userRole.Equals("Technician", StringComparison.OrdinalIgnoreCase))
-                    return Redirect("/Technicians/MyStock");
+                    return RedirectToAction("MyStock", "Technicians");
 
                 if (userRole.Equals("Store", StringComparison.OrdinalIgnoreCase) || claims.Any(c => c.Value == "Inventory"))
-                    return Redirect("/Inventory/Index");
+                    return RedirectToAction("Index", "Inventory");
 
                 if (userRole.Equals("Accounting", StringComparison.OrdinalIgnoreCase))
-                    return Redirect("/Accounting/Index");
+                    return RedirectToAction("Index", "Accounting");
 
                 if (userRole.Equals("CallCenter", StringComparison.OrdinalIgnoreCase) || claims.Any(c => c.Value == "Orders"))
-                    return Redirect("/Orders/Index");
+                    return RedirectToAction("Index", "Orders");
 
-                // 📌 التحديث: إضافة توجيه المشتريات
                 if (userRole.Equals("PurchasingManager", StringComparison.OrdinalIgnoreCase) ||
                     userRole.Equals("PurchasingRep", StringComparison.OrdinalIgnoreCase) ||
                     claims.Any(c => c.Value == "Purchasing"))
-                    return Redirect("/Purchases/Index");
+                    return RedirectToAction("Index", "Purchases");
 
-                return Redirect("/Dashboard/Index");
+                if (userRole.Equals("HR", StringComparison.OrdinalIgnoreCase))
+                    return RedirectToAction("Index", "HR");
+
+                // الإدارة (Admin) تذهب للداش بورد
+                return RedirectToAction("Index", "Dashboard");
             }
 
             bool usernameExists = allUsers.Any(u => u.Username.Trim().ToLower() == cleanUsername);

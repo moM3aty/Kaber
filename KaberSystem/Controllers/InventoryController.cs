@@ -34,7 +34,6 @@ namespace KaberSystem.Controllers
             });
         }
 
-        // 📌 التحديث: عرض المنتجات (مع فرز المنتجات المخلصة للأسفل وإخفاء المحذوفة)
         public async Task<IActionResult> Index(string searchQuery, int? warehouseId)
         {
             ViewData["CurrentSearch"] = searchQuery;
@@ -60,7 +59,6 @@ namespace KaberSystem.Controllers
                 );
             }
 
-            // 📌 التحديث: الترتيب الذكي (الكمية الأكبر من 0 تظهر فوق، المخلّص ينزل تحت)
             var parts = await query
                 .OrderByDescending(p => p.MainStockQuantity > 0)
                 .ThenByDescending(p => p.PartId)
@@ -69,7 +67,7 @@ namespace KaberSystem.Controllers
             return View(parts);
         }
 
-        // 📌 التحديث: إدارة المستودعات الرئيسية والفرعية
+        // 📌 إدارة المستودعات الرئيسية والفرعية
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Warehouses()
         {
@@ -79,12 +77,62 @@ namespace KaberSystem.Controllers
 
         [HttpPost]
         [Authorize(Roles = "Admin")]
-        public async Task<IActionResult> CreateWarehouse(string name, string location, bool isMain)
+        public async Task<IActionResult> CreateWarehouse(string name, string location, bool isMain = false)
         {
-            _context.Warehouses.Add(new Warehouse { Name = name, Location = location, IsMain = isMain });
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                TempData["ErrorMessage"] = "يجب إدخال اسم المستودع.";
+                return RedirectToAction(nameof(Warehouses));
+            }
+
+            _context.Warehouses.Add(new Warehouse { Name = name.Trim(), Location = location?.Trim(), IsMain = isMain });
             await _context.SaveChangesAsync();
             LogAction("إضافة مستودع", $"تم إنشاء مستودع جديد: {name}");
             TempData["SuccessMessage"] = "تم إنشاء المستودع بنجاح.";
+            return RedirectToAction(nameof(Warehouses));
+        }
+
+        // 📌 التحديث: إضافة دالة تعديل المستودع
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> EditWarehouse(int id, string name, string location, bool isMain = false)
+        {
+            var warehouse = await _context.Warehouses.FindAsync(id);
+            if (warehouse != null)
+            {
+                warehouse.Name = name?.Trim() ?? warehouse.Name;
+                warehouse.Location = location?.Trim();
+                warehouse.IsMain = isMain;
+
+                _context.Update(warehouse);
+                LogAction("تعديل مستودع", $"تم تعديل بيانات المستودع رقم {id} ليصبح: {warehouse.Name}");
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = "تم تحديث بيانات المستودع بنجاح.";
+            }
+            return RedirectToAction(nameof(Warehouses));
+        }
+
+        // 📌 التحديث: إضافة دالة الحذف مع حماية المخزون
+        [HttpPost]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> DeleteWarehouse(int id)
+        {
+            var warehouse = await _context.Warehouses.FindAsync(id);
+            if (warehouse != null)
+            {
+                // التحقق مما إذا كان المستودع يحتوي على قطع غيار
+                bool hasParts = await _context.SpareParts.AnyAsync(p => p.WarehouseId == id && !p.IsDeleted);
+                if (hasParts)
+                {
+                    TempData["ErrorMessage"] = "مرفوض! لا يمكنك حذف هذا المستودع لأنه يحتوي على قطع غيار مسجلة بداخله. قم بنقل القطع لمستودع آخر أولاً.";
+                    return RedirectToAction(nameof(Warehouses));
+                }
+
+                _context.Warehouses.Remove(warehouse);
+                LogAction("حذف مستودع", $"تم حذف المستودع بشكل نهائي: {warehouse.Name}");
+                await _context.SaveChangesAsync();
+                TempData["SuccessMessage"] = "تم حذف المستودع بنجاح.";
+            }
             return RedirectToAction(nameof(Warehouses));
         }
 
@@ -108,7 +156,6 @@ namespace KaberSystem.Controllers
                 sparePart.TargetModel = null;
             }
 
-            // إذا لم يحدد مستودع، ابحث عن المستودع الرئيسي
             if (!sparePart.WarehouseId.HasValue)
             {
                 var mainW = await _context.Warehouses.FirstOrDefaultAsync(w => w.IsMain);
@@ -189,7 +236,6 @@ namespace KaberSystem.Controllers
             return View(sparePart);
         }
 
-        // 📌 التحديث: شاشة جرد المستودع الفعلي
         [Authorize(Roles = "Admin,Store")]
         public async Task<IActionResult> Stocktake()
         {
@@ -211,7 +257,6 @@ namespace KaberSystem.Controllers
 
                 if (difference < 0)
                 {
-                    // عجز (تالف أو مفقود)
                     int lossQuantity = Math.Abs(difference);
                     _context.DamagedParts.Add(new DamagedPart
                     {
@@ -274,15 +319,14 @@ namespace KaberSystem.Controllers
             return View(damagedPart);
         }
 
-        // 📌 التحديث: حذف آمن (Soft Delete) لعدم تدمير الحسابات
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Delete(int id)
         {
             var part = await _context.SpareParts.FindAsync(id);
             if (part != null)
             {
-                part.IsDeleted = true; // إخفاء فقط
-                part.MainStockQuantity = 0; // تصفير الرصيد
+                part.IsDeleted = true;
+                part.MainStockQuantity = 0;
                 _context.Update(part);
 
                 LogAction("حذف صنف آمن", $"تم أرشفة وحذف الصنف ({part.Name}) مع تصفير رصيده، لضمان عدم تأثر الفواتير القديمة.");
