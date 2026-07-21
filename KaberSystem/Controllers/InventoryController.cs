@@ -164,11 +164,15 @@ namespace KaberSystem.Controllers
             if (string.IsNullOrEmpty(sparePart.PartCode))
             {
                 sparePart.PartCode = "KBR-" + new Random().Next(100000, 999999).ToString();
+                // 📌 التحديث: إجبار النظام على تجاهل خطأ الفراغ لأننا ولدنا الكود للتو
+                ModelState.Remove("PartCode");
             }
 
             if (sparePart.IsCommon)
             {
                 sparePart.TargetModel = null;
+                // 📌 التحديث: تجاهل التحقق من الموديل إذا كانت القطعة عامة
+                ModelState.Remove("TargetModel");
             }
 
             if (!sparePart.WarehouseId.HasValue)
