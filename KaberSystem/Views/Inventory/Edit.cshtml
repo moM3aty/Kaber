@@ -1,120 +1,136 @@
-﻿@model KaberSystem.Models.SparePart
+﻿<!-- مسار الملف: Views/Inventory/Edit.cshtml -->
+@model KaberSystem.Models.SparePart
 @{
-    ViewData["Title"] = "تعديل الصنف";
+    ViewData["Title"] = "تعديل بيانات الصنف";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
 }
 
 <div class="sys-page-header fade-in-up">
     <div>
-        <h1 class="sys-page-title">تعديل بيانات الصنف والتسعير</h1>
-        <p class="sys-page-desc">تحديث معلومات قطعة الغيار، الأسعار، أو الجرد اليدوي للكميات</p>
+        <h1 class="sys-page-title text-warning"><i class="fa-solid fa-pen-to-square me-2"></i> تعديل صنف: @Model.Name</h1>
+        <p class="sys-page-desc">تعديل التكلفة، الأسعار، أو تغيير المستودع الخاص بالقطعة.</p>
     </div>
-    <a href="/Inventory/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2 shadow-sm hover-elevate">
+    <a href="/Inventory/Index" class="btn btn-outline-secondary fw-bold px-4 rounded-3 border-2 hover-elevate">
         <i class="fa-solid fa-arrow-right"></i> عودة للمخزون
     </a>
 </div>
 
-<div class="row justify-content-center mt-3 fade-in-up" style="animation-delay: 0.1s;">
-    <div class="col-lg-8">
-        <div class="sys-card border-top border-4 border-warning shadow-lg">
-            <div class="d-flex align-items-center mb-4 pb-3 border-bottom">
-                <div class="bg-warning bg-opacity-10 text-warning rounded-circle d-flex justify-content-center align-items-center me-3" style="width: 50px; height: 50px;">
-                    <i class="fa-solid fa-pen-to-square fs-4"></i>
-                </div>
-                <h4 class="fw-bold m-0 text-dark">تعديل: @Model.Name</h4>
-            </div>
-
+<div class="row justify-content-center fade-in-up" style="animation-delay: 0.1s;">
+    <div class="col-lg-10">
+        <div class="sys-card border-top border-4 border-warning p-4 rounded-4 shadow-sm bg-white">
             <form asp-action="Edit" method="post">
                 <input type="hidden" asp-for="PartId" />
+
                 <div class="row g-4">
-
-                    <!-- 📌 البيانات الأساسية والتسعير (تمت إضافتها لتمكين تعديل الأسعار) -->
-                    <div class="col-12 mb-0">
-                        <h5 class="fw-bold text-primary"><i class="fa-solid fa-box text-primary me-2"></i> البيانات الأساسية والتسعير</h5>
+                    <div class="col-12 border-bottom pb-3 mb-2">
+                        <h5 class="fw-bolder text-dark m-0"><i class="fa-solid fa-circle-info text-info me-2"></i> البيانات الأساسية للصنف</h5>
                     </div>
 
+                    <!-- 📌 اختيار المستودع -->
                     <div class="col-md-6">
-                        <label asp-for="Name" class="form-label fw-bold text-dark">اسم القطعة <span class="text-danger">*</span></label>
-                        <input asp-for="Name" class="form-control sys-input" required />
-                    </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="PartCode" class="form-label fw-bold text-dark">كود الصنف (الباركود)</label>
-                        <input asp-for="PartCode" class="form-control sys-input" dir="ltr" />
-                    </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="PurchasePrice" class="form-label fw-bold text-dark">سعر الشراء (التكلفة) <span class="text-danger">*</span></label>
-                        <div class="input-group shadow-sm">
-                            <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control sys-input border-end-0 fw-bold" required />
-                            <span class="input-group-text bg-white border-2 border-start-0 border-secondary fw-bold text-muted" style="border-radius: 12px 0 0 12px;">ر.س</span>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label asp-for="SellingPrice" class="form-label fw-bold text-dark">سعر البيع للعميل <span class="text-danger">*</span></label>
-                        <div class="input-group shadow-sm">
-                            <input asp-for="SellingPrice" type="number" step="0.01" class="form-control sys-input border-end-0 fw-bold text-success border-success" required />
-                            <span class="input-group-text bg-success bg-opacity-10 border-2 border-start-0 border-success fw-bold text-success" style="border-radius: 12px 0 0 12px;">ر.س</span>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold text-dark">نوع القطعة (عامة / مخصصة)</label>
-                        <select asp-for="IsCommon" class="form-select sys-input fw-bold">
-                            <option value="true">عامة (جوكر لعدة أجهزة)</option>
-                            <option value="false">مخصصة لموديل معين</option>
+                        <label asp-for="WarehouseId" class="form-label fw-bolder text-dark">المستودع / الفرع التابع له <span class="text-danger">*</span></label>
+                        <select asp-for="WarehouseId" class="form-select sys-input" asp-items="ViewBag.WarehouseId" required>
+                            <option value="">-- اختر المستودع --</option>
                         </select>
+                        <span asp-validation-for="WarehouseId" class="text-danger small fw-bold mt-1"></span>
                     </div>
 
                     <div class="col-md-6">
-                        <label asp-for="TargetModel" class="form-label fw-bold text-dark">الموديل المرتبط (إن وجد)</label>
-                        <input asp-for="TargetModel" class="form-control sys-input" placeholder="مثال: غسالة LG 8 كيلو" />
+                        <label asp-for="Name" class="form-label fw-bolder text-dark">اسم القطعة (البيان) <span class="text-danger">*</span></label>
+                        <input asp-for="Name" class="form-control sys-input" placeholder="مثال: كمبروسر LG، مروحة تبريد..." required />
+                        <span asp-validation-for="Name" class="text-danger small fw-bold mt-1"></span>
                     </div>
 
-                    <!-- 📌 الجرد والكميات -->
-                    <div class="col-12 border-top pt-3 mt-4">
-                        <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-boxes-stacked me-2"></i> الجرد والكميات</h5>
+                    <div class="col-md-4">
+                        <label asp-for="PartCode" class="form-label fw-bolder text-dark">كود الباركود</label>
+                        <input asp-for="PartCode" class="form-control sys-input bg-light" />
                     </div>
 
-                    <div class="col-md-12">
-                        <label asp-for="MainStockQuantity" class="form-label fw-bold text-dark">الكمية الحالية بالمخزن (تعديل الجرد)</label>
+                    <div class="col-md-4">
+                        <label asp-for="MainStockQuantity" class="form-label fw-bolder text-dark">الرصيد الفعلي (الكمية)</label>
                         @if (User.IsInRole("Admin"))
                         {
-                            <input asp-for="MainStockQuantity" type="number" class="form-control sys-input border-primary shadow-sm" />
-                            <small class="text-danger fw-bold mt-2 d-block"><i class="fa-solid fa-triangle-exclamation"></i> أنت تمتلك صلاحية (المدير) للتعديل اليدوي على الكميات.</small>
+                            <input asp-for="MainStockQuantity" type="number" class="form-control sys-input text-primary fw-bolder fs-5" min="0" />
+                            <small class="text-muted fw-bold d-block mt-1">قابل للتعديل كمدير نظام.</small>
                         }
                         else
                         {
-                            <input asp-for="MainStockQuantity" type="number" class="form-control sys-input bg-light text-muted" readonly style="pointer-events: none;" />
-                            <small class="text-danger fw-bold d-block mt-2"><i class="fa-solid fa-lock me-1"></i> غير مصرح لك بتعديل الكمية يدوياً. الكمية تتحدث تلقائياً عبر فواتير المشتريات.</small>
+                            <input asp-for="MainStockQuantity" type="number" class="form-control sys-input bg-light text-primary fw-bolder fs-5" readonly />
+                            <small class="text-danger fw-bold d-block mt-1"><i class="fa-solid fa-lock me-1"></i> التعديل من شاشة الجرد.</small>
                         }
                     </div>
 
-                    <!-- 📌 بيانات المورد -->
-                    <div class="col-12 border-top pt-3 mt-4">
-                        <h5 class="fw-bold text-primary mb-3"><i class="fa-solid fa-truck-field me-2"></i> بيانات المورد (اختياري)</h5>
+                    <div class="col-12 mt-4 pt-3 border-top">
+                        <label class="form-label fw-bolder text-dark mb-3">هل القطعة عامة تركب على أي جهاز أم مخصصة لموديل معين؟</label>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <input type="radio" class="btn-check" name="IsCommon" id="isCommonTrue" value="true" @(Model.IsCommon ? "checked" : "") onchange="toggleModelInput()">
+                                <label class="btn btn-outline-info w-100 text-start fw-bold p-3 rounded-3 d-flex align-items-center" for="isCommonTrue" style="border-width: 2px;">
+                                    <i class="fa-solid fa-layer-group fs-4 me-3"></i>
+                                    <div>
+                                        <span class="d-block text-dark">قطعة عامة (تركب لأكثر من موديل)</span>
+                                        <small class="text-muted fw-normal">مثل: مسامير، أسلاك، حساس عام.</small>
+                                    </div>
+                                </label>
+                            </div>
+                            <div class="col-md-6">
+                                <input type="radio" class="btn-check" name="IsCommon" id="isCommonFalse" value="false" @(!Model.IsCommon ? "checked" : "") onchange="toggleModelInput()">
+                                <label class="btn btn-outline-secondary w-100 text-start fw-bold p-3 rounded-3 d-flex align-items-center" for="isCommonFalse" style="border-width: 2px;">
+                                    <i class="fa-solid fa-tag fs-4 me-3"></i>
+                                    <div>
+                                        <span class="d-block text-dark">مخصصة لموديل معين</span>
+                                        <small class="text-muted fw-normal">مثل: بوردة غسالة سامسونج موديل X.</small>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-12 mt-3" id="modelInputContainer" style="display: @(Model.IsCommon ? "none" : "block");">
+                        <label asp-for="TargetModel" class="form-label fw-bolder text-dark">رقم الموديل (أو الماركة) المخصصة له <span class="text-danger">*</span></label>
+                        <input asp-for="TargetModel" class="form-control sys-input bg-warning bg-opacity-10 border-warning" placeholder="اكتب الموديل هنا..." />
+                    </div>
+
+                    <div class="col-12 mt-4 pt-4 border-top border-bottom pb-3 mb-2">
+                        <h5 class="fw-bolder text-dark m-0"><i class="fa-solid fa-money-bill-transfer text-success me-2"></i> بيانات التكلفة والتسعير</h5>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="PurchasePrice" class="form-label fw-bolder text-dark">تكلفة الشراء الأساسية (للقطعة الواحدة) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input asp-for="PurchasePrice" type="number" step="0.01" class="form-control sys-input border-end-0 text-danger fw-bolder fs-5" required />
+                            <span class="input-group-text bg-light fw-bold text-muted border-start-0" style="border-radius: 12px 0 0 12px; border: 2px solid #e9edf7;">ر.س</span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label asp-for="SellingPrice" class="form-label fw-bolder text-dark">سعر البيع للعميل (للواحدة) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input asp-for="SellingPrice" type="number" step="0.01" class="form-control sys-input border-end-0 text-success fw-bolder fs-5" required />
+                            <span class="input-group-text bg-light fw-bold text-muted border-start-0" style="border-radius: 12px 0 0 12px; border: 2px solid #e9edf7;">ر.س</span>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mt-4 pt-4 border-top border-bottom pb-3 mb-2">
+                        <h5 class="fw-bolder text-dark m-0"><i class="fa-solid fa-truck-field text-secondary me-2"></i> بيانات المورد (اختياري للرجوع إليه)</h5>
                     </div>
 
                     <div class="col-md-4">
-                        <label asp-for="SupplierName" class="form-label fw-bold text-dark">اسم المورد / الشركة</label>
-                        <input asp-for="SupplierName" class="form-control sys-input" placeholder="اسم مورد هذه القطعة" />
+                        <label asp-for="SupplierName" class="form-label fw-bolder text-dark">اسم المورد / المحل</label>
+                        <input asp-for="SupplierName" class="form-control sys-input" />
                     </div>
-
                     <div class="col-md-4">
-                        <label asp-for="SupplierPhone" class="form-label fw-bold text-dark">رقم الجوال</label>
-                        <input asp-for="SupplierPhone" class="form-control sys-input" dir="ltr" placeholder="05XXXXXXXX" style="text-align: right;" />
+                        <label asp-for="SupplierPhone" class="form-label fw-bolder text-dark">رقم الجوال</label>
+                        <input asp-for="SupplierPhone" class="form-control sys-input" dir="ltr" />
                     </div>
-
                     <div class="col-md-4">
-                        <label asp-for="SupplierLocation" class="form-label fw-bold text-dark">موقع المورد (العنوان)</label>
-                        <input asp-for="SupplierLocation" class="form-control sys-input" placeholder="المدينة، الشارع، أو رابط الخريطة" />
+                        <label asp-for="SupplierLocation" class="form-label fw-bolder text-dark">العنوان</label>
+                        <input asp-for="SupplierLocation" class="form-control sys-input" />
                     </div>
 
-                    <!-- 📌 حفظ التعديلات -->
                     <div class="col-12 mt-5 text-end border-top pt-4">
-                        <button type="submit" class="sys-btn sys-btn-warning text-dark px-5 py-3 fs-5 shadow-sm fw-bold hover-elevate">
-                            <i class="fa-solid fa-check-double me-2"></i> حفظ التعديلات الشاملة
+                        <button type="submit" class="btn btn-warning text-dark px-5 py-3 fs-5 rounded-pill shadow-sm hover-elevate fw-bolder">
+                            <i class="fa-solid fa-save me-2"></i> حفظ التعديلات
                         </button>
                     </div>
                 </div>
@@ -124,14 +140,6 @@
 </div>
 
 <style>
-    :root {
-        --sys-primary: #f1950b;
-        --sys-bg: #f8f9fc;
-        --sys-border: #e2e8f0;
-        --sys-text-main: #1e293b;
-        --sys-transition: all 0.3s ease;
-    }
-
     .fade-in-up {
         animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
@@ -148,72 +156,66 @@
         }
     }
 
-    .sys-card {
-        background: #ffffff;
-        border-radius: 20px;
-        padding: 30px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
-    }
-
     .sys-input {
-        border: 2px solid var(--sys-border);
-        padding: 12px 18px;
-        border-radius: 10px;
+        border: 2px solid #e9edf7;
+        padding: 14px 18px;
+        border-radius: 12px;
         font-weight: 600;
-        transition: var(--sys-transition);
-        background-color: var(--sys-bg);
-        color: var(--sys-text-main);
+        color: #1e293b;
+        background-color: #f8fafc;
+        transition: 0.3s;
     }
 
         .sys-input:focus {
-            border-color: var(--sys-primary);
-            box-shadow: 0 0 0 0.25rem rgba(241, 149, 11, 0.15);
             background-color: #fff;
+            border-color: #f1950b;
+            box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1);
             outline: none;
         }
 
-    .input-group .sys-input {
-        border-radius: 0 10px 10px 0;
+    .btn-check:checked + .btn-outline-info {
+        background-color: #f0f9ff;
+        color: #0ea5e9;
+        border-color: #0ea5e9;
     }
 
-    .input-group .input-group-text {
-        border: 2px solid var(--sys-border);
-        border-right: none;
-        border-radius: 10px 0 0 10px;
-    }
-
-    .input-group:focus-within .input-group-text {
-        border-color: var(--sys-primary);
+    .btn-check:checked + .btn-outline-secondary {
+        background-color: #f8f9fa;
+        color: #495057;
+        border-color: #495057;
     }
 
     .hover-elevate {
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        cursor: pointer;
     }
 
         .hover-elevate:hover {
             transform: translateY(-3px);
-            box-shadow: 0 15px 25px rgba(0,0,0,0.1) !important;
-        }
-
-    .sys-btn {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        font-weight: 700;
-        border-radius: 12px;
-        transition: var(--sys-transition);
-    }
-
-    .sys-btn-warning {
-        background-color: var(--sys-primary);
-        border: 2px solid var(--sys-primary);
-        color: white !important;
-    }
-
-        .sys-btn-warning:hover {
-            background-color: #d9850a;
-            border-color: #d9850a;
-            color: white !important;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
         }
 </style>
+
+@section Scripts {
+    <script>
+        function toggleModelInput() {
+            var isCommon = document.getElementById('isCommonTrue').checked;
+            var container = document.getElementById('modelInputContainer');
+            var input = document.getElementById('TargetModel');
+
+            if (isCommon) {
+                container.style.display = 'none';
+                input.required = false;
+                input.value = '';
+            } else {
+                container.style.display = 'block';
+                input.required = true;
+            }
+        }
+
+        // تشغيل الدالة عند تحميل الصفحة للتأكد من الحالة المبدئية
+        document.addEventListener("DOMContentLoaded", function () {
+            toggleModelInput();
+        });
+    </script>
+}

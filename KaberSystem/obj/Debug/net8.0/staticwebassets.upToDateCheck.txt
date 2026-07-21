@@ -1,6 +1,7 @@
 wwwroot\css\all.min.css
 wwwroot\css\bootstrap.min.css
 wwwroot\css\dashboard-premium.css
+wwwroot\css\main.css
 wwwroot\favicon.ico
 wwwroot\images\about-shape.png
 wwwroot\images\about-us-1.jpg
@@ -33,6 +34,7 @@ wwwroot\images\trust-us.jpg
 wwwroot\images\why-details.jpg
 wwwroot\images\why-us-bg.png
 wwwroot\js\bootstrap.bundle.min.js
+wwwroot\js\main.js
 wwwroot\lib\bootstrap\dist\css\bootstrap-grid.css
 wwwroot\lib\bootstrap\dist\css\bootstrap-grid.css.map
 wwwroot\lib\bootstrap\dist\css\bootstrap-grid.min.css
@@ -108,5 +110,3 @@ wwwroot\webfonts\fa-solid-900.ttf
 wwwroot\webfonts\fa-solid-900.woff2
 wwwroot\webfonts\fa-v4compatibility.ttf
 wwwroot\webfonts\fa-v4compatibility.woff2
-wwwroot\css\main.css
-wwwroot\js\main.js

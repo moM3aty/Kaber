@@ -232,24 +232,32 @@
                     <input type="hidden" name="technicianId" value="@Model.TechnicianId" />
 
                     <div class="mb-4">
-                        <label class="premium-label">اختر القطعة من المخزن العام <span class="text-danger">*</span></label>
-                        <!-- 📌 إضافة ID = warehousePartSelect لتفعيل البحث عبر مكتبة Select2 -->
+                        <label class="premium-label">اختر القطعة من المستودع المطلوب <span class="text-danger">*</span></label>
                         <select name="partId" id="warehousePartSelect" class="form-select fw-bold searchable-select" style="width: 100%;" required>
                             <option value="">-- اضغط للاختيار وابحث --</option>
                             @if (ViewData["AvailableParts"] != null)
                             {
-                                foreach (var part in (IEnumerable<KaberSystem.Models.SparePart>)ViewData["AvailableParts"])
+                                // 📌 التحديث: تجميع القطع المتاحة حسب المستودع
+                                var partsGrouped = ((IEnumerable<KaberSystem.Models.SparePart>)ViewData["AvailableParts"])
+                                .GroupBy(p => p.Warehouse?.Name ?? "المخزن الرئيسي");
+
+                                foreach (var group in partsGrouped)
                                 {
-                                    <option value="@part.PartId">@part.Name (المتاح: @part.MainStockQuantity)</option>
+                                    <optgroup label="🏭 @group.Key">
+                                        @foreach (var part in group)
+                                        {
+                                            <option value="@part.PartId">@part.Name (المتاح: @part.MainStockQuantity)</option>
+                                        }
+                                    </optgroup>
                                 }
                             }
                         </select>
+                        <small class="text-muted fw-bold d-block mt-2"><i class="fa-solid fa-circle-info text-info me-1"></i> سيتم سحب الكمية من المستودع الذي تختاره.</small>
                     </div>
 
                     <div class="mb-3">
                         <label class="premium-label">الكمية المراد صرفها <span class="text-danger">*</span></label>
                         <input type="number" name="quantity" class="premium-input form-control text-center fs-5" min="1" value="1" required />
-                        <small class="text-muted fw-bold mt-2 d-block text-center"><i class="fa-solid fa-info-circle text-primary me-1"></i> سيتم خصم هذه الكمية من المخزن الرئيسي وإضافتها لسيارة الفني.</small>
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 pt-0 px-4 pb-4">
@@ -270,7 +278,7 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content premium-modal border-0 shadow-lg text-start">
                     <div class="modal-header border-bottom-0 pb-0 px-4 pt-4">
-                        <h5 class="modal-title fw-bolder text-danger"><i class="fa-solid fa-arrow-rotate-left me-2"></i> إرجاع قطعة للمخزن الرئيسي</h5>
+                        <h5 class="modal-title fw-bolder text-danger"><i class="fa-solid fa-arrow-rotate-left me-2"></i> إرجاع قطعة لمستودعها الأصلي</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <form asp-action="ReturnStock" method="post">
@@ -282,7 +290,7 @@
                                 <div class="icon-box"><i class="fa-solid fa-info-circle"></i></div>
                                 <div class="content">
                                     <h6 class="fw-bolder m-0 text-danger">تنبيه إرجاع:</h6>
-                                    <p class="mb-0 small fw-bold">سيتم سحب <span class="text-dark">@item.SparePart?.Name</span> من عهدة الفني وإعادتها للرصيد الرئيسي.</p>
+                                    <p class="mb-0 small fw-bold">سيتم سحب <span class="text-dark">@item.SparePart?.Name</span> من عهدة الفني وإعادتها لمستودعها الأساسي.</p>
                                 </div>
                             </div>
 
@@ -321,13 +329,13 @@
 
         @if (TempData["SuccessMessage"] != null)
         {
-                    var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
-                    <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', html: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'premium-swal' } });</text>
+                        var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+                        <text>Swal.fire({ icon: 'success', title: 'عملية ناجحة', html: @Html.Raw(msg), confirmButtonColor: '#198754', customClass: { popup: 'premium-swal' } });</text>
         }
         @if (TempData["ErrorMessage"] != null)
         {
-                    var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
-                    <text>Swal.fire({ icon: 'error', title: 'خطأ', html: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
+                        var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
+                        <text>Swal.fire({ icon: 'error', title: 'خطأ', html: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
         }
     </script>
 }

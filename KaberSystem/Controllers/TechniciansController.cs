@@ -39,12 +39,16 @@ namespace KaberSystem.Controllers
 
             if (technician == null) return NotFound();
 
-            ViewData["AvailableParts"] = await _context.SpareParts.Where(p => p.MainStockQuantity > 0 && !p.IsDeleted).ToListAsync();
+            // 📌 التحديث: جلب المخزون متضمناً تفاصيل المستودع لتصنيفه
+            ViewData["AvailableParts"] = await _context.SpareParts
+                .Include(p => p.Warehouse)
+                .Where(p => p.MainStockQuantity > 0 && !p.IsDeleted)
+                .OrderBy(p => p.WarehouseId)
+                .ToListAsync();
 
             return View(technician);
         }
 
-        // 📌 التحديث: البحث عن الفني بشكل غير حساس لحالة الأحرف
         [Authorize(Roles = "Technician")]
         public async Task<IActionResult> MyStock()
         {
@@ -80,7 +84,7 @@ namespace KaberSystem.Controllers
 
             if (ModelState.IsValid)
             {
-                technician.Name = technician.Name.Trim(); // منع المسافات الزائدة
+                technician.Name = technician.Name.Trim();
                 technician.IsAvailable = true;
                 technician.TotalIncome = 0;
                 _context.Add(technician);

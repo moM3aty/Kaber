@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
 using KaberSystem.Models;
 using Microsoft.AspNetCore.Authorization;
+using System.Collections.Generic;
 
 namespace KaberSystem.Controllers
 {
@@ -71,8 +72,22 @@ namespace KaberSystem.Controllers
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> Warehouses()
         {
-            var w = await _context.Warehouses.ToListAsync();
-            return View(w);
+            var warehouses = await _context.Warehouses.ToListAsync();
+
+            // 📌 التحديث: حساب إجمالي قيمة البضاعة (التكلفة) لكل مستودع
+            var warehouseValues = new Dictionary<int, decimal>();
+            foreach (var w in warehouses)
+            {
+                var totalValue = await _context.SpareParts
+                    .Where(p => p.WarehouseId == w.Id && !p.IsDeleted && p.MainStockQuantity > 0)
+                    .SumAsync(p => p.MainStockQuantity * p.PurchasePrice);
+
+                warehouseValues[w.Id] = totalValue;
+            }
+
+            ViewBag.WarehouseValues = warehouseValues;
+
+            return View(warehouses);
         }
 
         [HttpPost]
