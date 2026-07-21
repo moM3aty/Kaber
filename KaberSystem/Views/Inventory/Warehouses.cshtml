@@ -2,6 +2,7 @@
 @{
     ViewData["Title"] = "إدارة المستودعات";
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
+    var valuesDict = ViewBag.WarehouseValues as Dictionary<int, decimal>;
 }
 
 <div class="sys-page-header fade-in-up">
@@ -18,8 +19,7 @@
     @foreach (var w in Model)
     {
         // استدعاء قيمة البضاعة المحسوبة في الكنترولر
-        decimal totalValue = ViewBag.WarehouseValues != null && ViewBag.WarehouseValues.ContainsKey(w.Id) ? ViewBag.WarehouseValues[w.Id] : 0;
-
+        decimal totalValue = valuesDict != null && valuesDict.ContainsKey(w.Id) ? valuesDict[w.Id] : 0m;
         <div class="col-md-4">
             <div class="premium-card p-4 h-100 text-center d-flex flex-column @(w.IsMain ? "border-success border-top border-4" : "border-info border-top border-4")">
                 <div class="icon-box @(w.IsMain ? "bg-success" : "bg-info") text-white bg-opacity-75 mx-auto mb-3" style="width:60px; height:60px; font-size:24px;">
@@ -55,7 +55,7 @@
                     <button class="btn btn-sm btn-outline-dark fw-bold rounded-pill px-3 hover-elevate" onclick="openEditModal(@w.Id, '@w.Name', '@(w.Location ?? "")', @(w.IsMain.ToString().ToLower()))">
                         <i class="fa-solid fa-pen"></i> تعديل
                     </button>
-                    <form asp-action="DeleteWarehouse" method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذا المستودع نهائياً؟');">
+                    <form asp-controller="Inventory" asp-action="DeleteWarehouse" method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذا المستودع نهائياً؟');">
                         <input type="hidden" name="id" value="@w.Id" />
                         <button type="submit" class="btn btn-sm btn-outline-danger fw-bold rounded-pill px-3 hover-elevate">
                             <i class="fa-solid fa-trash"></i> حذف

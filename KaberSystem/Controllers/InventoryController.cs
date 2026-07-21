@@ -74,13 +74,16 @@ namespace KaberSystem.Controllers
         {
             var warehouses = await _context.Warehouses.ToListAsync();
 
-            // 📌 التحديث: حساب إجمالي قيمة البضاعة (التكلفة) لكل مستودع
             var warehouseValues = new Dictionary<int, decimal>();
             foreach (var w in warehouses)
             {
+                // 📌 التحديث الجذري: 
+                // 1. ضم القطع القديمة (بدون مستودع Null) لتُحسب ضمن المستودع الرئيسي.
+                // 2. استخدام (decimal?) لمنع انهيار الاستعلام إذا كان المستودع فارغاً تماماً.
                 var totalValue = await _context.SpareParts
-                    .Where(p => p.WarehouseId == w.Id && !p.IsDeleted && p.MainStockQuantity > 0)
-                    .SumAsync(p => p.MainStockQuantity * p.PurchasePrice);
+                    .Where(p => !p.IsDeleted && p.MainStockQuantity > 0 &&
+                                (p.WarehouseId == w.Id || (w.IsMain && p.WarehouseId == null)))
+                    .SumAsync(p => (decimal?)(p.MainStockQuantity * p.PurchasePrice)) ?? 0m;
 
                 warehouseValues[w.Id] = totalValue;
             }
@@ -89,7 +92,6 @@ namespace KaberSystem.Controllers
 
             return View(warehouses);
         }
-
         [HttpPost]
         [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateWarehouse(string name, string location, bool isMain = false)
@@ -143,6 +145,14 @@ namespace KaberSystem.Controllers
                     return RedirectToAction(nameof(Warehouses));
                 }
 
+                // التحقق مما إذا كان هذا هو المستودع الوحيد أو الرئيسي (لتجنب مسح كل شيء بالغلط)
+                var warehousesCount = await _context.Warehouses.CountAsync();
+                if (warehousesCount <= 1 || warehouse.IsMain)
+                {
+                    TempData["ErrorMessage"] = "مرفوض! لا يمكنك حذف المستودع الرئيسي أو المستودع الوحيد بالنظام.";
+                    return RedirectToAction(nameof(Warehouses));
+                }
+
                 _context.Warehouses.Remove(warehouse);
                 LogAction("حذف مستودع", $"تم حذف المستودع بشكل نهائي: {warehouse.Name}");
                 await _context.SaveChangesAsync();
@@ -150,7 +160,6 @@ namespace KaberSystem.Controllers
             }
             return RedirectToAction(nameof(Warehouses));
         }
-
         public async Task<IActionResult> Create()
         {
             ViewData["WarehouseId"] = new SelectList(await _context.Warehouses.ToListAsync(), "Id", "Name");
