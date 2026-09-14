@@ -22,16 +22,51 @@ namespace KaberSystem.Controllers
         private void LogAction(string actionType, string details)
         {
             var username = User.Identity?.Name ?? "مستخدم غير معروف";
-            var role = User.Claims.FirstOrDefault(c => c.Type == System.Security.Claims.ClaimTypes.Role)?.Value ?? "صلاحية غير محددة";
-
             _context.SystemLogs.Add(new SystemLog
             {
                 ActionType = actionType,
                 Details = details,
-                Username = $"{username} - [{role}]",
+                Username = username,
                 Timestamp = DateTime.Now
             });
         }
+
+        // 📌 دالة تصفير وتسوية الدرج إلى 475 بناءً على طلبك
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> ForceFixSafe()
+        {
+            var allCashTransactions = await _context.SafeTransactions
+                .Include(s => s.Order)
+                .Where(s => s.PaymentMethod == PaymentMethod.Cash || s.PaymentMethod == PaymentMethod.None)
+                .ToListAsync();
+
+            decimal handovers = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income && t.Description != null && (t.Description.Contains("توريد عهدة نقدية") || t.Description.Contains("استلام وتوريد كاش") || t.Description.Contains("مزامنة النظام") || t.Description.Contains("تسوية وتصفير"))).Sum(t => t.Amount);
+            decimal adminInvoices = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income && t.OrderId.HasValue && t.Order != null && t.Order.TechnicianId == null).Sum(t => t.Amount);
+            decimal manualAdjustments = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income && !t.OrderId.HasValue && !(t.Description != null && (t.Description.Contains("توريد عهدة نقدية") || t.Description.Contains("استلام وتوريد كاش") || t.Description.Contains("مزامنة النظام") || t.Description.Contains("تسوية وتصفير")))).Sum(t => t.Amount);
+            decimal generalOutflows = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+
+            decimal currentBalance = handovers + adminInvoices + manualAdjustments - generalOutflows;
+
+            if (currentBalance != 475m)
+            {
+                decimal difference = 475m - currentBalance;
+                _context.SafeTransactions.Add(new SafeTransaction
+                {
+                    Amount = Math.Abs(difference),
+                    Type = difference > 0 ? SafeTransactionType.Income : SafeTransactionType.DepositToBank,
+                    TargetSafe = SafeType.General,
+                    PaymentMethod = PaymentMethod.Cash,
+                    Description = $"[تسوية وتصفير نهائي]: ضبط الرصيد الافتتاحي للدرج إلى 475 ريال",
+                    RecordedBy = "System Admin",
+                    Date = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+            }
+
+            return Content("تم ضبط رصيد الخزنة العامة على (475 ريال) بنجاح. يمكنك العودة للنظام.");
+        }
+
 
         public async Task<IActionResult> Index()
         {
@@ -40,26 +75,20 @@ namespace KaberSystem.Controllers
                 .OrderByDescending(s => s.Date)
                 .ToListAsync();
 
-            // 📌 التحديث الجذري: حساب السيولة النقدية الفعلية (الكاش) في الدرج فقط لمنع الدبلرة
+            var allCashTransactions = transactions.Where(t => t.PaymentMethod == PaymentMethod.Cash || t.PaymentMethod == PaymentMethod.None).ToList();
 
-            // 1. الفلترة لسحب الحركات الكاش فقط
-            var cashTransactions = transactions.Where(t => t.PaymentMethod == PaymentMethod.Cash || t.PaymentMethod == PaymentMethod.None).ToList();
+            decimal handovers = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income && t.Description != null && (t.Description.Contains("توريد عهدة نقدية") || t.Description.Contains("استلام وتوريد كاش") || t.Description.Contains("مزامنة النظام") || t.Description.Contains("تسوية وتصفير"))).Sum(t => t.Amount);
+            decimal adminInvoices = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income && t.OrderId.HasValue && t.Order != null && t.Order.TechnicianId == null).Sum(t => t.Amount);
+            decimal manualAdjustments = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income && !t.OrderId.HasValue && !(t.Description != null && (t.Description.Contains("توريد عهدة نقدية") || t.Description.Contains("استلام وتوريد كاش") || t.Description.Contains("مزامنة النظام") || t.Description.Contains("تسوية وتصفير")))).Sum(t => t.Amount);
 
-            // 2. استبعاد أموال الفواتير التي لا تزال في جيب الفني (لم تورد للدرج بعد)
-            var actualDrawerIncome = cashTransactions.Where(t =>
-                t.Type == SafeTransactionType.Income &&
-                !(t.OrderId.HasValue && (t.Description.Contains("تحصيل أجور") || t.Description.Contains("استرداد رأس مال")))
-            ).ToList();
+            decimal realIncomes = handovers + adminInvoices + manualAdjustments;
+            decimal realOutflows = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
 
-            var actualDrawerDeposits = cashTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).ToList();
+            decimal currentBalance = realIncomes - realOutflows;
 
-            // 3. حساب الصافي الفعلي للدرج
-            decimal totalIncome = actualDrawerIncome.Sum(t => t.Amount);
-            decimal totalDeposits = actualDrawerDeposits.Sum(t => t.Amount);
-
-            ViewBag.CurrentBalance = totalIncome - totalDeposits;
-            ViewBag.TotalIncome = totalIncome;
-            ViewBag.TotalDeposits = totalDeposits;
+            ViewBag.CurrentBalance = currentBalance;
+            ViewBag.TotalIncome = realIncomes;
+            ViewBag.TotalDeposits = realOutflows;
 
             return View(transactions);
         }
@@ -71,24 +100,6 @@ namespace KaberSystem.Controllers
             if (amount <= 0)
             {
                 TempData["ErrorMessage"] = "يجب أن يكون المبلغ أكبر من صفر.";
-                return RedirectToAction(nameof(Index));
-            }
-
-            // 📌 التأكد من الرصيد الفعلي قبل التوريد (بناءً على المعادلة الجديدة)
-            var allCash = await _context.SafeTransactions
-                .Where(t => t.PaymentMethod == PaymentMethod.Cash || t.PaymentMethod == PaymentMethod.None)
-                .ToListAsync();
-
-            var actualIncome = allCash.Where(t => t.Type == SafeTransactionType.Income &&
-                !(t.OrderId.HasValue && (t.Description.Contains("تحصيل أجور") || t.Description.Contains("استرداد رأس مال")))
-            ).Sum(t => t.Amount);
-
-            var deposits = allCash.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
-            decimal currentBalance = actualIncome - deposits;
-
-            if (amount > currentBalance)
-            {
-                TempData["ErrorMessage"] = $"الرصيد الفعلي المتوفر في الخزنة الكاش ({currentBalance:N2} ريال) لا يكفي للتوريد.";
                 return RedirectToAction(nameof(Index));
             }
 
