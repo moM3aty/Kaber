@@ -66,7 +66,7 @@ namespace KaberSystem.Controllers
             }
 
             await _context.SaveChangesAsync();
-            return Content("تم تصفير وتسوية العهد النقدية القديمة لجميع الفنيين بنجاح! يمكنك العودة للنظام الآن.");
+            return Content("تم تصفير وتسوية العهد النقدية لجميع الفنيين بنجاح!");
         }
 
         public async Task<IActionResult> Index(string monthYear)
@@ -101,10 +101,12 @@ namespace KaberSystem.Controllers
 
             var purchasesTransactions = await _context.SafeTransactions
                 .Where(t => t.Type == SafeTransactionType.DepositToBank && t.Date.Year == targetDate.Year && t.Date.Month == targetDate.Month
-                         && (t.TargetSafe == SafeType.Purchasing || (t.Description != null && t.Description.Contains("شراء"))))
+                         && (t.TargetSafe == SafeType.Purchasing || (t.Description != null && (t.Description.Contains("شراء") || t.Description.Contains("مشتريات")))))
                 .ToListAsync();
 
             decimal totalPurchasesOutflow = purchasesTransactions.Sum(t => t.Amount);
+
+            // 📌 الحسبة الصحيحة 100%: المصروفات التشغيلية فقط (أجور، رواتب، توالف) هي التي تخصم من الربح
             decimal allExpenses = totalOpExpenses + damagesCost + techCommissionsPaid;
             decimal netProfit = grossProfit - allExpenses;
 
@@ -114,6 +116,7 @@ namespace KaberSystem.Controllers
             decimal bankExpenses = opExpensesList.Where(e => e.PaymentMethod == PaymentMethod.POS || e.PaymentMethod == PaymentMethod.BankTransfer).Sum(e => e.Amount)
                                  + techCommissionsTransactions.Where(t => t.PaymentMethod == PaymentMethod.POS || t.PaymentMethod == PaymentMethod.BankTransfer).Sum(t => t.Amount);
 
+            // إجمالي الخوارج الكلية (تتضمن المشتريات لعرضها كتدفق نقدي فقط)
             decimal totalCashOutflow = allExpenses + totalPurchasesOutflow;
 
             decimal rawInventoryValue = await _context.SpareParts.SumAsync(p => p.MainStockQuantity * p.PurchasePrice);
@@ -128,20 +131,16 @@ namespace KaberSystem.Controllers
 
             var allTechs = await _context.Technicians.ToListAsync();
 
-            // 📌 التحديث: حساب المحفظة بطرح (المرتجعات) من (الوارد)
             decimal orderCashNetForTechs = allCashTransactions
                 .Where(t => t.OrderId.HasValue && t.Order != null && t.Order.TechnicianId != null)
-                .Sum(t => t.Type == SafeTransactionType.Income ? t.Amount : -t.Amount); // 👈 يجمع الدخل ويطرح المرتجع
+                .Sum(t => t.Type == SafeTransactionType.Income ? t.Amount : -t.Amount);
 
             decimal totalHandedOver = allTechs.Sum(t => t.TotalIncome);
             decimal totalCashWithTechs = Math.Max(orderCashNetForTechs - totalHandedOver, 0);
 
-            decimal handovers = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income && t.Description != null && (t.Description.Contains("توريد عهدة نقدية") || t.Description.Contains("استلام وتوريد كاش") || t.Description.Contains("مزامنة النظام") || t.Description.Contains("تسوية وتصفير"))).Sum(t => t.Amount);
-            decimal adminInvoices = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income && t.OrderId.HasValue && t.Order != null && t.Order.TechnicianId == null).Sum(t => t.Amount);
-            decimal manualAdjustments = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income && !t.OrderId.HasValue && !(t.Description != null && (t.Description.Contains("توريد عهدة نقدية") || t.Description.Contains("استلام وتوريد كاش") || t.Description.Contains("مزامنة النظام") || t.Description.Contains("تسوية وتصفير")))).Sum(t => t.Amount);
-            decimal generalOutflows = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
-
-            decimal generalSafeBalance = handovers + adminInvoices + manualAdjustments - generalOutflows;
+            var generalCashTrans = allCashTransactions.Where(t => t.TargetSafe == SafeType.General).ToList();
+            decimal generalSafeBalance = generalCashTrans.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount)
+                                       - generalCashTrans.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
 
             decimal purchasingSafeBalance = allCashTransactions.Where(t => t.TargetSafe == SafeType.Purchasing && t.Type == SafeTransactionType.Income).Sum(t => t.Amount)
                                           - allCashTransactions.Where(t => t.TargetSafe == SafeType.Purchasing && t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
@@ -174,7 +173,6 @@ namespace KaberSystem.Controllers
             ViewBag.TechnicianReports = allTechs.Select(t => {
                 var currentMonthOrders = t.AssignedOrders.Where(o => o.IsPaid && o.CreatedAt.Year == targetDate.Year && o.CreatedAt.Month == targetDate.Month).ToList();
 
-                // 📌 التحديث: حساب المحفظة الفردية لتأخذ المرتجعات بالاعتبار
                 decimal wallet = allOrderCashTrans
                     .Where(tr => tr.Order != null && tr.Order.TechnicianId == t.TechnicianId)
                     .Sum(tr => tr.Type == SafeTransactionType.Income ? tr.Amount : -tr.Amount) - t.TotalIncome;
@@ -203,11 +201,9 @@ namespace KaberSystem.Controllers
 
             if (targetSafe == SafeType.General)
             {
-                decimal handovers = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income && t.Description != null && (t.Description.Contains("توريد عهدة نقدية") || t.Description.Contains("استلام وتوريد كاش") || t.Description.Contains("مزامنة النظام") || t.Description.Contains("تسوية وتصفير"))).Sum(t => t.Amount);
-                decimal adminInvoices = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income && t.OrderId.HasValue && t.Order != null && t.Order.TechnicianId == null).Sum(t => t.Amount);
-                decimal manualAdjustments = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.Income && !t.OrderId.HasValue && !(t.Description != null && (t.Description.Contains("توريد عهدة نقدية") || t.Description.Contains("استلام وتوريد كاش") || t.Description.Contains("مزامنة النظام") || t.Description.Contains("تسوية وتصفير")))).Sum(t => t.Amount);
-                decimal generalOutflows = allCashTransactions.Where(t => t.TargetSafe == SafeType.General && t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
-                currentBalance = handovers + adminInvoices + manualAdjustments - generalOutflows;
+                var generalCashTrans = allCashTransactions.Where(t => t.TargetSafe == SafeType.General).ToList();
+                currentBalance = generalCashTrans.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount)
+                               - generalCashTrans.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
             }
             else
             {
@@ -337,9 +333,9 @@ namespace KaberSystem.Controllers
                 {
                     var monthOrders = tech.AssignedOrders.Where(o => o.IsPaid && o.CreatedAt.Year == targetDate.Year && o.CreatedAt.Month == targetDate.Month).ToList();
 
-                    // 📌 التحديث: حسبة العهدة في التصفية تطرح المرتجعات
                     decimal cashCollectedNet = await _context.SafeTransactions
-                        .Where(tr => tr.OrderId != null && tr.Order.TechnicianId == techId && tr.PaymentMethod == PaymentMethod.Cash)
+                        .Where(tr => tr.OrderId != null && tr.Order.TechnicianId == techId &&
+                                     (tr.PaymentMethod == PaymentMethod.Cash || tr.PaymentMethod == PaymentMethod.None))
                         .SumAsync(tr => tr.Type == SafeTransactionType.Income ? tr.Amount : -tr.Amount);
 
                     decimal totalRev = monthOrders.Sum(o => o.FinalPrice);
@@ -574,13 +570,11 @@ namespace KaberSystem.Controllers
             return RedirectToAction(nameof(Invoices));
         }
 
-        // 📌 التحديث: تصفير العربون والأسعار، وإرجاع الموعد، وإضافة (OrderId) لحركة المرتجع لتخصم من العهدة
         [HttpPost]
         public async Task<IActionResult> RefundInvoice(int invoiceId, string refundReason)
         {
             var invoice = await _context.Invoices
                 .Include(i => i.Order)
-                    .ThenInclude(o => o.UsedSpareParts)
                 .FirstOrDefaultAsync(i => i.InvoiceId == invoiceId);
 
             if (invoice != null && invoice.Status == InvoiceStatus.Paid)
@@ -591,63 +585,33 @@ namespace KaberSystem.Controllers
                 if (invoice.Order != null)
                 {
                     invoice.Order.IsPaid = false;
-                    invoice.Order.PaymentMethod = PaymentMethod.None;
 
-                    // 📌 تصفير العربون والسعر لكي يطلب السداد من جديد
-                    invoice.Order.AdvancePayment = 0;
-                    invoice.Order.FinalPrice = 0;
-                    invoice.Order.TaxAmount = 0;
-
-                    invoice.Order.Status = OrderStatus.Returned;
-                    invoice.Order.ScheduledDate = null;
-
-                    if (invoice.Order.UsedSpareParts != null && invoice.Order.UsedSpareParts.Any())
+                    if (invoice.Type == InvoiceType.Advance)
                     {
-                        foreach (var usedPart in invoice.Order.UsedSpareParts)
-                        {
-                            if (invoice.Order.TechnicianId.HasValue)
-                            {
-                                var techStock = await _context.TechnicianStocks
-                                    .FirstOrDefaultAsync(ts => ts.TechnicianId == invoice.Order.TechnicianId.Value && ts.PartId == usedPart.PartId);
-
-                                if (techStock != null)
-                                {
-                                    techStock.Quantity += usedPart.QuantityUsed;
-                                    _context.Update(techStock);
-                                }
-                                else
-                                {
-                                    _context.TechnicianStocks.Add(new TechnicianStock { TechnicianId = invoice.Order.TechnicianId.Value, PartId = usedPart.PartId, Quantity = usedPart.QuantityUsed });
-                                }
-                            }
-                        }
-                        _context.UsedSpareParts.RemoveRange(invoice.Order.UsedSpareParts);
+                        invoice.Order.AdvancePayment -= invoice.Amount;
+                        if (invoice.Order.AdvancePayment < 0) invoice.Order.AdvancePayment = 0;
                     }
 
                     _context.Update(invoice.Order);
 
-                    // 📌 ربط حركة السحب (المرتجع) بـ OrderId لكي تنقص من عهدة الفني!
-                    if (invoice.Order.PaymentMethod == PaymentMethod.Cash || invoice.Order.PaymentMethod == PaymentMethod.None)
+                    _context.SafeTransactions.Add(new SafeTransaction
                     {
-                        _context.SafeTransactions.Add(new SafeTransaction
-                        {
-                            Amount = invoice.Amount,
-                            Type = SafeTransactionType.DepositToBank,
-                            TargetSafe = SafeType.General,
-                            PaymentMethod = PaymentMethod.Cash,
-                            Description = $"استرداد فاتورة ملغاة #{invoiceId}. السبب: {refundReason}",
-                            OrderId = invoice.Order.OrderId, // 👈 السر هنا!
-                            RecordedBy = User.Identity?.Name ?? "System",
-                            Date = DateTime.Now
-                        });
-                    }
+                        Amount = invoice.Amount,
+                        Type = SafeTransactionType.DepositToBank,
+                        TargetSafe = SafeType.General,
+                        PaymentMethod = invoice.Order.PaymentMethod,
+                        Description = $"استرداد فاتورة ملغاة #{invoiceId}. السبب: {refundReason}",
+                        OrderId = invoice.Order.OrderId,
+                        RecordedBy = User.Identity?.Name ?? "System",
+                        Date = DateTime.Now
+                    });
                 }
 
                 _context.Update(invoice);
-                LogAction("استرداد فاتورة", $"تم إلغاء واسترداد الفاتورة #{invoiceId}. السبب: {refundReason}");
+                LogAction("استرداد فاتورة", $"تم إلغاء واسترداد الفاتورة #{invoiceId} بقيمة {invoice.Amount}. السبب: {refundReason}");
                 await _context.SaveChangesAsync();
 
-                TempData["SuccessMessage"] = "تم استرداد الفاتورة، تصفير العربون، وإرجاع الطلب والقطع للفني لإعادة التسجيل بنجاح.";
+                TempData["SuccessMessage"] = "تم استرداد مبلغ الفاتورة وتعديل حسابات الطلب والخزنة بنجاح.";
                 return RedirectToAction(nameof(Invoices), new { monthYear = targetMonth });
             }
             return RedirectToAction(nameof(Invoices));

@@ -36,66 +36,30 @@ namespace KaberSystem.Controllers
             });
         }
 
+        // 📌 التحديث الجذري: خصم المشتريات مباشرة من الخزنة العامة (الكاش أو البنك) لكي يسمّع فوراً عند المحاسب
         private async Task DeductPurchaseCostAsync(decimal totalCost, string itemName, PaymentMethod paymentMethod)
         {
-            var purchasingTransactions = await _context.SafeTransactions
-                .Where(s => s.TargetSafe == SafeType.Purchasing && s.PaymentMethod == paymentMethod)
-                .ToListAsync();
-
-            decimal purchasingBalance = purchasingTransactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount)
-                                      - purchasingTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
-
-            if (purchasingBalance >= totalCost)
+            _context.SafeTransactions.Add(new SafeTransaction
             {
-                _context.SafeTransactions.Add(new SafeTransaction
-                {
-                    Amount = totalCost,
-                    Type = SafeTransactionType.DepositToBank,
-                    TargetSafe = SafeType.Purchasing,
-                    PaymentMethod = paymentMethod,
-                    Description = $"شراء قطع غيار: {itemName}",
-                    RecordedBy = User.Identity?.Name ?? "System",
-                    Date = DateTime.Now
-                });
-            }
-            else
-            {
-                decimal deficit = totalCost - purchasingBalance;
-
-                if (purchasingBalance > 0)
-                {
-                    _context.SafeTransactions.Add(new SafeTransaction
-                    {
-                        Amount = purchasingBalance,
-                        Type = SafeTransactionType.DepositToBank,
-                        TargetSafe = SafeType.Purchasing,
-                        PaymentMethod = paymentMethod,
-                        Description = $"سحب كامل الرصيد لتغطية جزء من شراء: {itemName}",
-                        RecordedBy = User.Identity?.Name ?? "System",
-                        Date = DateTime.Now
-                    });
-                }
-
-                _context.SafeTransactions.Add(new SafeTransaction
-                {
-                    Amount = deficit,
-                    Type = SafeTransactionType.DepositToBank,
-                    TargetSafe = SafeType.General,
-                    PaymentMethod = paymentMethod,
-                    Description = $"سلفة لتمويل عجز المشتريات لشراء: {itemName}",
-                    RecordedBy = User.Identity?.Name ?? "System",
-                    Date = DateTime.Now
-                });
-            }
+                Amount = totalCost,
+                Type = SafeTransactionType.DepositToBank, // تعني سحب / خروج أموال
+                TargetSafe = SafeType.General, // 👈 السحب من الخزنة الرئيسية مباشرة
+                PaymentMethod = paymentMethod,
+                Description = $"دفع قيمة مشتريات (مورد): {itemName}",
+                RecordedBy = User.Identity?.Name ?? "System",
+                Date = DateTime.Now
+            });
+            await _context.SaveChangesAsync();
         }
 
+        // 📌 التحديث الجذري: رد الأموال للخزنة العامة عند الحذف أو التعديل
         private void RefundPurchaseCost(decimal totalCost, string itemName, PaymentMethod paymentMethod)
         {
             _context.SafeTransactions.Add(new SafeTransaction
             {
                 Amount = totalCost,
-                Type = SafeTransactionType.Income,
-                TargetSafe = SafeType.Purchasing,
+                Type = SafeTransactionType.Income, // تعني إيداع / استرجاع أموال
+                TargetSafe = SafeType.General, // 👈 الإرجاع للخزنة الرئيسية مباشرة
                 PaymentMethod = paymentMethod,
                 Description = $"استرداد قيمة شراء (تعديل/إلغاء فاتورة): {itemName}",
                 RecordedBy = User.Identity?.Name ?? "System",
@@ -144,6 +108,8 @@ namespace KaberSystem.Controllers
                 }
 
                 decimal totalPurchaseCost = (purchaseOrder.Quantity * purchaseOrder.PurchasePrice) + purchaseOrder.TaxAmount;
+
+                // سحب المبلغ من الخزنة
                 await DeductPurchaseCostAsync(totalPurchaseCost, purchaseOrder.ItemName, purchaseOrder.PaymentMethod);
 
                 _context.Add(purchaseOrder);
@@ -176,10 +142,10 @@ namespace KaberSystem.Controllers
             var oldPurchase = await _context.PurchaseOrders.FindAsync(id);
             if (oldPurchase == null) return NotFound();
 
-            // 📌 التحديث: حساب التكاليف القديمة والجديدة (شاملة الضريبة) لضمان دقة التسوية
             decimal oldTotalCost = (oldPurchase.Quantity * oldPurchase.PurchasePrice) + oldPurchase.TaxAmount;
             decimal newTotalCost = (updatedPurchase.Quantity * updatedPurchase.PurchasePrice) + updatedPurchase.TaxAmount;
 
+            // إذا تم تغيير السعر أو طريقة الدفع، نقوم باسترجاع المبلغ القديم وسحب المبلغ الجديد
             if (oldTotalCost != newTotalCost || oldPurchase.PaymentMethod != updatedPurchase.PaymentMethod)
             {
                 RefundPurchaseCost(oldTotalCost, oldPurchase.ItemName, oldPurchase.PaymentMethod);
@@ -201,7 +167,7 @@ namespace KaberSystem.Controllers
             oldPurchase.ItemName = updatedPurchase.ItemName;
             oldPurchase.Quantity = updatedPurchase.Quantity;
             oldPurchase.PurchasePrice = updatedPurchase.PurchasePrice;
-            oldPurchase.TaxAmount = updatedPurchase.TaxAmount; // 📌 التحديث: حفظ الضريبة المعدلة
+            oldPurchase.TaxAmount = updatedPurchase.TaxAmount;
             oldPurchase.SupplierName = updatedPurchase.SupplierName;
             oldPurchase.SupplierPhone = updatedPurchase.SupplierPhone;
             oldPurchase.SupplierLocation = updatedPurchase.SupplierLocation;
@@ -224,6 +190,7 @@ namespace KaberSystem.Controllers
             TempData["SuccessMessage"] = "تم تحديث فاتورة الشراء وتعديل الحسابات (والمخزون إن لزم الأمر) بنجاح.";
             return RedirectToAction(nameof(Index));
         }
+
         [HttpPost]
         [Authorize(Roles = "Admin,Store")]
         public async Task<IActionResult> MarkAsReceived(int id)
@@ -233,7 +200,6 @@ namespace KaberSystem.Controllers
             {
                 purchase.IsReceivedByStore = true;
 
-                // 📌 جلب المستودع الرئيسي لربط القطع به
                 var mainWarehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.IsMain);
 
                 var existingPart = await _context.SpareParts.FirstOrDefaultAsync(p => p.Name == purchase.ItemName);
@@ -251,7 +217,6 @@ namespace KaberSystem.Controllers
                     if (!string.IsNullOrEmpty(purchase.SupplierPhone)) existingPart.SupplierPhone = purchase.SupplierPhone;
                     if (!string.IsNullOrEmpty(purchase.SupplierLocation)) existingPart.SupplierLocation = purchase.SupplierLocation;
 
-                    // 📌 ربط القطع القديمة بالمستودع لكي تظهر في الجرد
                     if (existingPart.WarehouseId == null && mainWarehouse != null)
                     {
                         existingPart.WarehouseId = mainWarehouse.Id;
@@ -275,7 +240,7 @@ namespace KaberSystem.Controllers
                         SupplierPhone = purchase.SupplierPhone,
                         SupplierLocation = purchase.SupplierLocation,
                         MainStockQuantity = purchase.Quantity,
-                        WarehouseId = mainWarehouse?.Id // 📌 إسناد المستودع فوراً للقطعة الجديدة
+                        WarehouseId = mainWarehouse?.Id
                     };
                     _context.SpareParts.Add(newPart);
                     purchase.Barcode = generatedBarcode;
@@ -328,7 +293,7 @@ namespace KaberSystem.Controllers
             var purchase = await _context.PurchaseOrders.FindAsync(id);
             if (purchase != null)
             {
-                // 📌 التحديث: إرجاع الأموال للخزنة (شاملة الضريبة)
+                // رد الأموال للخزنة بالكامل قبل الحذف
                 decimal totalCost = (purchase.Quantity * purchase.PurchasePrice) + purchase.TaxAmount;
                 RefundPurchaseCost(totalCost, purchase.ItemName, purchase.PaymentMethod);
 
@@ -385,7 +350,6 @@ namespace KaberSystem.Controllers
             await DeductPurchaseCostAsync(totalPurchaseCost, request.NewPartName, paymentMethod);
 
             string generatedBarcode = "KBR" + new Random().Next(1000000, 9999999).ToString();
-
             var mainWarehouse = await _context.Warehouses.FirstOrDefaultAsync(w => w.IsMain);
 
             var newPart = new SparePart

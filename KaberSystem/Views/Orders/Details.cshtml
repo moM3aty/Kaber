@@ -1,5 +1,4 @@
-﻿<!-- مسار الملف: Views/Orders/Details.cshtml -->
-@model KaberSystem.Models.Order
+﻿@model KaberSystem.Models.Order
 @{
     ViewData["Title"] = "تفاصيل الطلب #" + Model.OrderId;
     Layout = "~/Views/Shared/_SystemLayout.cshtml";
@@ -12,18 +11,15 @@
 
     decimal actualFinalPrice = appliedLaborFee + partsTotal + Model.TaxAmount;
 
-    decimal totalPaidSoFar = ViewBag.TotalPaid ?? 0;
-    if (Model.AdvancePayment > 0 && totalPaidSoFar == 0)
-    {
-        totalPaidSoFar = Model.AdvancePayment;
-    }
+    // صافي الدفعات المحسوب بدقة في الكنترولر
+    decimal totalPaidSoFar = ViewBag.TotalPaid ?? 0m;
 
     decimal remainingToPay = actualFinalPrice - totalPaidSoFar;
     if (remainingToPay < 0) remainingToPay = 0;
 
     var partRequests = ViewBag.PartRequests as IEnumerable<KaberSystem.Models.OrderPartRequest>;
 }
-<!-- الرأس العلوي -->
+
 <div class="d-flex justify-content-between align-items-center mb-5 d-print-none fade-in-up">
     <div class="d-flex align-items-center gap-3">
         <div class="bg-white text-primary rounded-circle d-flex justify-content-center align-items-center shadow-sm" style="width: 55px; height: 55px; font-size: 22px;">
@@ -74,7 +70,6 @@
 }
 
 <div class="row g-4 mb-4">
-    <!-- 📌 بطاقة بيانات العميل -->
     <div class="col-lg-8 fade-in-up" style="animation-delay: 0.1s;">
         <div class="premium-card h-100 @(Model.IsBlacklisted ? "border-danger" : "")">
             <div class="card-header-premium">
@@ -85,27 +80,21 @@
                         <span class="premium-badge default">جديد</span>
                         break;
                     case KaberSystem.Models.OrderStatus.Assigned:
-
                         <span class="premium-badge primary">تم التعيين</span>
                         break;
                     case KaberSystem.Models.OrderStatus.Confirmed:
-
                         <span class="premium-badge warning">مؤكد</span>
                         break;
                     case KaberSystem.Models.OrderStatus.InProgress:
-
                         <span class="premium-badge info">قيد التنفيذ</span>
                         break;
                     case KaberSystem.Models.OrderStatus.Completed:
-
                         <span class="premium-badge dark">للمراجعة</span>
                         break;
                     case KaberSystem.Models.OrderStatus.Approved:
-
                         <span class="premium-badge success">معتمد نهائي</span>
                         break;
                     default:
-
                         <span class="premium-badge danger">مرتجع / ملغي</span>
                         break;
                 }
@@ -134,7 +123,7 @@
                             <span class="label">رقم التواصل</span>
                             <span class="value d-flex align-items-center" dir="ltr">
                                 @Model.PhoneNumber
-                                <a href="https://wa.me/@waNumber" target="_blank" class="btn-whatsapp-icon ms-3"><i class="fa-brands fa-whatsapp"></i></a>
+                                <a href="https://wa.me/@@whatsappNumber" target="_blank" class="btn-whatsapp-icon ms-3"><i class="fa-brands fa-whatsapp"></i></a>
                             </span>
                         </div>
                     </div>
@@ -189,7 +178,6 @@
         </div>
     </div>
 
-    <!-- 📌 بطاقة التحكم وتحديث الحالة -->
     <div class="col-lg-4 fade-in-up" style="animation-delay: 0.2s;">
         <div class="premium-card h-100 d-flex flex-column">
             <div class="card-header-premium bg-light">
@@ -259,11 +247,10 @@
     </div>
 </div>
 
-<!-- 📌 قسم طلبات الغيار والنواقص -->
 <div class="premium-card mb-4 fade-in-up" style="animation-delay: 0.3s;">
     <div class="card-header-premium d-flex justify-content-between align-items-center flex-wrap gap-3">
         <h5 class="fw-bolder m-0 text-dark"><i class="fa-solid fa-boxes-packing text-primary me-2"></i> طلبات النواقص وتوفير قطع الغيار</h5>
-        @if ((Model.Status != KaberSystem.Models.OrderStatus.Completed && Model.Status != KaberSystem.Models.OrderStatus.Approved) || User.IsInRole("Admin"))
+        @if ((Model.Status != KaberSystem.Models.OrderStatus.Completed && Model.Status != KaberSystem.Models.OrderStatus.Approved && Model.Status != KaberSystem.Models.OrderStatus.Cancelled) || User.IsInRole("Admin"))
         {
             <div class="d-flex gap-2 flex-wrap">
                 <button class="btn btn-light border fw-bold rounded-pill px-4 hover-elevate text-primary" data-bs-toggle="modal" data-bs-target="#requestWarehouseModal">
@@ -367,7 +354,7 @@
                                         <div class="d-flex gap-2 justify-content-center">
                                             <form asp-action="ApproveWarehouseRequest" method="post">
                                                 <input type="hidden" name="requestId" value="@req.Id" />
-                                                <button type="submit" class="btn btn-sm btn-success fw-bold rounded-pill px-3 shadow-sm hover-elevate" onclick="return confirm('تأكيد الصرف لعهدة الفني؟')">صرف</button>
+                                                <button type="submit" class="btn btn-sm btn-success fw-bold px-3 rounded-pill shadow-sm hover-elevate" onclick="return confirm('تأكيد الصرف لعهدة الفني؟')">صرف</button>
                                             </form>
                                             <form asp-action="RejectWarehouseRequest" method="post">
                                                 <input type="hidden" name="requestId" value="@req.Id" />
@@ -392,13 +379,12 @@
     }
 </div>
 
-<!-- 📌 قسم التسعير المالي والتحصيل -->
 <div class="row g-4 fade-in-up" style="animation-delay: 0.4s;">
     <div class="col-lg-7">
         <div class="premium-card h-100 d-flex flex-column">
             <div class="card-header-premium d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h5 class="fw-bolder m-0 text-dark"><i class="fa-solid fa-gears text-primary me-2"></i> قطع الغيار المركبة فعلياً</h5>
-                @if ((Model.Status != KaberSystem.Models.OrderStatus.Completed && Model.Status != KaberSystem.Models.OrderStatus.Approved) || User.IsInRole("Admin"))
+                @if ((Model.Status != KaberSystem.Models.OrderStatus.Completed && Model.Status != KaberSystem.Models.OrderStatus.Approved && Model.Status != KaberSystem.Models.OrderStatus.Cancelled) || User.IsInRole("Admin"))
                 {
                     <button type="button" class="btn btn-sm btn-primary fw-bold rounded-pill px-3 shadow-sm hover-elevate" data-bs-toggle="modal" data-bs-target="#addPartModal">
                         <i class="fa-solid fa-plus me-1"></i> تركيب من العهدة
@@ -427,7 +413,7 @@
                                         <td class="fw-bold">@part.QuantityUsed</td>
                                         <td class="fw-bolder text-success">@((part.QuantityUsed * part.SellingPriceAtTime).ToString("N2")) <span class="fw-normal small text-muted">ر.س</span></td>
                                         <td>
-                                            @if ((Model.Status != KaberSystem.Models.OrderStatus.Completed && Model.Status != KaberSystem.Models.OrderStatus.Approved) || User.IsInRole("Admin"))
+                                            @if ((Model.Status != KaberSystem.Models.OrderStatus.Completed && Model.Status != KaberSystem.Models.OrderStatus.Approved && Model.Status != KaberSystem.Models.OrderStatus.Cancelled) || User.IsInRole("Admin"))
                                             {
                                                 <form asp-action="RemoveUsedPart" method="post">
                                                     <input type="hidden" name="orderId" value="@Model.OrderId" /><input type="hidden" name="recordId" value="@part.Id" />
@@ -451,7 +437,6 @@
         </div>
     </div>
 
-    <!-- 📌 فاتورة الخلاصة المالية الدقيقة -->
     <div class="col-lg-5">
         <div class="receipt-card h-100">
             <div class="receipt-header">
@@ -492,16 +477,16 @@
                 <span class="value">@remainingToPay.ToString("N2") <small>ر.س</small></span>
             </div>
 
-            @if (Model.Status == KaberSystem.Models.OrderStatus.Completed || Model.Status == KaberSystem.Models.OrderStatus.Approved)
-            {
-                <div class="p-4 bg-white text-center">
-                    @if (!Model.IsPaid && remainingToPay > 0)
+            <div class="p-4 bg-white text-center">
+                @if (Model.Status == KaberSystem.Models.OrderStatus.Completed || Model.Status == KaberSystem.Models.OrderStatus.Approved)
+                {
+                    @if (remainingToPay > 0 && Model.Status != KaberSystem.Models.OrderStatus.Cancelled)
                     {
                         <button class="btn btn-success w-100 fw-bolder py-3 rounded-pill shadow-lg payment-btn-pulse fs-5" data-bs-toggle="modal" data-bs-target="#paymentModal">
                             <i class="fa-solid fa-cash-register me-2"></i> تحصيل الدفعة المتبقية
                         </button>
                     }
-                    else
+                    else if (remainingToPay == 0 && actualFinalPrice > 0)
                     {
                         <div class="paid-stamp">
                             <i class="fa-solid fa-check-double text-success mb-2 d-block fs-1"></i>
@@ -515,14 +500,25 @@
                             }
                         </div>
                     }
-                </div>
-            }
+                }
+                else if (Model.Status == KaberSystem.Models.OrderStatus.Cancelled)
+                {
+                    <div class="paid-stamp border-danger bg-danger bg-opacity-10">
+                        <i class="fa-solid fa-ban text-danger mb-2 d-block fs-1"></i>
+                        <h5 class="fw-bolder text-danger m-0">الطلب ملغي</h5>
+                    </div>
+                }
+                else
+                {
+                    <div class="alert alert-warning mb-0 fw-bold border-0 shadow-sm rounded-4">
+                        <i class="fa-solid fa-hourglass-half me-1"></i> الفاتورة قابلة للتحصيل عند اكتمال الطلب فقط.
+                    </div>
+                }
+            </div>
         </div>
     </div>
 </div>
 
-<!-- 📌 Modals -->
-<!-- Modal التحصيل المطور (الدفع المجزأ Split Payment) -->
 <div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content premium-modal border-0 shadow-lg">
@@ -541,11 +537,10 @@
                     </div>
 
                     <div class="premium-alert info py-2 px-3 mb-4 small fw-bold">
-                        <i class="fa-solid fa-circle-info me-2"></i> يمكنك تسجيل المبلغ المحصل كاملاً في طريقة واحدة، أو تجزئته بين الطرق (مثال: جزء كاش وجزء شبكة).
+                        <i class="fa-solid fa-circle-info me-2"></i> يمكنك تسجيل المبلغ المحصل كاملاً في طريقة واحدة، أو تجزئته بين الطرق.
                     </div>
 
                     <div class="row g-3 mb-4">
-                        <!-- الدفع الكاش -->
                         <div class="col-12">
                             <label class="premium-label text-success"><i class="fa-solid fa-money-bills me-1"></i> المبلغ المدفوع نقداً (كاش)</label>
                             <div class="input-group shadow-sm">
@@ -554,7 +549,6 @@
                             </div>
                         </div>
 
-                        <!-- الدفع شبكة -->
                         <div class="col-12">
                             <label class="premium-label text-info"><i class="fa-solid fa-credit-card me-1"></i> المبلغ المدفوع شبكة (POS)</label>
                             <div class="input-group shadow-sm">
@@ -563,7 +557,6 @@
                             </div>
                         </div>
 
-                        <!-- الدفع تحويل -->
                         <div class="col-12">
                             <label class="premium-label text-primary"><i class="fa-solid fa-building-columns me-1"></i> المبلغ المدفوع تحويل بنكي</label>
                             <div class="input-group shadow-sm">
@@ -591,7 +584,6 @@
     </div>
 </div>
 
-<!-- Modal حجز من المخزن -->
 <div class="modal fade" id="requestWarehouseModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content premium-modal border-0 shadow-lg">
@@ -628,7 +620,6 @@
     </div>
 </div>
 
-<!-- 📌 Modal طلب شراء خارجي -->
 <div class="modal fade" id="requestPurchaseModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content premium-modal border-0 shadow-lg">
@@ -679,7 +670,6 @@
     </div>
 </div>
 
-<!-- Modal تركيب من العهدة -->
 <div class="modal fade" id="addPartModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content premium-modal border-0 shadow-lg">
@@ -719,7 +709,6 @@
 
 @section Scripts {
     <script>
-        // 📌 التحديث: التحقق التفاعلي من مجموع المبالغ المدفوعة في المودال الجديد
         function calculateTotalPaid() {
             var cash = parseFloat(document.getElementById('cashAmount').value) || 0;
             var pos = parseFloat(document.getElementById('posAmount').value) || 0;
@@ -742,26 +731,25 @@
                 submitBtn.innerHTML = "المبلغ المكتوب أكبر من المطلوب!";
             } else {
                 displaySpan.className = "fw-bolder fs-4 text-warning";
-                submitBtn.disabled = false; // السماح بالدفع الجزئي إن أردت (يمكنك جعلها true لو أردت إجبار التسديد الكامل)
+                submitBtn.disabled = false;
                 submitBtn.innerHTML = "تأكيد الدفع (جزئي)";
             }
         }
 
         @if (TempData["SuccessMessage"] != null)
         {
-                        var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
-                        <text>Swal.fire({ icon: 'success', title: 'تم بنجاح', text: @Html.Raw(msg), confirmButtonColor: '#f1950b', customClass: { popup: 'premium-swal' } });</text>
+            var msg = System.Text.Json.JsonSerializer.Serialize(TempData["SuccessMessage"]?.ToString());
+            <text>Swal.fire({ icon: 'success', title: 'تم بنجاح', text: @Html.Raw(msg), confirmButtonColor: '#f1950b', customClass: { popup: 'premium-swal' } });</text>
         }
         @if (TempData["ErrorMessage"] != null)
         {
-                        var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
-                        <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
+            var errMsg = System.Text.Json.JsonSerializer.Serialize(TempData["ErrorMessage"]?.ToString());
+            <text>Swal.fire({ icon: 'error', title: 'تنبيه', text: @Html.Raw(errMsg), confirmButtonColor: '#ee5d50', customClass: { popup: 'premium-swal' } });</text>
         }
     </script>
 }
 
 <style>
-    /* Premium Dashboard UI Styles */
     :root {
         --prem-bg: #f8f9fc;
         --prem-surface: #ffffff;
@@ -777,15 +765,8 @@
     }
 
     @@keyframes fadeInUp {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     .premium-card {
@@ -808,7 +789,6 @@
         padding: 24px;
     }
 
-    /* Inputs */
     .premium-label {
         font-weight: 800;
         color: var(--prem-muted);
@@ -830,13 +810,12 @@
         transition: all 0.3s ease;
     }
 
-        .premium-input:focus {
-            background-color: #fff;
-            border-color: var(--prem-primary);
-            box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1) !important;
-        }
+    .premium-input:focus {
+        background-color: #fff;
+        border-color: var(--prem-primary);
+        box-shadow: 0 0 0 4px rgba(241, 149, 11, 0.1) !important;
+    }
 
-    /* Badges */
     .premium-badge {
         padding: 6px 16px;
         border-radius: 30px;
@@ -844,76 +823,19 @@
         font-weight: 800;
     }
 
-        .premium-badge.default {
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #e2e8f0;
-        }
+    .premium-badge.default { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .premium-badge.primary { background: rgba(241,149,11,0.1); color: var(--prem-primary); border: 1px solid rgba(241,149,11,0.2); }
+    .premium-badge.success { background: #ecfdf5; color: #198754; border: 1px solid #d1e7dd; }
+    .premium-badge.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+    .premium-badge.info { background: #cff4fc; color: #055160; border: 1px solid #b6effb; }
+    .premium-badge.danger { background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
+    .premium-badge.dark { background: #e2e3e5; color: #41464b; border: 1px solid #d3d6d8; }
+    .premium-badge.primary-light { background: #e0e7ff; color: #4f46e5; }
+    .premium-badge.dark-light { background: #f1f5f9; color: #0f172a; }
 
-        .premium-badge.primary {
-            background: rgba(241,149,11,0.1);
-            color: var(--prem-primary);
-            border: 1px solid rgba(241,149,11,0.2);
-        }
-
-        .premium-badge.success {
-            background: #ecfdf5;
-            color: #198754;
-            border: 1px solid #d1e7dd;
-        }
-
-        .premium-badge.warning {
-            background: #fff3cd;
-            color: #856404;
-            border: 1px solid #ffeeba;
-        }
-
-        .premium-badge.info {
-            background: #cff4fc;
-            color: #055160;
-            border: 1px solid #b6effb;
-        }
-
-        .premium-badge.danger {
-            background: #f8d7da;
-            color: #842029;
-            border: 1px solid #f5c2c7;
-        }
-
-        .premium-badge.dark {
-            background: #e2e3e5;
-            color: #41464b;
-            border: 1px solid #d3d6d8;
-        }
-
-        .premium-badge.primary-light {
-            background: #e0e7ff;
-            color: #4f46e5;
-        }
-
-        .premium-badge.dark-light {
-            background: #f1f5f9;
-            color: #0f172a;
-        }
-
-    /* Info Blocks */
-    .info-block {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-        .info-block .label {
-            font-size: 0.8rem;
-            color: var(--prem-muted);
-            font-weight: 700;
-        }
-
-        .info-block .value {
-            font-size: 1.1rem;
-            color: var(--prem-text);
-            font-weight: 800;
-        }
+    .info-block { display: flex; flex-direction: column; gap: 6px; }
+    .info-block .label { font-size: 0.8rem; color: var(--prem-muted); font-weight: 700; }
+    .info-block .value { font-size: 1.1rem; color: var(--prem-text); font-weight: 800; }
 
     .avatar-sm {
         width: 30px;
@@ -927,51 +849,15 @@
         font-size: 12px;
     }
 
-    /* Accent Boxes */
-    .problem-box, .tech-note-box {
-        padding: 20px;
-        border-radius: 16px;
-    }
+    .problem-box, .tech-note-box { padding: 20px; border-radius: 16px; }
+    .problem-box { background-color: #fff1f2; border-right: 4px solid #ef4444; }
+    .problem-box .header-label { color: #ef4444; font-weight: 800; margin-bottom: 10px; font-size: 0.9rem; }
+    .problem-box p { color: #991b1b; font-weight: 700; margin: 0; line-height: 1.7; }
 
-    .problem-box {
-        background-color: #fff1f2;
-        border-right: 4px solid #ef4444;
-    }
+    .tech-note-box { background-color: #f0fdf4; border-right: 4px solid #10b981; }
+    .tech-note-box .header-label { color: #10b981; font-weight: 800; margin-bottom: 10px; font-size: 0.9rem; }
+    .tech-note-box p { color: #065f46; font-weight: 700; margin: 0; line-height: 1.7; }
 
-        .problem-box .header-label {
-            color: #ef4444;
-            font-weight: 800;
-            margin-bottom: 10px;
-            font-size: 0.9rem;
-        }
-
-        .problem-box p {
-            color: #991b1b;
-            font-weight: 700;
-            margin: 0;
-            line-height: 1.7;
-        }
-
-    .tech-note-box {
-        background-color: #f0fdf4;
-        border-right: 4px solid #10b981;
-    }
-
-        .tech-note-box .header-label {
-            color: #10b981;
-            font-weight: 800;
-            margin-bottom: 10px;
-            font-size: 0.9rem;
-        }
-
-        .tech-note-box p {
-            color: #065f46;
-            font-weight: 700;
-            margin: 0;
-            line-height: 1.7;
-        }
-
-    /* Table */
     .premium-table th {
         font-weight: 800;
         color: var(--prem-muted);
@@ -981,21 +867,10 @@
         text-transform: uppercase;
     }
 
-    .premium-table td {
-        padding: 16px;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
-    }
+    .premium-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+    .premium-table tr:last-child td { border-bottom: none; }
+    .premium-table tr:hover td { background-color: #f8fafc; }
 
-    .premium-table tr:last-child td {
-        border-bottom: none;
-    }
-
-    .premium-table tr:hover td {
-        background-color: #f8fafc;
-    }
-
-    /* Tech Profile */
     .tech-profile-card {
         display: flex;
         align-items: center;
@@ -1007,25 +882,10 @@
         text-align: right;
     }
 
-        .tech-profile-card img {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-        }
+    .tech-profile-card img { width: 48px; height: 48px; border-radius: 12px; }
+    .tech-profile-card h6 { margin: 0 0 4px 0; font-weight: 800; color: var(--prem-text); }
+    .tech-profile-card span { font-size: 0.85rem; color: var(--prem-muted); font-weight: 700; }
 
-        .tech-profile-card h6 {
-            margin: 0 0 4px 0;
-            font-weight: 800;
-            color: var(--prem-text);
-        }
-
-        .tech-profile-card span {
-            font-size: 0.85rem;
-            color: var(--prem-muted);
-            font-weight: 700;
-        }
-
-    /* Receipt Card */
     .receipt-card {
         background: #fff;
         border-radius: 24px;
@@ -1036,40 +896,12 @@
         overflow: hidden;
     }
 
-    .receipt-header {
-        background: #f8fafc;
-        padding: 30px;
-        text-align: center;
-        border-bottom: 2px dashed var(--prem-border);
-    }
-
-    .receipt-body {
-        padding: 30px;
-        flex-grow: 1;
-    }
-
-    .receipt-line {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-    }
-
-        .receipt-line .label {
-            color: var(--prem-muted);
-            font-weight: 700;
-        }
-
-        .receipt-line .value {
-            color: var(--prem-text);
-            font-weight: 800;
-        }
-
-    .total-line {
-        margin-top: 20px;
-        padding-top: 20px;
-        border-top: 2px dashed var(--prem-border);
-    }
+    .receipt-header { background: #f8fafc; padding: 30px; text-align: center; border-bottom: 2px dashed var(--prem-border); }
+    .receipt-body { padding: 30px; flex-grow: 1; }
+    .receipt-line { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .receipt-line .label { color: var(--prem-muted); font-weight: 700; }
+    .receipt-line .value { color: var(--prem-text); font-weight: 800; }
+    .total-line { margin-top: 20px; padding-top: 20px; border-top: 2px dashed var(--prem-border); }
 
     .receipt-footer {
         background: var(--prem-primary);
@@ -1080,44 +912,16 @@
         align-items: center;
     }
 
-        .receipt-footer .label {
-            font-weight: 800;
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
+    .receipt-footer .label { font-weight: 800; font-size: 1.1rem; opacity: 0.9; }
+    .receipt-footer .value { font-weight: 900; font-size: 2rem; letter-spacing: -1px; }
 
-        .receipt-footer .value {
-            font-weight: 900;
-            font-size: 2rem;
-            letter-spacing: -1px;
-        }
+    .paid-stamp { border: 2px solid #10b981; border-radius: 16px; padding: 20px; background: #f0fdf4; }
 
-    .paid-stamp {
-        border: 2px solid #10b981;
-        border-radius: 16px;
-        padding: 20px;
-        background: #f0fdf4;
-    }
+    .premium-modal { border-radius: 24px; overflow: hidden; }
+    .border-dashed { border: 2px dashed #cbd5e1; }
 
-    /* Modals & Buttons */
-    .premium-modal {
-        border-radius: 24px;
-        overflow: hidden;
-    }
-
-    .border-dashed {
-        border: 2px dashed #cbd5e1;
-    }
-
-    .hover-elevate {
-        transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s;
-        cursor: pointer;
-    }
-
-        .hover-elevate:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important;
-        }
+    .hover-elevate { transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s; cursor: pointer; }
+    .hover-elevate:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.08) !important; }
 
     .btn-whatsapp-icon {
         display: inline-flex;
@@ -1133,28 +937,13 @@
         text-decoration: none;
     }
 
-        .btn-whatsapp-icon:hover {
-            background: #10b981;
-            color: #fff;
-            transform: scale(1.1);
-        }
-
-    .payment-btn-pulse {
-        animation: pulseGreen 2s infinite;
-    }
+    .btn-whatsapp-icon:hover { background: #10b981; color: #fff; transform: scale(1.1); }
+    .payment-btn-pulse { animation: pulseGreen 2s infinite; }
 
     @@keyframes pulseGreen {
-        0% {
-            box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.4);
-        }
-
-        70% {
-            box-shadow: 0 0 0 15px rgba(25, 135, 84, 0);
-        }
-
-        100% {
-            box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
-        }
+        0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.4); }
+        70% { box-shadow: 0 0 0 15px rgba(25, 135, 84, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
     }
 
     .premium-alert {
@@ -1169,82 +958,33 @@
         box-shadow: 0 4px 12px rgba(239, 68, 68, 0.05);
     }
 
-        .premium-alert.warning {
-            background: #fffbf0;
-            border-color: #fef08a;
-        }
+    .premium-alert.warning { background: #fffbf0; border-color: #fef08a; }
+    .premium-alert.warning .icon-box { background: #fef08a; color: #ca8a04; }
+    .premium-alert.danger { background: #fff1f2; border-color: #fecdd3; }
+    .premium-alert.danger .icon-box { background: #ffe4e6; color: #e11d48; }
+    .premium-alert.info { background: #f0f9ff; border-color: #bae6fd; }
+    .premium-alert.info .icon-box { background: #bae6fd; color: #0284c7; }
 
-            .premium-alert.warning .icon-box {
-                background: #fef08a;
-                color: #ca8a04;
-            }
-
-        .premium-alert.danger {
-            background: #fff1f2;
-            border-color: #fecdd3;
-        }
-
-            .premium-alert.danger .icon-box {
-                background: #ffe4e6;
-                color: #e11d48;
-            }
-
-        .premium-alert.info {
-            background: #f0f9ff;
-            border-color: #bae6fd;
-        }
-
-            .premium-alert.info .icon-box {
-                background: #bae6fd;
-                color: #0ea5e9;
-            }
-
-        .premium-alert .icon-box {
-            width: 45px;
-            height: 45px;
-            border-radius: 12px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 20px;
-            flex-shrink: 0;
-        }
-
-        .premium-alert .content h5 {
-            color: #1e293b;
-        }
-
-        .premium-alert .content p {
-            color: #475569;
-        }
-
-    .premium-swal {
-        border-radius: 20px !important;
+    .premium-alert .icon-box {
+        width: 45px;
+        height: 45px;
+        border-radius: 12px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 20px;
+        flex-shrink: 0;
     }
 
+    .premium-alert .content h5 { color: #1e293b; }
+    .premium-alert .content p { color: #475569; }
+    .premium-swal { border-radius: 20px !important; }
+
     @@media print {
-        body {
-            background: white !important;
-        }
-
-        .sys-sidebar, .sys-header, .d-print-none {
-            display: none !important;
-        }
-
-        .sys-main {
-            margin: 0 !important;
-            padding: 0 !important;
-            width: 100% !important;
-        }
-
-        .premium-card {
-            box-shadow: none !important;
-            border: 1px solid #000 !important;
-            padding: 20px !important;
-        }
-
-        .receipt-card {
-            border: 1px solid #000 !important;
-        }
+        body { background: white !important; }
+        .sys-sidebar, .sys-header, .d-print-none { display: none !important; }
+        .sys-main { margin: 0 !important; padding: 0 !important; width: 100% !important; }
+        .premium-card { box-shadow: none !important; border: 1px solid #000 !important; padding: 20px !important; }
+        .receipt-card { border: 1px solid #000 !important; }
     }
 </style>

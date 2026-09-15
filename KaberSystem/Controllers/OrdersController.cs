@@ -44,7 +44,6 @@ namespace KaberSystem.Controllers
 
             if (User.IsInRole("Technician"))
             {
-                // 📌 التحديث: إزالة شرط إخفاء الطلبات المعتمدة والملغاة لكي يتمكن الفني من رؤية السجل الخاص به بالكامل
                 query = query.Where(o => o.Technician.Name == User.Identity.Name);
             }
 
@@ -265,7 +264,7 @@ namespace KaberSystem.Controllers
             existingOrder.LocationMapUrl = order.LocationMapUrl;
             existingOrder.Type = order.Type;
             existingOrder.EstimatedPrice = order.EstimatedPrice;
-            existingOrder.TaxAmount = order.TaxAmount; // 📌 التحديث: حفظ الضريبة عند التعديل
+            existingOrder.TaxAmount = order.TaxAmount;
             existingOrder.AdvancePayment = order.AdvancePayment;
             existingOrder.ScheduledDate = order.ScheduledDate;
 
@@ -319,7 +318,6 @@ namespace KaberSystem.Controllers
         [HttpPost]
         [ValidateAntiForgeryToken]
         [Authorize(Roles = "Admin,CallCenter")]
-        // 📌 التحديث: إضافة taxAmount لجدولة نواقص التركيب
         public async Task<IActionResult> ScheduleInstallation(int orderId, int technicianId, DateTime scheduledDate, decimal additionalInstallFee, decimal taxAmount, string adminNotes)
         {
             var oldOrder = await _context.Orders.FindAsync(orderId);
@@ -344,10 +342,10 @@ namespace KaberSystem.Controllers
                     ScheduledDate = scheduledDate,
                     TechnicianId = technicianId,
                     EstimatedPrice = additionalInstallFee,
-                    TaxAmount = taxAmount, // 📌 التحديث: حفظ الضريبة
+                    TaxAmount = taxAmount,
                     IsFeeApplied = additionalInstallFee > 0,
                     AdvancePayment = 0,
-                    FinalPrice = additionalInstallFee + taxAmount // إضافة الضريبة للإجمالي
+                    FinalPrice = additionalInstallFee + taxAmount
                 };
 
                 _context.Orders.Add(newOrder);
@@ -377,7 +375,7 @@ namespace KaberSystem.Controllers
                     _context.Update(req);
                 }
 
-                LogAction("جدولة زيارة تركيب منفصلة", $"تم إغلاق الطلب #{orderId} وإنشاء طلب جديد #{newOrder.OrderId} لزيارة التركيب بأجرة {additionalInstallFee} ريال ونقل النواقص إليه.");
+                LogAction("جدولة زيارة تركيب منفصلة", $"تم إغلاق الطلب #{orderId} وإنشاء طلب جديد #{newOrder.OrderId} لزيارة التركيب.");
                 await _context.SaveChangesAsync();
 
                 TempData["SuccessMessage"] = $"تم إغلاق طلب الفحص، وإنشاء طلب جديد برقم #{newOrder.OrderId} لزيارة التركيب بنجاح!";
@@ -431,8 +429,7 @@ namespace KaberSystem.Controllers
         [HttpPost]
         [Authorize(Roles = "Admin,CallCenter")]
         [ValidateAntiForgeryToken]
-        // 📌 التحديث: إضافة حقل الضريبة أثناء تأكيد الموعد
-        public async Task<IActionResult> Confirm(int id, DateTime scheduledDate, decimal estimatedPrice, decimal advancePayment, decimal taxAmount)
+        public async Task<IActionResult> Confirm(int id, DateTime scheduledDate, decimal estimatedPrice, decimal advancePayment, decimal taxAmount, PaymentMethod advancePaymentMethod)
         {
             var order = await _context.Orders.FindAsync(id);
             if (order != null)
@@ -440,9 +437,9 @@ namespace KaberSystem.Controllers
                 order.ScheduledDate = scheduledDate;
                 order.EstimatedPrice = estimatedPrice;
                 order.AdvancePayment = advancePayment;
-                order.TaxAmount = taxAmount; // 📌 التحديث: حفظ الضريبة
+                order.TaxAmount = taxAmount;
                 order.Status = OrderStatus.Confirmed;
-                order.FinalPrice = estimatedPrice + taxAmount; // الإجمالي المبدئي
+                order.FinalPrice = estimatedPrice + taxAmount;
 
                 if (advancePayment > 0)
                 {
@@ -451,6 +448,7 @@ namespace KaberSystem.Controllers
                         Amount = advancePayment,
                         Type = SafeTransactionType.Income,
                         TargetSafe = SafeType.General,
+                        PaymentMethod = advancePaymentMethod,
                         Description = $"دفعة مقدمة (عربون) لطلب #{order.OrderId} للعميل {order.CustomerName}",
                         OrderId = order.OrderId,
                         RecordedBy = User.Identity?.Name ?? "System",
@@ -500,7 +498,6 @@ namespace KaberSystem.Controllers
                     return RedirectToAction(nameof(Index));
                 }
 
-                // 📌 التحديث: رسالة توضيحية للفني داخل شاشة الطلب بأنه للمراجعة فقط ولا يمكن تعديله
                 if (order.Status == OrderStatus.Approved || order.Status == OrderStatus.Cancelled)
                 {
                     TempData["InfoMessage"] = "هذا الطلب منتهي ومغلق بالكامل، يمكنك مراجعته والاطلاع عليه فقط.";
@@ -515,15 +512,21 @@ namespace KaberSystem.Controllers
 
             ViewData["AvailableParts"] = await _context.SpareParts.Where(p => p.MainStockQuantity > 0).ToListAsync();
 
+            // حساب المدفوعات بدقة
             var orderTransactions = await _context.SafeTransactions
-                .Where(t => t.OrderId == id && t.Type == SafeTransactionType.Income)
+                .Where(t => t.OrderId == id)
                 .ToListAsync();
 
-            ViewBag.TotalPaid = orderTransactions.Sum(t => t.Amount);
+            decimal totalIncomes = orderTransactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount);
+            decimal totalRefunds = orderTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+
+            decimal netPaid = totalIncomes - totalRefunds;
+            ViewBag.TotalPaid = netPaid < 0 ? 0 : netPaid;
 
             return View(order);
         }
 
+        // 📌 التحديث הגذري 1: الاسترداد التلقائي للمبالغ وتصفير الفاتورة عند إلغاء الطلب (Cancelled)
         [HttpPost]
         public async Task<IActionResult> UpdateStatus(int id, OrderStatus newStatus, string technicianNotes, int isFeeApplied)
         {
@@ -534,7 +537,6 @@ namespace KaberSystem.Controllers
 
             if (order != null)
             {
-                // 📌 التحديث: حماية خلفية قوية لمنع الفني من تعديل أي شيء إذا كان الطلب معتمداً أو ملغياً
                 if (User.IsInRole("Technician"))
                 {
                     if (order.Status == OrderStatus.Approved || order.Status == OrderStatus.Cancelled)
@@ -549,9 +551,12 @@ namespace KaberSystem.Controllers
                     }
                 }
 
-                // 📌 التحديث القوي: إرجاع القطع للعهدة عند الإلغاء لكي لا تُحسب في الأرباح
-                if (newStatus == OrderStatus.Cancelled)
+                string oldStatusStr = order.Status.ToString();
+
+                // 🔴 في حال تم إلغاء الطلب بالكامل
+                if (newStatus == OrderStatus.Cancelled && oldStatusStr != "Cancelled")
                 {
+                    // 1. إرجاع قطع الغيار للعهدة
                     if (order.UsedSpareParts != null && order.UsedSpareParts.Any() && order.TechnicianId.HasValue)
                     {
                         foreach (var up in order.UsedSpareParts)
@@ -569,9 +574,37 @@ namespace KaberSystem.Controllers
                         }
                         _context.UsedSpareParts.RemoveRange(order.UsedSpareParts);
                     }
+
+                    // 2. تصفير واسترداد المبالغ المدفوعة فوراً لحماية جيب الفني والخزنة
+                    var orderTransactions = await _context.SafeTransactions.Where(t => t.OrderId == id).ToListAsync();
+                    decimal totalIncomesCnl = orderTransactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount);
+                    decimal totalRefundsCnl = orderTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+                    decimal netPaidAllTimeForCancel = totalIncomesCnl - totalRefundsCnl;
+
+                    if (netPaidAllTimeForCancel > 0)
+                    {
+                        _context.SafeTransactions.Add(new SafeTransaction
+                        {
+                            Amount = netPaidAllTimeForCancel,
+                            Type = SafeTransactionType.DepositToBank, // خروج أموال (استرداد)
+                            TargetSafe = SafeType.General,
+                            PaymentMethod = order.PaymentMethod != PaymentMethod.None ? order.PaymentMethod : PaymentMethod.Cash,
+                            Description = $"استرداد آلي لمبالغ الطلب #{order.OrderId} بسبب إلغاء الطلب بالكامل",
+                            OrderId = order.OrderId,
+                            RecordedBy = User.Identity?.Name ?? "System",
+                            Date = DateTime.Now
+                        });
+                    }
+
+                    // 3. تصفير بيانات السداد
+                    order.IsPaid = false;
+                    order.AdvancePayment = 0;
+                    if (order.Invoices != null)
+                    {
+                        foreach (var inv in order.Invoices) inv.Status = InvoiceStatus.Rejected;
+                    }
                 }
 
-                string oldStatusStr = order.Status.ToString();
                 order.Status = newStatus;
                 order.TechnicianNotes = technicianNotes;
 
@@ -592,11 +625,29 @@ namespace KaberSystem.Controllers
                     order.TechnicianNotes += "\n[النظام]: تم وضع العميل في القائمة السوداء (رفض دفع الرسوم).";
                 }
 
+                // تحديث سعر الفاتورة
                 decimal partsTotal = order.UsedSpareParts?.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) ?? 0;
                 decimal appliedFee = order.IsFeeApplied ? order.EstimatedPrice : 0;
-
-                // 📌 التحديث: احتساب الضريبة المحفوظة من قبل ضمن الفاتورة النهائية
                 order.FinalPrice = appliedFee + partsTotal + order.TaxAmount;
+
+                // التحقق النهائي من السداد للتأكد أن الطلب مدفوع بالكامل بعد التعديلات
+                var finalTransactions = await _context.SafeTransactions.Where(t => t.OrderId == id).ToListAsync();
+                decimal totalIncomesCheck = finalTransactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount);
+                decimal totalRefundsCheck = finalTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+                decimal netPaidAllTimeCheck = totalIncomesCheck - totalRefundsCheck;
+
+                if (netPaidAllTimeCheck >= order.FinalPrice && order.FinalPrice > 0)
+                {
+                    order.IsPaid = true;
+                    if (order.Invoices != null)
+                    {
+                        foreach (var inv in order.Invoices) inv.Status = InvoiceStatus.Paid;
+                    }
+                }
+                else
+                {
+                    order.IsPaid = false;
+                }
 
                 if (newStatus == OrderStatus.Approved)
                 {
@@ -615,6 +666,7 @@ namespace KaberSystem.Controllers
                     else
                     {
                         finalInvoice.Amount = order.FinalPrice;
+                        finalInvoice.Status = order.IsPaid ? InvoiceStatus.Paid : InvoiceStatus.NotReceived;
                         _context.Update(finalInvoice);
                     }
                 }
@@ -627,6 +679,8 @@ namespace KaberSystem.Controllers
                     TempData["SuccessMessage"] = "تم إكمال الطلب وإرساله للإدارة للمراجعة والاعتماد.";
                 else if (newStatus == OrderStatus.Returned)
                     TempData["ErrorMessage"] = "تم إرجاع الطلب للفني للتعديل بناءً على ملاحظاتك.";
+                else if (newStatus == OrderStatus.Cancelled)
+                    TempData["SuccessMessage"] = "تم إلغاء الطلب، وإرجاع القطع، ورد المبالغ المدفوعة آلياً للعميل.";
                 else
                     TempData["SuccessMessage"] = "تم تحديث حالة الطلب بنجاح!";
             }
@@ -667,8 +721,14 @@ namespace KaberSystem.Controllers
                     decimal appliedFee = order.IsFeeApplied ? order.EstimatedPrice : 0;
                     decimal currentPartsTotal = order.UsedSpareParts.Sum(p => p.QuantityUsed * p.SellingPriceAtTime) + (quantity * part.SellingPrice);
 
-                    // 📌 التحديث: إضافة الضريبة
                     order.FinalPrice = appliedFee + currentPartsTotal + order.TaxAmount;
+
+                    var orderTransactions = await _context.SafeTransactions.Where(t => t.OrderId == orderId).ToListAsync();
+                    decimal totalIncomes = orderTransactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount);
+                    decimal totalRefunds = orderTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+                    decimal netPaidAllTime = totalIncomes - totalRefunds;
+                    order.IsPaid = (netPaidAllTime >= order.FinalPrice && order.FinalPrice > 0);
+
                     _context.Update(order);
 
                     LogAction("استهلاك عهدة", $"تركيب قطعة ({part.Name}) بكمية ({quantity}) في الطلب #{orderId}");
@@ -728,6 +788,12 @@ namespace KaberSystem.Controllers
             decimal removedValue = usedPart.QuantityUsed * usedPart.SellingPriceAtTime;
             order.FinalPrice -= removedValue;
             if (order.FinalPrice < 0) order.FinalPrice = 0;
+
+            var orderTransactions = await _context.SafeTransactions.Where(t => t.OrderId == orderId).ToListAsync();
+            decimal totalIncomes = orderTransactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount);
+            decimal totalRefunds = orderTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+            decimal netPaidAllTime = totalIncomes - totalRefunds;
+            order.IsPaid = (netPaidAllTime >= order.FinalPrice && order.FinalPrice > 0);
 
             _context.Update(order);
             _context.UsedSpareParts.Remove(usedPart);
@@ -809,8 +875,12 @@ namespace KaberSystem.Controllers
             else if (posAmount >= cashAmount && posAmount >= bankTransferAmount) order.PaymentMethod = PaymentMethod.POS;
             else order.PaymentMethod = PaymentMethod.BankTransfer;
 
-            decimal totalPaidAllTime = previousTransactions.Sum(t => t.Amount) + totalPaidNow;
-            if (totalPaidAllTime >= order.FinalPrice)
+            var allTransactions = await _context.SafeTransactions.Where(t => t.OrderId == orderId).ToListAsync();
+            decimal totalIncomeAll = allTransactions.Where(t => t.Type == SafeTransactionType.Income).Sum(t => t.Amount) + totalPaidNow;
+            decimal totalRefundAll = allTransactions.Where(t => t.Type == SafeTransactionType.DepositToBank).Sum(t => t.Amount);
+            decimal netPaidAllTime = totalIncomeAll - totalRefundAll;
+
+            if (netPaidAllTime >= order.FinalPrice && order.FinalPrice > 0)
             {
                 order.IsPaid = true;
                 if (order.Invoices != null)
